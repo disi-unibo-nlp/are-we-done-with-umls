@@ -1,0 +1,9 @@
+ABS ( ( "*knowledge graph*" ) OR ( "knowledge base*" ) OR ( "structured" ) OR ( "graph*" ) )
+AND ABS ( ( "natural language processing" ) OR ( "NLP" ) OR ( "language model*" ) OR ( "LLM*" ) OR ( "LM*" ) ) 
+AND ABS ( ( "question answering" ) OR ( "*QA*" ) OR ( "reasoning*" ) )
+AND PUBYEAR > 2019 AND PUBYEAR < 2025 
+AND ( LIMIT-TO ( SRCTYPE , "p" ) ) 
+AND ( LIMIT-TO ( PUBSTAGE , "final" ) ) 
+AND ( LIMIT-TO ( DOCTYPE , "cp" ) OR LIMIT-TO ( DOCTYPE , "ar" ) ) 
+AND ( LIMIT-TO ( SUBJAREA , "COMP" ) ) 
+AND ( LIMIT-TO ( LANGUAGE , "English" ) )

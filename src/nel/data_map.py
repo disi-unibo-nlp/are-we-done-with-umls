@@ -7,8 +7,8 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
-from preprocess.mmlrestclient import METAMAPOnline
-from preprocess.mmlocalclient import METAMAP
+# from preprocess.mmlrestclient import METAMAPOnline
+# from preprocess.mmlocalclient import METAMAP
 
 import spacy
 import scispacy
@@ -77,11 +77,12 @@ def map_concept_ner(map_way, file_path, file_type, file_name, test_metamap=False
         NLP_ = load_entity_linker()
         MAP_ = 1
     else:
-        if MAP_ is None:
-            if map_way == 'local':
-                MAP_ = METAMAP()
-            elif map_way == 'online' :
-                MAP_ = METAMAPOnline()
+        # if MAP_ is None:
+        #     if map_way == 'local':
+        #         MAP_ = METAMAP()
+        #     elif map_way == 'online' :
+        #         MAP_ = METAMAPOnline()
+        MAP_ = 0
 
     if file_type == 'medmcqa':
         data = pd.read_parquet(file_path)

@@ -83,20 +83,38 @@ def load_metamap(path: Path) -> list[dict]:
 
 
 def load_spacy(path: Path) -> list[dict]:
-    """One row per question.
+    """scispaCy file has 4 rows per question. Group them back together.
 
-    Returns a list of dicts with keys:
-        q_concepts:      list[str]
-        option_concepts: list[list[str]]   (length 4)
+    Returns a list of dicts with the same schema as ``load_metamap``.
+
+    For each group of four rows we take ``qc`` from the first row (it is the
+    same for all four), and collect each row's ``ac`` as one option's
+    entities.
     """
+    raw = _read_jsonl(path)
+    if len(raw) % 4 != 0:
+        raise ValueError(
+            f"scispaCy file {path} has {len(raw)} rows, not a multiple of 4."
+        )
+
     rows: list[dict] = []
-    for rec in _read_jsonl(path):
-        options = [rec.get(f"option{i}", []) or [] for i in range(4)]
+    for i in range(0, len(raw), 4):
+        group = raw[i:i + 4]
         rows.append({
-            "q_concepts": rec.get("concept", []) or [],
-            "option_concepts": options,
+            "q_concepts": group[0].get("qc", []) or [],
+            "option_concepts": [g.get("ac", []) or [] for g in group],
         })
     return rows
+    
+    # rows: list[dict] = []
+    # for rec in _read_jsonl(path):
+    #     options = [rec.get(f"option{i}", []) or [] for i in range(4)]
+    #     rows.append({
+    #         "q_concepts": rec.get("concept", []) or [],
+    #         "option_concepts": options,
+    #     })
+    # return rows
+
 
 
 # ---------------------------------------------------------------------------

@@ -91,18 +91,24 @@ def _question_stem(raw: dict) -> str:
 
 
 def _options_in_order(raw: dict) -> list[str]:
-    """Return 4 option texts in A->D order.
+    """Return the option texts in fixed order.
 
-    Supports several MedQA-family schemas:
+    Length depends on the dataset:
+      - MedQA / MedMCQA: 4 options
+      - PubMedQA:        3 options (yes / no / maybe)
+
+    Supported schemas:
       - MedQA:    options = {"A": "...", "B": "...", "C": "...", "D": "..."}
+      - PubMedQA: options as a list of strings (variable length, typically 3)
       - MedMCQA:  top-level opa / opb / opc / opd  (no nested "options")
-      - generic:  options as a list of 4 strings
+      - generic:  options as a list of N strings
     """
     opts = raw.get("options")
     if isinstance(opts, dict):
         return [opts.get(letter, "") for letter in OPTION_LETTERS]
     if isinstance(opts, list):
-        return [opts[i] if i < len(opts) else "" for i in range(4)]
+        # Honour whatever length is given (3 for PubMedQA, 4 for MedQA, ...).
+        return [str(o) for o in opts]
     # MedMCQA: opa/opb/opc/opd at the top level
     if any(k in raw for k in MEDMCQA_OPTION_KEYS):
         return [raw.get(k, "") or "" for k in MEDMCQA_OPTION_KEYS]
@@ -114,12 +120,22 @@ def _q_concepts(grounded: dict) -> list[str]:
     return list(grounded.get("concept") or grounded.get("q_concepts") or [])
 
 
-def _option_concepts(grounded: dict) -> list[list[str]]:
-    """Return 4 CUI lists in A->D order."""
+def _option_concepts(grounded: dict, n_options: int) -> list[list[str]]:
+    """Return per-option CUI lists, of length ``n_options``.
+
+    If the grounded record has no option-level CUIs (e.g. PubMedQA), every
+    list is empty.
+    """
     if isinstance(grounded.get("option_concepts"), list):
         oc = grounded["option_concepts"]
-        return [list(oc[i] or []) if i < len(oc) else [] for i in range(4)]
-    return [list(grounded.get(k, []) or []) for k in METAMAP_OPTION_KEYS]
+        return [list(oc[i] or []) if i < len(oc) else [] for i in range(n_options)]
+    # MedQA-style option0..option3 (works for n_options <= 4).
+    if any(k in grounded for k in METAMAP_OPTION_KEYS):
+        return [list(grounded.get(METAMAP_OPTION_KEYS[i], []) or [])
+                if i < len(METAMAP_OPTION_KEYS) else []
+                for i in range(n_options)]
+    # No option-level grounding (e.g. PubMedQA).
+    return [[] for _ in range(n_options)]
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +145,10 @@ def _option_concepts(grounded: dict) -> list[list[str]]:
 def expand_split(raw_path: Path,
                  grounded_path: Path,
                  out_path: Path) -> tuple[int, int]:
-    """Stream raw + grounded in lock-step; write 4 rows per question.
+    """Stream raw + grounded in lock-step; write N rows per question.
+
+    N = number of options in the raw record (3 for PubMedQA, 4 for MedQA /
+    MedMCQA).
 
     Returns (n_questions, n_rows_written).
     """
@@ -151,7 +170,7 @@ def expand_split(raw_path: Path,
             stem = _question_stem(raw)
             options = _options_in_order(raw)
             qc = _q_concepts(gr)
-            ac_per_option = _option_concepts(gr)
+            ac_per_option = _option_concepts(gr, len(options))
 
             for opt_text, ac in zip(options, ac_per_option):
                 sent = f"{stem} {opt_text}".strip() if opt_text else stem
@@ -187,11 +206,11 @@ def main() -> None:
              "Default: grounded",
     )
     parser.add_argument(
-        "--grounded-suffix", default=".json",
+        "--grounded-suffix", default=".jsonl",
         help="Filename suffix for grounded files. Default: .grounded.jsonl",
     )
     parser.add_argument(
-        "--splits", nargs="+", default=["dev", "test"],
+        "--splits", nargs="+", default=["test"],
         help="Splits to process. Default: dev train test.",
     )
     parser.add_argument(

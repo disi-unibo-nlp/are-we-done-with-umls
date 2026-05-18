@@ -1,0 +1,7 @@
+| dataset | split | linker | model_key | model | mode | condition | condition_type | n | accuracy | delta_vs_no_umls | malformed_rate | wrong_to_right | right_to_wrong | net_correction | mean_confidence | mean_margin | mean_entropy | accuracy_gap_vs_random | accuracy_gap_vs_shuffled | net_correction_gap_vs_random | net_correction_gap_vs_shuffled |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| medQA | test | metamap | MockLogits | mock-local-logits |  | distractor_contrast_evidence | realistic_or_contrastive | 1 | 0.000000 | 0.000000 | 0.000000 | 0 | 0 | 0 | 0.643914 | 0.407031 | 0.947537 | 0.000000 | 0.000000 | 0 | 0 |
+| medQA | test | metamap | MockLogits | mock-local-logits |  | metadata_rich_evidence | realistic | 1 | 0.000000 | 0.000000 | 0.000000 | 0 | 0 | 0 | 0.643914 | 0.407031 | 0.947537 | 0.000000 | 0.000000 | 0 | 0 |
+| medQA | test | metamap | MockLogits | mock-local-logits |  | no_umls | baseline | 1 | 0.000000 | 0.000000 | 0.000000 | 0 | 0 | 0 | 0.643914 | 0.407031 | 0.947537 | NA | NA | NA | NA |
+| medQA | test | metamap | MockLogits | mock-local-logits |  | q_to_a_path_evidence | realistic | 1 | 0.000000 | 0.000000 | 0.000000 | 0 | 0 | 0 | 0.643914 | 0.407031 | 0.947537 | 0.000000 | 0.000000 | 0 | 0 |
+| medQA | test | metamap | MockLogits | mock-local-logits |  | relation_only_evidence | realistic | 1 | 0.000000 | 0.000000 | 0.000000 | 0 | 0 | 0 | 0.643914 | 0.407031 | 0.947537 | 0.000000 | 0.000000 | 0 | 0 |

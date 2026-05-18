@@ -1,0 +1,34 @@
+[paper]
+linkers = ["metamap", "spacy"]
+
+evidence_views = [
+  "MRCONSO_only",
+  "MRCONSO_MRREL",
+  "MRCONSO_MRREL_MRDEF",
+  "MRCONSO_MRREL_MRSTY",
+  "full_committed_card",
+]
+
+retrieval_methods = [
+  "pooled_1hop",
+  "pooled_2hop_capped",
+  "q_to_a_2hop",
+  "random_same_size",
+]
+
+downstream_probe_conditions = [
+  "no_umls",
+  "relation_only_evidence",
+  "metadata_rich_evidence",
+  "q_to_a_path_evidence",
+  "random_same_size_evidence",
+  "shuffled_answer_evidence",
+  "gold_only_evidence",
+  "distractor_contrast_evidence",
+  "oracle_gold_evidence",
+]
+
+[datasets]
+primary = ["medQA", "medMCQA"]
+secondary = ["pubmedQA"]
+splits = ["test"]

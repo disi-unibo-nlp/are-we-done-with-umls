@@ -26,6 +26,23 @@ class EvidenceCardDetails:
     uses_gold_label_for_evidence: bool = False
 
 
+CHAIN_WIDTH_CAPS = {
+    "tight": 20,
+    "medium": 50,
+    "wide": 100,
+    "full": 200,
+}
+CHAIN_DEPTHS = (1, 2, 3, 4)
+CHAIN_CONDITION_SPECS = {
+    f"chain_depth_{depth}_width_{width}_evidence": EvidenceConditionSpec(
+        "full_committed_card",
+        f"chain_depth_{depth}_width_{width}",
+    )
+    for depth in CHAIN_DEPTHS
+    for width in CHAIN_WIDTH_CAPS
+}
+
+
 CONDITION_SPECS = {
     "relation_only_evidence": EvidenceConditionSpec("MRCONSO_MRREL", "pooled_1hop"),
     "metadata_rich_evidence": EvidenceConditionSpec("full_committed_card", None),
@@ -35,6 +52,7 @@ CONDITION_SPECS = {
     "gold_only_evidence": EvidenceConditionSpec("full_committed_card", None),
     "distractor_contrast_evidence": EvidenceConditionSpec("full_committed_card", None),
     "oracle_gold_evidence": EvidenceConditionSpec("full_committed_card", None, oracle=True),
+    **CHAIN_CONDITION_SPECS,
 }
 
 
@@ -48,6 +66,7 @@ CONDITION_TYPES = {
     "shuffled_answer_evidence": "negative_control",
     "gold_only_evidence": "diagnostic",
     "oracle_gold_evidence": "oracle",
+    **{condition: "graph_chain" for condition in CHAIN_CONDITION_SPECS},
 }
 
 
@@ -205,6 +224,47 @@ def _random_nodes(item: QAItem, relations: RelationIndex) -> set[str]:
     return relations.deterministic_sample(max(1, len(path_nodes)), key=item.item_id)
 
 
+def _parse_chain_condition(condition: str) -> tuple[int, str, int] | None:
+    prefix = "chain_depth_"
+    suffix = "_evidence"
+    if not condition.startswith(prefix) or not condition.endswith(suffix):
+        return None
+    body = condition[len(prefix):-len(suffix)]
+    depth_text, sep, width = body.partition("_width_")
+    if not sep or width not in CHAIN_WIDTH_CAPS:
+        return None
+    try:
+        depth = int(depth_text)
+    except ValueError:
+        return None
+    if depth not in CHAIN_DEPTHS:
+        return None
+    return depth, width, CHAIN_WIDTH_CAPS[width]
+
+
+def _path_context_nodes(path_nodes: list[str] | None, relations: RelationIndex, cap: int) -> set[str]:
+    if not path_nodes:
+        return set()
+    ordered: list[str] = []
+    seen: set[str] = set()
+
+    def add(node: str) -> None:
+        if node and node not in seen:
+            seen.add(node)
+            ordered.append(node)
+
+    for node in path_nodes:
+        add(node)
+    for node in path_nodes:
+        if len(ordered) >= cap:
+            break
+        for neighbor in sorted(relations.neighbors(node)):
+            add(neighbor)
+            if len(ordered) >= cap:
+                break
+    return set(ordered)
+
+
 def build_evidence_card_details(
     item: QAItem,
     condition: str,
@@ -259,6 +319,27 @@ def build_evidence_card_details(
         lines.extend(_path_lines(item, relations))
         if path_nodes:
             lines.extend(_relation_lines(path_nodes, relations))
+        return EvidenceCardDetails("\n".join(lines))
+
+    chain = _parse_chain_condition(condition)
+    if chain is not None:
+        depth, width_label, cap = chain
+        gold_cuis = item.gold_cuis()
+        path_nodes = relations.exact_path_nodes(item.question_cuis, gold_cuis, hops=depth)
+        path_edges = relations.exact_path_edges(item.question_cuis, gold_cuis, hops=depth)
+        context_nodes = _path_context_nodes(path_nodes, relations, cap)
+        lines.extend(_metadata_lines(item, metadata, spec.evidence_view))
+        if path_edges:
+            lines.append(f"Exact Q-to-gold path: depth={depth}, width={width_label}, cap={cap}")
+            for left, right, label in path_edges:
+                lines.append(f"- {left} --{label}-- {right}")
+        else:
+            lines.append(f"Exact Q-to-gold path: none found at depth={depth}.")
+        relation_lines = _relation_lines(context_nodes, relations, limit=cap)
+        if relation_lines:
+            lines.extend(relation_lines)
+        else:
+            lines.append("Relations: no chain-context relation edges available.")
         return EvidenceCardDetails("\n".join(lines))
 
     if condition == "random_same_size_evidence":

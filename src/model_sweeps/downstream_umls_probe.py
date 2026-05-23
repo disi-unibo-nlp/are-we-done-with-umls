@@ -5,6 +5,8 @@ import csv
 import json
 import os
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +26,7 @@ from src.model_sweeps.local_logits_sweep import (
     summarize_prediction_rows,
     unload_model,
 )
-from src.model_sweeps.qwen_vllm_sweep import DEFAULT_BASE_URL, VLLMClient, predict_item
+from src.model_sweeps.qwen_vllm_sweep import DEFAULT_BASE_URL, VLLMClient, load_existing_rows, predict_item
 
 
 DEFAULT_QWEN_MODEL = "Qwen/Qwen3.5-4B"
@@ -104,23 +106,84 @@ def run_qwen_probe(
     relations: RelationIndex,
     max_retries: int = 2,
     retry_sleep_s: float = 2.0,
+    decoding_overrides: dict | None = None,
+    output_jsonl: Path | None = None,
+    existing_rows: list[dict] | None = None,
+    concurrency: int = 1,
 ) -> list[dict]:
-    rows: list[dict] = []
-    for condition in conditions:
-        for item in items:
-            card = build_evidence_card_details(item, condition, metadata, relations)
-            row = predict_item(
-                item,
-                client,
-                model=model,
-                mode=mode,
-                max_tokens=max_tokens,
-                evidence=card.text,
-                condition=condition,
-                max_retries=max_retries,
-                retry_sleep_s=retry_sleep_s,
-            )
-            rows.append(_annotate_probe_row(row, condition, card))
+    rows: list[dict] = list(existing_rows or [])
+    completed = {
+        (
+            str(row.get("item_id", "")),
+            str(row.get("dataset", "")),
+            str(row.get("split", "")),
+            str(row.get("linker", "")),
+            str(row.get("model", "")),
+            str(row.get("mode", "")),
+            str(row.get("condition", row.get("prompt_condition", ""))),
+        )
+        for row in rows
+    }
+
+    pending = [
+        (condition, item)
+        for condition in conditions
+        for item in items
+        if (item.item_id, item.dataset, item.split, item.linker, model, mode, condition) not in completed
+    ]
+
+    output_fh = None
+    if output_jsonl is not None:
+        output_jsonl.parent.mkdir(parents=True, exist_ok=True)
+        output_fh = output_jsonl.open("a" if existing_rows else "w", encoding="utf-8")
+
+    write_lock = threading.Lock()
+
+    def _process(condition: str, item: QAItem) -> dict:
+        card = build_evidence_card_details(item, condition, metadata, relations)
+        row = predict_item(
+            item,
+            client,
+            model=model,
+            mode=mode,
+            max_tokens=max_tokens,
+            evidence=card.text,
+            condition=condition,
+            max_retries=max_retries,
+            retry_sleep_s=retry_sleep_s,
+            decoding_overrides=decoding_overrides,
+        )
+        return _annotate_probe_row(row, condition, card)
+
+    def _flush(annotated: dict) -> None:
+        rows.append(annotated)
+        completed.add((
+            str(annotated.get("item_id", "")),
+            str(annotated.get("dataset", "")),
+            str(annotated.get("split", "")),
+            str(annotated.get("linker", "")),
+            str(annotated.get("model", "")),
+            str(annotated.get("mode", "")),
+            str(annotated.get("condition", annotated.get("prompt_condition", ""))),
+        ))
+        if output_fh is not None:
+            output_fh.write(json.dumps(annotated, ensure_ascii=False) + "\n")
+            output_fh.flush()
+
+    try:
+        if concurrency <= 1:
+            for condition, item in pending:
+                _flush(_process(condition, item))
+        else:
+            with ThreadPoolExecutor(max_workers=concurrency) as executor:
+                futures = {executor.submit(_process, c, i): (c, i) for c, i in pending}
+                for future in as_completed(futures):
+                    annotated = future.result()
+                    with write_lock:
+                        _flush(annotated)
+    finally:
+        if output_fh is not None:
+            output_fh.close()
     return rows
 
 
@@ -209,9 +272,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--reference", type=Path, default=None)
     parser.add_argument("--metadata-zip", type=Path, default=Path("data/UMLS/cui_detail.tsv.zip"))
     parser.add_argument("--triplets-zip", type=Path, default=Path("data/UMLS/triplets.csv.zip"))
+    parser.add_argument("--relation-scope", choices=["item_cuis", "full"], default="item_cuis",
+                        help="Load only QA-linked relations or the full relation index.")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
     parser.add_argument("--condition", action="append", default=None)
     parser.add_argument("--limit", type=int, default=10)
+    parser.add_argument("--item-id-file", type=Path, default=None,
+                        help="Optional JSONL/CSV/text file of item_id values to keep before limit is applied.")
     parser.add_argument("--backend", choices=["medgemma", "qwen"], required=True)
     parser.add_argument("--mock-model", action="store_true")
     parser.add_argument("--model-key", default=DEFAULT_MEDGEMMA_MODEL_KEY)
@@ -226,7 +293,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-url", default=os.environ.get("OPENAI_BASE_URL", DEFAULT_BASE_URL))
     parser.add_argument("--api-key", default=os.environ.get("OPENAI_API_KEY", "EMPTY"))
     parser.add_argument("--timeout-s", type=float, default=300.0)
-    parser.add_argument("--max-tokens", type=int, default=256)
+    parser.add_argument("--max-tokens", type=int, default=32)
+    parser.add_argument("--temperature", type=float, default=None)
+    parser.add_argument("--top-p", type=float, default=None)
+    parser.add_argument("--top-k", type=int, default=None)
+    parser.add_argument("--presence-penalty", type=float, default=None)
+    parser.add_argument("--concurrency", type=int, default=1, help="Number of concurrent vLLM requests.")
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--output-jsonl", type=Path, required=True)
     parser.add_argument("--summary-csv", type=Path, required=True)
     parser.add_argument("--dry-run", action="store_true")
@@ -246,6 +319,7 @@ def main() -> None:
         input_path=input_path,
         reference_path=reference if reference.exists() else None,
         limit=normalize_limit(args.limit),
+        item_id_file=args.item_id_file,
     )
     if args.dry_run:
         print(json.dumps({
@@ -254,15 +328,36 @@ def main() -> None:
             "split": args.split,
             "linker": args.linker,
             "items": len(items),
+            "item_id_file": str(args.item_id_file) if args.item_id_file else "",
             "conditions": conditions,
+            "triplets_zip": str(args.triplets_zip),
+            "relation_scope": args.relation_scope,
+            "qwen_model": args.qwen_model,
+            "qwen_mode": args.qwen_mode,
+            "max_tokens": args.max_tokens,
+            "temperature": args.temperature,
+            "top_p": args.top_p,
+            "top_k": args.top_k,
+            "presence_penalty": args.presence_penalty,
+            "seed": args.seed,
+            "enable_thinking": args.qwen_mode == "thinking",
             "output_jsonl": str(args.output_jsonl),
+            "summary_csv": str(args.summary_csv),
         }, indent=2))
         return
 
     metadata = CuiMetadataIndex.from_zip(args.metadata_zip)
-    relations = RelationIndex.from_zip(args.triplets_zip, keep_cuis=collect_cuis(items))
+    keep_cuis = None if args.relation_scope == "full" else collect_cuis(items)
+    relations = RelationIndex.from_zip(args.triplets_zip, keep_cuis=keep_cuis)
     if args.backend == "qwen":
         client = VLLMClient(args.base_url, api_key=args.api_key, timeout_s=args.timeout_s)
+        decoding_overrides = {
+            "temperature": args.temperature,
+            "top_p": args.top_p,
+            "top_k": args.top_k,
+            "presence_penalty": args.presence_penalty,
+            "seed": args.seed,
+        }
         rows = run_qwen_probe(
             items,
             client,
@@ -272,6 +367,10 @@ def main() -> None:
             conditions=conditions,
             metadata=metadata,
             relations=relations,
+            decoding_overrides=decoding_overrides,
+            output_jsonl=args.output_jsonl,
+            existing_rows=load_existing_rows(args.output_jsonl) if args.resume else [],
+            concurrency=args.concurrency,
         )
     elif args.mock_model:
         rows = run_medgemma_probe(

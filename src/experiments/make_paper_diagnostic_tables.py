@@ -156,7 +156,7 @@ def answer_grounding_rows(rows: list[dict], bootstrap_iterations: int) -> list[d
 def retrieval_faithfulness_rows(rows: list[dict], bootstrap_iterations: int) -> list[dict]:
     selected = [row for row in rows if row.get("experiment") == "retrieval_faithfulness"]
     groups = group_rows(selected, ("dataset", "split", "linker", "condition"))
-    gold_rates: dict[tuple[str, str, str, str], float] = {}
+    decision_relevance: dict[tuple[str, str, str, str], float] = {}
     out: list[dict] = []
     for key, group in sorted(groups.items()):
         dataset, split, linker, condition = key
@@ -170,22 +170,22 @@ def retrieval_faithfulness_rows(rows: list[dict], bootstrap_iterations: int) -> 
             "decision_relevance_ratio_proxy",
         ):
             row.update(_mean_summary(group, metric, bootstrap_iterations))
-        rate = row.get("gold_path_available_rate")
-        if isinstance(rate, float):
-            gold_rates[key] = rate
+        relevance = row.get("mean_decision_relevance_ratio_proxy")
+        if isinstance(relevance, float):
+            decision_relevance[key] = relevance
         out.append(row)
 
-    random_rates = {
+    random_relevance = {
         key[:3]: value
-        for key, value in gold_rates.items()
+        for key, value in decision_relevance.items()
         if key[3] == "random_same_size"
     }
     for row in out:
-        rate = row.get("gold_path_available_rate")
-        random_rate = random_rates.get((row["dataset"], row["split"], row["linker"]))
+        relevance = row.get("mean_decision_relevance_ratio_proxy")
+        random_value = random_relevance.get((row["dataset"], row["split"], row["linker"]))
         row["random_control_gap"] = (
-            rate - random_rate
-            if isinstance(rate, float) and isinstance(random_rate, float)
+            relevance - random_value
+            if isinstance(relevance, float) and isinstance(random_value, float)
             else ""
         )
     return out

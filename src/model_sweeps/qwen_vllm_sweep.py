@@ -50,23 +50,37 @@ def decoding_params(mode: str) -> dict:
     raise ValueError(f"Unsupported mode: {mode}")
 
 
+def apply_decoding_overrides(params: dict, overrides: dict | None = None) -> dict:
+    resolved = dict(params)
+    for key, value in (overrides or {}).items():
+        if value is not None:
+            resolved[key] = value
+    return resolved
+
+
 def build_prompt(item: QAItem, evidence: str | None = None) -> str:
     lines = [
         "You are answering a medical multiple-choice question.",
-        "Choose exactly one option and return JSON only.",
+        "Choose exactly one answer option.",
+        r"Output exactly one token in this format: \boxed{A}",
+        "Do not explain your reasoning. Do not restate the question. Do not add any other text.",
+    ]
+    if evidence:
+        lines.append("Use the provided UMLS evidence as the only external evidence source.")
+    lines.extend([
         "",
         "Question:",
         item.question,
         "",
         "Options:",
-    ]
+    ])
     for key, value in item.options.items():
         lines.append(f"{key}. {value}")
     if evidence:
         lines.extend(["", "UMLS evidence:", evidence])
     lines.extend([
         "",
-        'Return JSON: {"answer": "<option>", "rationale": "<brief rationale>"}',
+        r"Final answer only: \boxed{X}",
     ])
     return "\n".join(lines)
 
@@ -77,11 +91,16 @@ def build_request_payload(
     mode: str,
     max_tokens: int,
     evidence: str | None = None,
+    decoding_overrides: dict | None = None,
 ) -> dict:
-    params = decoding_params(mode)
-    return {
+    params = apply_decoding_overrides(decoding_params(mode), decoding_overrides)
+    payload = {
         "model": model,
         "messages": [
+            {
+                "role": "system",
+                "content": r"You are a strict multiple-choice classifier. Reply with exactly one token: \boxed{A}, \boxed{B}, etc. No explanation.",
+            },
             {
                 "role": "user",
                 "content": build_prompt(item, evidence=evidence),
@@ -96,6 +115,9 @@ def build_request_payload(
         "chat_template_kwargs": {"enable_thinking": params["enable_thinking"]},
         "max_tokens": max_tokens,
     }
+    if params.get("seed") is not None:
+        payload["seed"] = params["seed"]
+    return payload
 
 
 class VLLMClient:
@@ -139,20 +161,30 @@ def response_text(response: dict) -> tuple[str, str]:
 
 def extract_answer(text: str, allowed_options: Iterable[str]) -> str | None:
     allowed = list(allowed_options)
+    option_pattern = "|".join(re.escape(option) for option in allowed)
+
+    # Primary: \boxed{X} format
+    boxed_match = re.search(rf"\\boxed\s*\{{\s*({option_pattern})\s*\}}", text, flags=re.IGNORECASE)
+    if boxed_match:
+        return boxed_match.group(1).upper()
+
+    # Fallback: JSON {"answer": "X"}
     try:
         parsed = json.loads(text)
         answer = str(parsed.get("answer", "")).strip()
-        if answer in allowed:
-            return answer
+        if answer.upper() in allowed:
+            return answer.upper()
     except json.JSONDecodeError:
         pass
 
-    option_pattern = "|".join(re.escape(option) for option in allowed)
+    # Fallback: answer-only or explicit final-answer patterns.  Avoid broad
+    # "option X" matching inside rationales because that can convert a long,
+    # truncated explanation into a false parse.
     patterns = [
         rf'"answer"\s*:\s*"({option_pattern})"',
-        rf"\banswer\s+is\s+({option_pattern})\b",
-        rf"\boption\s+({option_pattern})\b",
-        rf"^\s*({option_pattern})[\).:\s]",
+        rf"\bfinal\s+answer\s*(?:is|:)\s*({option_pattern})\b",
+        rf"^\s*({option_pattern})\s*$",
+        rf"^\s*({option_pattern})[\).:]\s*$",
     ]
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
@@ -240,8 +272,16 @@ def predict_item(
     condition: str = "no_umls",
     max_retries: int = 2,
     retry_sleep_s: float = 2.0,
+    decoding_overrides: dict | None = None,
 ) -> dict:
-    payload = build_request_payload(item, model=model, mode=mode, max_tokens=max_tokens, evidence=evidence)
+    payload = build_request_payload(
+        item,
+        model=model,
+        mode=mode,
+        max_tokens=max_tokens,
+        evidence=evidence,
+        decoding_overrides=decoding_overrides,
+    )
     started = time.time()
     last_error: Exception | None = None
     response: dict | None = None
@@ -309,6 +349,7 @@ def run_sweep(
     concurrency: int = 1,
     max_retries: int = 2,
     retry_sleep_s: float = 2.0,
+    decoding_overrides: dict | None = None,
 ) -> list[dict]:
     rows = list(existing_rows or [])
     completed_item_ids = {str(row.get("item_id")) for row in rows}
@@ -329,6 +370,7 @@ def run_sweep(
                     max_tokens=max_tokens,
                     max_retries=max_retries,
                     retry_sleep_s=retry_sleep_s,
+                    decoding_overrides=decoding_overrides,
                 )
                 for item in pending_items
             )
@@ -346,6 +388,7 @@ def run_sweep(
                     "no_umls",
                     max_retries,
                     retry_sleep_s,
+                    decoding_overrides,
                 )
                 for item in pending_items
             ]
@@ -368,7 +411,7 @@ def run_sweep(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run Qwen3.5 sweeps through a vLLM OpenAI-compatible server.")
+    parser = argparse.ArgumentParser(description="Run Qwen sweeps through a vLLM OpenAI-compatible server.")
     parser.add_argument("--dataset", default="medQA")
     parser.add_argument("--split", default="test")
     parser.add_argument("--linker", choices=["metamap", "spacy"], default="metamap")
@@ -385,6 +428,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--concurrency", type=int, default=1, help="Number of concurrent requests to send to vLLM.")
     parser.add_argument("--max-retries", type=int, default=2)
     parser.add_argument("--retry-sleep-s", type=float, default=2.0)
+    parser.add_argument("--temperature", type=float, default=None)
+    parser.add_argument("--top-p", type=float, default=None)
+    parser.add_argument("--top-k", type=int, default=None)
+    parser.add_argument("--presence-penalty", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--output-jsonl", type=Path, default=None)
     parser.add_argument("--summary-csv", type=Path, default=None)
     parser.add_argument("--resume", action="store_true", help="Append to an existing JSONL and skip completed item IDs.")
@@ -407,9 +455,22 @@ def main() -> None:
     max_tokens = args.max_tokens
     if max_tokens is None:
         max_tokens = 768 if args.mode == "thinking" else 256
+    decoding_overrides = {
+        "temperature": args.temperature,
+        "top_p": args.top_p,
+        "top_k": args.top_k,
+        "presence_penalty": args.presence_penalty,
+        "seed": args.seed,
+    }
 
     if args.dry_run:
-        payload = build_request_payload(items[0], args.model, args.mode, max_tokens) if items else {}
+        payload = build_request_payload(
+            items[0],
+            args.model,
+            args.mode,
+            max_tokens,
+            decoding_overrides=decoding_overrides,
+        ) if items else {}
         print(json.dumps({
             "base_url": args.base_url,
             "model": args.model,
@@ -437,6 +498,7 @@ def main() -> None:
         concurrency=args.concurrency,
         max_retries=args.max_retries,
         retry_sleep_s=args.retry_sleep_s,
+        decoding_overrides=decoding_overrides,
     )
     write_jsonl(output_jsonl, rows)
     write_summary_csv(summary_csv, rows)

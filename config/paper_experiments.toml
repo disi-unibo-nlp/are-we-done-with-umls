@@ -21,11 +21,8 @@ downstream_probe_conditions = [
   "relation_only_evidence",
   "metadata_rich_evidence",
   "q_to_a_path_evidence",
-  "random_same_size_evidence",
   "shuffled_answer_evidence",
   "gold_only_evidence",
-  "distractor_contrast_evidence",
-  "oracle_gold_evidence",
 ]
 
 [datasets]

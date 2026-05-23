@@ -33,6 +33,8 @@ def load_items(
     input_path: Path | None = None,
     reference_path: Path | None = None,
     limit: int | None = None,
+    item_ids: set[str] | None = None,
+    item_id_file: Path | None = None,
 ) -> list[QAItem]:
     resolved_input = input_path or default_input_path(dataset, split, linker)
     if linker == "metamap":
@@ -48,7 +50,32 @@ def load_items(
         )
     else:
         raise ValueError(f"Unsupported linker: {linker}")
+    resolved_item_ids = set(item_ids or set())
+    if item_id_file is not None:
+        resolved_item_ids.update(load_item_id_file(item_id_file))
+    if resolved_item_ids:
+        items = [item for item in items if item.item_id in resolved_item_ids]
     return items[:limit] if limit is not None else items
+
+
+def load_item_id_file(path: Path) -> set[str]:
+    """Load item ids from JSONL, CSV-like, or plain newline files."""
+    item_ids: set[str] = set()
+    with path.open("r", encoding="utf-8") as fh:
+        for raw in fh:
+            line = raw.strip()
+            if not line:
+                continue
+            if line.startswith("{"):
+                row = json.loads(line)
+                value = row.get("item_id")
+            else:
+                value = line.split(",", 1)[0]
+                if value == "item_id":
+                    continue
+            if value:
+                item_ids.add(str(value))
+    return item_ids
 
 
 def collect_cuis(items: list[QAItem]) -> set[str]:

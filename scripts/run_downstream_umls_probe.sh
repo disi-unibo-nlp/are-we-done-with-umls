@@ -17,17 +17,21 @@ export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-/mnt/nvme/llms/datasets}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/mnt/nvme/llms/uv-cache}"
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/mnt/nvme/llms/venvs/are-we-done-with-umls}"
 export OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://localhost:8000/v1}"
-export OPENAI_API_KEY="${OPENAI_API_KEY:-EMPTY}"
+export OPENAI_API_KEY="${VLLM_API_KEY:-EMPTY}"
 
 DATASET="${DATASET:-medQA}"
 SPLIT="${SPLIT:-test}"
 LINKER="${LINKER:-metamap}"
 LIMIT="${LIMIT:-10}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/model_sweeps/downstream_umls_probe}"
+ITEM_ID_FILE="${ITEM_ID_FILE:-}"
+TRIPLETS_ZIP="${TRIPLETS_ZIP:-data/UMLS/triplets.csv.zip}"
+RELATION_SCOPE="${RELATION_SCOPE:-item_cuis}"
 RUN_MEDGEMMA="${RUN_MEDGEMMA:-1}"
 RUN_QWEN="${RUN_QWEN:-0}"
 MOCK_MODEL="${MOCK_MODEL:-0}"
-CONDITIONS="${CONDITIONS:-no_umls relation_only_evidence metadata_rich_evidence q_to_a_path_evidence random_same_size_evidence shuffled_answer_evidence gold_only_evidence distractor_contrast_evidence oracle_gold_evidence}"
+DRY_RUN="${DRY_RUN:-0}"
+CONDITIONS="${CONDITIONS:-no_umls relation_only_evidence metadata_rich_evidence q_to_a_path_evidence shuffled_answer_evidence gold_only_evidence}"
 
 MEDGEMMA_MODEL_KEY="${MEDGEMMA_MODEL_KEY:-MedGemma-1.5-4B-it}"
 MEDGEMMA_MODEL_ID="${MEDGEMMA_MODEL_ID:-google/medgemma-1.5-4b-it}"
@@ -38,16 +42,37 @@ SEED="${SEED:-42}"
 
 QWEN_MODEL="${QWEN_MODEL:-Qwen/Qwen3.5-4B}"
 QWEN_MODE="${QWEN_MODE:-non_thinking}"
-QWEN_MAX_TOKENS="${QWEN_MAX_TOKENS:-256}"
+QWEN_MAX_TOKENS="${QWEN_MAX_TOKENS:-32}"
 QWEN_TIMEOUT_S="${QWEN_TIMEOUT_S:-300}"
+QWEN_TEMPERATURE="${QWEN_TEMPERATURE:-0.0}"
+QWEN_TOP_P="${QWEN_TOP_P:-1.0}"
+QWEN_TOP_K="${QWEN_TOP_K:-20}"
+QWEN_PRESENCE_PENALTY="${QWEN_PRESENCE_PENALTY:-0.0}"
+QWEN_SEED="${QWEN_SEED:-42}"
+QWEN_CONCURRENCY="${QWEN_CONCURRENCY:-1}"
+RESUME="${RESUME:-1}"
 
-mkdir -p "${OUTPUT_DIR}/medgemma" "${OUTPUT_DIR}/qwen"
+if [[ "${DRY_RUN}" != "1" ]]; then
+  mkdir -p "${OUTPUT_DIR}/medgemma" "${OUTPUT_DIR}/qwen"
+fi
+
+dry_run_args=()
+if [[ "${DRY_RUN}" == "1" ]]; then
+  dry_run_args+=(--dry-run)
+fi
 
 condition_args=()
 read -r -a condition_list <<< "${CONDITIONS}"
 for condition in "${condition_list[@]}"; do
   condition_args+=(--condition "${condition}")
 done
+
+subset_args=()
+if [[ -n "${ITEM_ID_FILE}" ]]; then
+  subset_args+=(--item-id-file "${ITEM_ID_FILE}")
+fi
+
+relation_args=(--triplets-zip "${TRIPLETS_ZIP}" --relation-scope "${RELATION_SCOPE}")
 
 if [[ "${RUN_MEDGEMMA}" == "1" ]]; then
   model_args=(
@@ -65,34 +90,61 @@ if [[ "${RUN_MEDGEMMA}" == "1" ]]; then
     --split "${SPLIT}" \
     --linker "${LINKER}" \
     --limit "${LIMIT}" \
+    "${subset_args[@]}" \
+    "${relation_args[@]}" \
     "${model_args[@]}" \
     --num-samples "${NUM_SAMPLES}" \
     --num-shuffles "${NUM_SHUFFLES}" \
     --seed "${SEED}" \
+    "${dry_run_args[@]}" \
     "${condition_args[@]}" \
     --output-jsonl "${OUTPUT_DIR}/medgemma/${DATASET}_${SPLIT}_${LINKER}_medgemma_probe.jsonl" \
     --summary-csv "${OUTPUT_DIR}/medgemma/${DATASET}_${SPLIT}_${LINKER}_medgemma_probe.summary.csv"
 fi
 
 if [[ "${RUN_QWEN}" == "1" ]]; then
-  echo "+ Running Qwen downstream UMLS probe; requires vLLM at ${OPENAI_BASE_URL}"
+  qwen_model_slug="${QWEN_MODEL//\//__}"
+  qwen_model_slug="${qwen_model_slug//./_}"
+  resume_args=()
+  if [[ "${RESUME}" == "1" ]]; then
+    resume_args+=(--resume)
+  fi
+  if [[ "${DRY_RUN}" == "1" ]]; then
+    echo "+ Dry-run Qwen downstream UMLS probe; no vLLM request will be sent"
+  else
+    echo "+ Running Qwen downstream UMLS probe; requires vLLM at ${OPENAI_BASE_URL}"
+  fi
   uv run python3 src/model_sweeps/downstream_umls_probe.py \
     --backend qwen \
     --dataset "${DATASET}" \
     --split "${SPLIT}" \
     --linker "${LINKER}" \
     --limit "${LIMIT}" \
+    "${subset_args[@]}" \
+    "${relation_args[@]}" \
     --qwen-model "${QWEN_MODEL}" \
     --qwen-mode "${QWEN_MODE}" \
     --base-url "${OPENAI_BASE_URL}" \
     --api-key "${OPENAI_API_KEY}" \
     --timeout-s "${QWEN_TIMEOUT_S}" \
     --max-tokens "${QWEN_MAX_TOKENS}" \
+    --temperature "${QWEN_TEMPERATURE}" \
+    --top-p "${QWEN_TOP_P}" \
+    --top-k "${QWEN_TOP_K}" \
+    --presence-penalty "${QWEN_PRESENCE_PENALTY}" \
+    --seed "${QWEN_SEED}" \
+    --concurrency "${QWEN_CONCURRENCY}" \
+    "${resume_args[@]}" \
+    "${dry_run_args[@]}" \
     "${condition_args[@]}" \
-    --output-jsonl "${OUTPUT_DIR}/qwen/${DATASET}_${SPLIT}_${LINKER}_qwen_probe.jsonl" \
-    --summary-csv "${OUTPUT_DIR}/qwen/${DATASET}_${SPLIT}_${LINKER}_qwen_probe.summary.csv"
+    --output-jsonl "${OUTPUT_DIR}/qwen/${DATASET}_${SPLIT}_${LINKER}_${qwen_model_slug}_${QWEN_MODE}_qwen_probe.jsonl" \
+    --summary-csv "${OUTPUT_DIR}/qwen/${DATASET}_${SPLIT}_${LINKER}_${qwen_model_slug}_${QWEN_MODE}_qwen_probe.summary.csv"
 else
   echo "Skipping Qwen probe. Set RUN_QWEN=1 after starting a vLLM endpoint."
 fi
 
-echo "Downstream probe outputs written under ${OUTPUT_DIR}"
+if [[ "${DRY_RUN}" == "1" ]]; then
+  echo "Downstream probe dry-run complete; planned outputs are under ${OUTPUT_DIR}"
+else
+  echo "Downstream probe outputs written under ${OUTPUT_DIR}"
+fi

@@ -17,3 +17,44 @@ dcq_ref/
 *.log
 *.pickle
 *.pid
+
+# Local research workspaces and generated artifacts.
+theory/
+overleaf_repo/
+paperback-writer/
+outputs/
+
+# Keep the experiment registry and paper-local agent contract tracked.
+paper/*
+!paper/
+!paper/AGENTS.md
+!paper/CLAUDE.md
+!paper/PAPER_FINAL_EX.md
+paper/.claude/
+paper/.claude/**
+paper/.codex/
+paper/.codex/**
+paper/references/
+paper/references/**
+
+# Repo-local OpenClaw runtime/secrets. Keep config/plugin source tracked.
+.openclaw/*
+!.openclaw/
+!.openclaw/openclaw.example.json
+!.openclaw/telegram.env.example
+!.openclaw/plugins/
+!.openclaw/plugins/**
+.openclaw/state/
+.openclaw/logs/
+.openclaw/openclaw.json
+.openclaw/*.env
+.openclaw/*.bak*
+.openclaw/*.last-good
+
+# Keep Claude command routing tracked, but keep generated skill installs untracked.
+.claude/*
+!.claude/
+!.claude/commands/
+!.claude/commands/**
+.claude/skills/
+.codex/

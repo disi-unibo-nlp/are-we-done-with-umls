@@ -10,6 +10,7 @@ from src.experiments.diagnostics import (
     evidence_availability_rows,
     retrieval_faithfulness_rows,
 )
+from src.experiments.cli_utils import load_items
 from src.experiments.evidence_cards import build_evidence_card, build_evidence_card_details
 from src.experiments.loaders import load_metamap_records, load_spacy_records
 from src.experiments.make_paper_diagnostic_tables import build_paper_tables
@@ -91,6 +92,48 @@ class LoaderTests(unittest.TestCase):
             self.assertEqual(item.question_cuis, ["C_Q"])
             self.assertEqual(item.option_cuis["B"], ["C_B"])
 
+    def test_load_items_filters_by_item_id_file_before_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_path = root / "test.jsonl"
+            item_ids = root / "ids.jsonl"
+            write_jsonl(data_path, [
+                {
+                    "question": "First",
+                    "options": {"A": "A", "B": "B", "C": "C", "D": "D"},
+                    "answer_idx": "A",
+                    "answer": "A",
+                    "concept": [],
+                    "option0": [],
+                    "option1": [],
+                    "option2": [],
+                    "option3": [],
+                },
+                {
+                    "question": "Second",
+                    "options": {"A": "A", "B": "B", "C": "C", "D": "D"},
+                    "answer_idx": "B",
+                    "answer": "B",
+                    "concept": [],
+                    "option0": [],
+                    "option1": [],
+                    "option2": [],
+                    "option3": [],
+                },
+            ])
+            write_jsonl(item_ids, [{"item_id": "medQA:test:1"}])
+
+            items = load_items(
+                "medQA",
+                "test",
+                "metamap",
+                input_path=data_path,
+                item_id_file=item_ids,
+                limit=1,
+            )
+
+        self.assertEqual([item.item_id for item in items], ["medQA:test:1"])
+
 
 class UMLSIndexTests(unittest.TestCase):
     def test_cui_metadata_index_reads_committed_zip_shape(self) -> None:
@@ -129,6 +172,24 @@ class UMLSIndexTests(unittest.TestCase):
             self.assertEqual(index.shortest_path_length(["C_Q"], ["C_A"], max_hops=2), 1)
             self.assertEqual(index.shortest_path_length(["C_Q"], ["C_B"], max_hops=2), 2)
             self.assertIsNone(index.shortest_path_length(["C_A"], ["C_B"], max_hops=1))
+
+    def test_relation_index_caches_repeated_shortest_path_lookups(self) -> None:
+        index = RelationIndex(
+            {
+                "C_Q": {"C_MID", "C_NOISE"},
+                "C_MID": {"C_Q", "C_B"},
+                "C_B": {"C_MID"},
+                "C_NOISE": {"C_Q"},
+            }
+        )
+
+        self.assertEqual(index.shortest_path_nodes(["C_Q"], ["C_B"], max_hops=2), ["C_Q", "C_MID", "C_B"])
+        self.assertEqual(index.shortest_path_nodes(["C_Q"], ["C_B"], max_hops=2), ["C_Q", "C_MID", "C_B"])
+        self.assertEqual(index.shortest_path_length(["C_Q"], ["C_B"], max_hops=2), 2)
+        self.assertEqual(index.shortest_path_length(["C_Q"], ["C_B"], max_hops=2), 2)
+
+        self.assertEqual(len(index._shortest_path_nodes_cache), 1)
+        self.assertEqual(len(index._shortest_path_length_cache), 1)
 
 
 class DiagnosticTests(unittest.TestCase):
@@ -408,6 +469,64 @@ class DiagnosticTests(unittest.TestCase):
         self.assertNotIn("Distractor option", contrast)
         self.assertIn("Distractor definition.", contrast)
 
+    def test_chain_depth_width_condition_keeps_answer_names_visible(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_path = root / "test.jsonl"
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_jsonl(data_path, [{
+                "question": "Question",
+                "options": {"A": "Alpha", "B": "Beta", "C": "Gamma", "D": "Delta"},
+                "answer_idx": "B",
+                "answer": "Beta",
+                "concept": ["C_Q"],
+                "option0": ["C_A"],
+                "option1": ["C_B"],
+                "option2": ["C_C"],
+                "option3": ["C_D"],
+            }])
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_A\tAlpha\tT047\tDisease or Syndrome\tMSH\tAlpha definition.\n"
+                "C_B\tBeta\tT047\tDisease or Syndrome\tMSH\tBeta definition.\n"
+                "C_C\tGamma\tT047\tDisease or Syndrome\tMSH\tGamma definition.\n"
+                "C_D\tDelta\tT047\tDisease or Syndrome\tMSH\tDelta definition.\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\n"
+                "C_Q,C_A,RO,alpha_relation\n"
+                "C_Q,C_MID,RO,bridge\n"
+                "C_MID,C_B,RO,beta_relation\n"
+                "C_Q,C_NOISE,RO,noise\n",
+            )
+            item = load_metamap_records(data_path, dataset="medqa", split="test")[0]
+            metadata = CuiMetadataIndex.from_zip(meta_path)
+            relations = RelationIndex.from_zip(
+                rel_path,
+                keep_cuis={"C_Q", "C_A", "C_B", "C_C", "C_D", "C_MID", "C_NOISE"},
+            )
+
+            card = build_evidence_card(
+                item,
+                "chain_depth_2_width_tight_evidence",
+                metadata,
+                relations,
+            )
+
+        self.assertIn("Exact Q-to-gold path: depth=2, width=tight, cap=20", card)
+        self.assertIn("C_Q --bridge-- C_MID", card)
+        self.assertIn("C_MID --beta_relation-- C_B", card)
+        self.assertIn("B C_B: Beta", card)
+        self.assertIn("Beta definition.", card)
+        self.assertNotIn("[OPT_A]", card)
+        self.assertNotIn("[OPT_B]", card)
+
     def test_distractor_contrast_evidence_is_gold_label_invariant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -509,6 +628,22 @@ class DiagnosticTests(unittest.TestCase):
                     "decision_relevance_ratio_proxy": 1.0,
                 },
             },
+            {
+                "item_id": "medQA:test:0",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "experiment": "retrieval_faithfulness",
+                "condition": "random_same_size",
+                "metrics": {
+                    "gold_path_available": True,
+                    "gold_min_path_length": 2,
+                    "distractor_path_rate": 0.25,
+                    "num_retrieved_nodes": 3,
+                    "num_retrieved_edges": 0,
+                    "decision_relevance_ratio_proxy": 0.25,
+                },
+            },
         ]
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -526,7 +661,9 @@ class DiagnosticTests(unittest.TestCase):
 
         self.assertEqual(evidence[0]["condition"], "full_committed_card")
         self.assertEqual(answer[0]["n"], "1")
-        self.assertEqual(retrieval[0]["condition"], "q_to_a_2hop")
+        by_condition = {row["condition"]: row for row in retrieval}
+        self.assertEqual(by_condition["q_to_a_2hop"]["random_control_gap"], "0.750000")
+        self.assertEqual(by_condition["random_same_size"]["random_control_gap"], "0.000000")
         self.assertIn("Experiment 1", summary)
         self.assertIn("Experiment 3", summary)
 

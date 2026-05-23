@@ -23,7 +23,7 @@ BOOTSTRAP_ITERATIONS="${BOOTSTRAP_ITERATIONS:-1000}"
 PREDICTIONS="${PREDICTIONS:-}"
 CONDITIONS="${CONDITIONS:-correct_answer_grounded all_options_grounded gold_path_available gold_answer_evidence_available distractor_contrast_available}"
 UMLS_CONDITION="${UMLS_CONDITION:-q_to_a_path_evidence}"
-EVIDENCE_CONDITIONS="${EVIDENCE_CONDITIONS:-relation_only_evidence metadata_rich_evidence q_to_a_path_evidence gold_only_evidence distractor_contrast_evidence oracle_gold_evidence random_same_size_evidence shuffled_answer_evidence}"
+EVIDENCE_CONDITIONS="${EVIDENCE_CONDITIONS:-relation_only_evidence metadata_rich_evidence q_to_a_path_evidence gold_only_evidence shuffled_answer_evidence}"
 
 if [[ ! -d "${DIAGNOSTICS_DIR}" ]]; then
   DIAGNOSTICS_DIR="outputs/diagnostics"
@@ -44,13 +44,27 @@ uv run python3 src/experiments/make_paper_diagnostic_tables.py \
   --output-dir "${OUTPUT_DIR}"
 
 if [[ -z "${PREDICTIONS}" ]]; then
-  candidate="${OUTPUT_DIR}/../model_sweeps/downstream_umls_probe/medgemma/medQA_test_metamap_medgemma_probe.jsonl"
+  candidate="${OUTPUT_DIR}/../operational_umls/step2_predictions/qwen/medQA_test_metamap_Qwen__Qwen3_5-4B_non_thinking_qwen_probe.jsonl"
   if [[ -s "${candidate}" ]]; then
     PREDICTIONS="${candidate}"
   fi
 fi
 
-if [[ -n "${PREDICTIONS}" && -s "${PREDICTIONS}" ]]; then
+prediction_files=()
+if [[ -n "${PREDICTIONS}" ]]; then
+  read -r -a prediction_files <<< "${PREDICTIONS}"
+  usable_prediction_files=()
+  for prediction_file in "${prediction_files[@]}"; do
+    if [[ -s "${prediction_file}" ]]; then
+      usable_prediction_files+=("${prediction_file}")
+    else
+      echo "Skipping missing or empty prediction file: ${prediction_file}" >&2
+    fi
+  done
+  prediction_files=("${usable_prediction_files[@]}")
+fi
+
+if (( ${#prediction_files[@]} > 0 )); then
   condition_args=()
   read -r -a condition_list <<< "${CONDITIONS}"
   for condition in "${condition_list[@]}"; do
@@ -63,7 +77,7 @@ if [[ -n "${PREDICTIONS}" && -s "${PREDICTIONS}" ]]; then
   done
   echo "+ Building downstream conditioned paper tables from ${PREDICTIONS}"
   uv run python3 src/model_sweeps/conditioned_metrics.py \
-    --predictions "${PREDICTIONS}" \
+    --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     "${condition_args[@]}" \
     --delta-table \
@@ -71,7 +85,7 @@ if [[ -n "${PREDICTIONS}" && -s "${PREDICTIONS}" ]]; then
     --output-csv "${OUTPUT_DIR}/table_downstream_conditioned.csv" \
     --output-md "${OUTPUT_DIR}/table_downstream_conditioned.md"
   uv run python3 src/model_sweeps/conditioned_metrics.py \
-    --predictions "${PREDICTIONS}" \
+    --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     "${condition_args[@]}" \
     "${evidence_condition_args[@]}" \
@@ -79,7 +93,7 @@ if [[ -n "${PREDICTIONS}" && -s "${PREDICTIONS}" ]]; then
     --output-csv "${OUTPUT_DIR}/table_intervention_by_diagnostic.csv" \
     --output-md "${OUTPUT_DIR}/table_intervention_by_diagnostic.md"
   uv run python3 src/model_sweeps/conditioned_metrics.py \
-    --predictions "${PREDICTIONS}" \
+    --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     "${condition_args[@]}" \
     "${evidence_condition_args[@]}" \
@@ -87,25 +101,25 @@ if [[ -n "${PREDICTIONS}" && -s "${PREDICTIONS}" ]]; then
     --output-csv "${OUTPUT_DIR}/table_paired_intervention_effects.csv" \
     --output-md "${OUTPUT_DIR}/table_paired_intervention_effects.md"
   uv run python3 src/model_sweeps/conditioned_metrics.py \
-    --predictions "${PREDICTIONS}" \
+    --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     --downstream-table-kind realistic \
     --output-csv "${OUTPUT_DIR}/table_downstream_realistic.csv" \
     --output-md "${OUTPUT_DIR}/table_downstream_realistic.md"
   uv run python3 src/model_sweeps/conditioned_metrics.py \
-    --predictions "${PREDICTIONS}" \
+    --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     --downstream-table-kind controls \
     --output-csv "${OUTPUT_DIR}/table_downstream_controls.csv" \
     --output-md "${OUTPUT_DIR}/table_downstream_controls.md"
   uv run python3 src/model_sweeps/conditioned_metrics.py \
-    --predictions "${PREDICTIONS}" \
+    --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     --downstream-table-kind diagnostic_oracle \
     --output-csv "${OUTPUT_DIR}/table_downstream_diagnostic_oracle.csv" \
     --output-md "${OUTPUT_DIR}/table_downstream_diagnostic_oracle.md"
   uv run python3 src/model_sweeps/conditioned_metrics.py \
-    --predictions "${PREDICTIONS}" \
+    --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     --main-claim-summary \
     --output-csv "${OUTPUT_DIR}/table_main_claim_summary.csv" \

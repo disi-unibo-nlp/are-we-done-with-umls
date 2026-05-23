@@ -27,9 +27,6 @@ DEFAULT_EVIDENCE_CONDITIONS = (
     "metadata_rich_evidence",
     "q_to_a_path_evidence",
     "gold_only_evidence",
-    "distractor_contrast_evidence",
-    "oracle_gold_evidence",
-    "random_same_size_evidence",
     "shuffled_answer_evidence",
 )
 
@@ -200,7 +197,7 @@ def _model_group(row: dict) -> tuple[str, str, str, str, str, str]:
     )
 
 
-def _item_model_key(row: dict) -> tuple[str, str, str, str, str, str]:
+def _item_model_key(row: dict) -> tuple[str, str, str, str, str, str, str]:
     return (
         str(row.get("item_id", "")),
         str(row.get("dataset", "")),
@@ -208,6 +205,7 @@ def _item_model_key(row: dict) -> tuple[str, str, str, str, str, str]:
         str(row.get("linker", "metamap")),
         str(row.get("model_key", row.get("model", ""))),
         str(row.get("model", "")),
+        str(row.get("mode", "")),
     )
 
 
@@ -235,6 +233,12 @@ def _accuracy(rows: list[dict]) -> float:
     if not valid:
         return 0.0
     return sum(1 for row in valid if row.get("is_correct")) / len(valid)
+
+
+def _strict_accuracy(rows: list[dict]) -> float:
+    if not rows:
+        return 0.0
+    return sum(1 for row in rows if row.get("is_correct")) / len(rows)
 
 
 def _malformed_rate(rows: list[dict]) -> float:
@@ -279,6 +283,8 @@ def _add_control_accuracy_gaps(rows: list[dict]) -> None:
     for row in rows:
         row["accuracy_gap_vs_random"] = None
         row["accuracy_gap_vs_shuffled"] = None
+        row["strict_accuracy_gap_vs_random"] = None
+        row["strict_accuracy_gap_vs_shuffled"] = None
         row["net_correction_gap_vs_random"] = None
         row["net_correction_gap_vs_shuffled"] = None
         if row.get("condition", row.get("evidence_condition")) not in REALISTIC_CONDITIONS_FOR_CONTROL_GAPS:
@@ -297,10 +303,12 @@ def _add_control_accuracy_gaps(rows: list[dict]) -> None:
         shuffled_row = by_group.get((*prefix, "shuffled_answer_evidence"))
         if random_row is not None:
             row["accuracy_gap_vs_random"] = row["accuracy"] - random_row["accuracy"]
+            row["strict_accuracy_gap_vs_random"] = row["strict_accuracy"] - random_row["strict_accuracy"]
             if isinstance(row.get("net_correction"), (int, float)) and isinstance(random_row.get("net_correction"), (int, float)):
                 row["net_correction_gap_vs_random"] = row["net_correction"] - random_row["net_correction"]
         if shuffled_row is not None:
             row["accuracy_gap_vs_shuffled"] = row["accuracy"] - shuffled_row["accuracy"]
+            row["strict_accuracy_gap_vs_shuffled"] = row["strict_accuracy"] - shuffled_row["strict_accuracy"]
             if isinstance(row.get("net_correction"), (int, float)) and isinstance(shuffled_row.get("net_correction"), (int, float)):
                 row["net_correction_gap_vs_shuffled"] = row["net_correction"] - shuffled_row["net_correction"]
 
@@ -348,6 +356,7 @@ def intervention_by_diagnostic_rows(
                     ]
                     paired_summary = _paired_effect_summary(pairs)
                     accuracy = _accuracy(condition_rows)
+                    strict_accuracy = _strict_accuracy(condition_rows)
                     out.append({
                         "dataset": dataset,
                         "split": split,
@@ -362,7 +371,9 @@ def intervention_by_diagnostic_rows(
                         "evidence_condition": evidence_condition,
                         "n": len(condition_rows),
                         "accuracy": accuracy,
+                        "strict_accuracy": strict_accuracy,
                         "delta_vs_no_umls": accuracy - baseline_accuracy,
+                        "strict_delta_vs_no_umls": strict_accuracy - _strict_accuracy(baseline_rows),
                         "malformed_rate": _malformed_rate(condition_rows),
                         "wrong_to_right": paired_summary["wrong_to_right"],
                         "right_to_wrong": paired_summary["right_to_wrong"],
@@ -449,6 +460,7 @@ def _add_paired_control_gaps(rows: list[dict]) -> None:
             row["linker"],
             row["model_key"],
             row["model"],
+            row["mode"],
             row["diagnostic_name"],
             row["diagnostic_value"],
             row["evidence_condition"],
@@ -468,6 +480,7 @@ def _add_paired_control_gaps(rows: list[dict]) -> None:
             row["linker"],
             row["model_key"],
             row["model"],
+            row["mode"],
             row["diagnostic_name"],
             row["diagnostic_value"],
         )
@@ -516,11 +529,12 @@ def paired_intervention_effect_rows(
                     str(condition_row.get("linker", "metamap")),
                     str(condition_row.get("model_key", condition_row.get("model", ""))),
                     str(condition_row.get("model", "")),
+                    str(condition_row.get("mode", "")),
                     evidence_condition,
                 )
                 condition_groups.setdefault(group_key, []).append((baseline, condition_row))
         for group_key, pairs in sorted(condition_groups.items()):
-            dataset, split, linker, model_key, model, evidence_condition = group_key
+            dataset, split, linker, model_key, model, mode, evidence_condition = group_key
             paired_summary = _paired_effect_summary(pairs)
             n = len(pairs)
             out.append({
@@ -529,6 +543,7 @@ def paired_intervention_effect_rows(
                 "linker": linker,
                 "model_key": model_key,
                 "model": model,
+                "mode": mode,
                 "diagnostic_name": diagnostic_name,
                 "diagnostic_value": diagnostic_value,
                 "condition": evidence_condition,
@@ -614,6 +629,8 @@ def _add_downstream_control_gaps(rows: list[dict]) -> None:
     for row in rows:
         row["accuracy_gap_vs_random"] = None
         row["accuracy_gap_vs_shuffled"] = None
+        row["strict_accuracy_gap_vs_random"] = None
+        row["strict_accuracy_gap_vs_shuffled"] = None
         row["net_correction_gap_vs_random"] = None
         row["net_correction_gap_vs_shuffled"] = None
         if row["condition"] not in REALISTIC_CONDITIONS_FOR_CONTROL_GAPS:
@@ -630,9 +647,11 @@ def _add_downstream_control_gaps(rows: list[dict]) -> None:
         shuffled_row = by_group.get((*prefix, "shuffled_answer_evidence"))
         if random_row is not None:
             row["accuracy_gap_vs_random"] = row["accuracy"] - random_row["accuracy"]
+            row["strict_accuracy_gap_vs_random"] = row["strict_accuracy"] - random_row["strict_accuracy"]
             row["net_correction_gap_vs_random"] = row["net_correction"] - random_row["net_correction"]
         if shuffled_row is not None:
             row["accuracy_gap_vs_shuffled"] = row["accuracy"] - shuffled_row["accuracy"]
+            row["strict_accuracy_gap_vs_shuffled"] = row["strict_accuracy"] - shuffled_row["strict_accuracy"]
             row["net_correction_gap_vs_shuffled"] = row["net_correction"] - shuffled_row["net_correction"]
 
 
@@ -653,6 +672,7 @@ def downstream_condition_summary_rows(
         dataset, split, linker, model_key, model, mode = group_key
         baseline_rows = [row for row in group if _row_condition(row) == baseline_condition]
         baseline_accuracy = _accuracy(baseline_rows)
+        baseline_strict_accuracy = _strict_accuracy(baseline_rows)
         baseline_by_key = {_item_model_key(row): row for row in baseline_rows}
         conditions = sorted({_row_condition(row) for row in group})
         for condition in conditions:
@@ -665,6 +685,7 @@ def downstream_condition_summary_rows(
             ]
             paired_summary = _paired_effect_summary(pairs)
             accuracy = _accuracy(condition_rows)
+            strict_accuracy = _strict_accuracy(condition_rows)
             all_rows.append({
                 "dataset": dataset,
                 "split": split,
@@ -676,7 +697,9 @@ def downstream_condition_summary_rows(
                 "condition_type": condition_type,
                 "n": len(condition_rows),
                 "accuracy": accuracy,
+                "strict_accuracy": strict_accuracy,
                 "delta_vs_no_umls": accuracy - baseline_accuracy,
+                "strict_delta_vs_no_umls": strict_accuracy - baseline_strict_accuracy,
                 "malformed_rate": _malformed_rate(condition_rows),
                 "wrong_to_right": paired_summary["wrong_to_right"],
                 "right_to_wrong": paired_summary["right_to_wrong"],
@@ -835,7 +858,9 @@ INTERVENTION_FIELDNAMES = [
     "evidence_condition",
     "n",
     "accuracy",
+    "strict_accuracy",
     "delta_vs_no_umls",
+    "strict_delta_vs_no_umls",
     "malformed_rate",
     "wrong_to_right",
     "right_to_wrong",
@@ -848,6 +873,8 @@ INTERVENTION_FIELDNAMES = [
     "mean_entropy_delta",
     "accuracy_gap_vs_random",
     "accuracy_gap_vs_shuffled",
+    "strict_accuracy_gap_vs_random",
+    "strict_accuracy_gap_vs_shuffled",
     "net_correction_gap_vs_random",
     "net_correction_gap_vs_shuffled",
 ]
@@ -859,6 +886,7 @@ PAIRED_FIELDNAMES = [
     "linker",
     "model_key",
     "model",
+    "mode",
     "diagnostic_name",
     "diagnostic_value",
     "condition",
@@ -895,7 +923,9 @@ DOWNSTREAM_SUMMARY_FIELDNAMES = [
     "condition_type",
     "n",
     "accuracy",
+    "strict_accuracy",
     "delta_vs_no_umls",
+    "strict_delta_vs_no_umls",
     "malformed_rate",
     "wrong_to_right",
     "right_to_wrong",
@@ -905,6 +935,8 @@ DOWNSTREAM_SUMMARY_FIELDNAMES = [
     "mean_entropy",
     "accuracy_gap_vs_random",
     "accuracy_gap_vs_shuffled",
+    "strict_accuracy_gap_vs_random",
+    "strict_accuracy_gap_vs_shuffled",
     "net_correction_gap_vs_random",
     "net_correction_gap_vs_shuffled",
 ]
@@ -981,7 +1013,7 @@ def write_csv(path: Path, rows: list[dict]) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Summarize model predictions under diagnostic conditions.")
-    parser.add_argument("--predictions", type=Path, required=True)
+    parser.add_argument("--predictions", nargs="+", type=Path, required=True)
     parser.add_argument("--diagnostics", nargs="+", type=Path, required=True)
     parser.add_argument("--diagnostic-filter", action="append", default=None)
     parser.add_argument("--condition", action="append", default=None)
@@ -1000,7 +1032,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    predictions = normalize_prediction_rows(read_jsonl(args.predictions))
+    prediction_rows = []
+    for path in args.predictions:
+        prediction_rows.extend(read_jsonl(path))
+    predictions = normalize_prediction_rows(prediction_rows)
     diagnostics = []
     for path in args.diagnostics:
         diagnostics.extend(read_jsonl(path))

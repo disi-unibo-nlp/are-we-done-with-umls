@@ -109,8 +109,35 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertEqual(payload["min_p"], 0.0)
         self.assertEqual(payload["repetition_penalty"], 1.0)
         self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": False})
-        self.assertIn("Return JSON", payload["messages"][-1]["content"])
+        self.assertEqual(payload["messages"][0]["role"], "system")
+        self.assertIn("strict multiple-choice classifier", payload["messages"][0]["content"])
+        self.assertIn(r"\boxed{X}", payload["messages"][-1]["content"])
+        self.assertIn("Do not explain", payload["messages"][-1]["content"])
         self.assertIn("A. Warfarin", payload["messages"][-1]["content"])
+
+    def test_payload_accepts_deterministic_intervention_decoding_overrides(self) -> None:
+        item = self.make_item("first")
+
+        payload = build_request_payload(
+            item,
+            model="Qwen/Qwen3.5-4B",
+            mode="non_thinking",
+            max_tokens=64,
+            decoding_overrides={
+                "temperature": 0.0,
+                "top_p": 1.0,
+                "top_k": 20,
+                "presence_penalty": 0.0,
+                "seed": 42,
+            },
+        )
+
+        self.assertEqual(payload["temperature"], 0.0)
+        self.assertEqual(payload["top_p"], 1.0)
+        self.assertEqual(payload["top_k"], 20)
+        self.assertEqual(payload["presence_penalty"], 0.0)
+        self.assertEqual(payload["seed"], 42)
+        self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": False})
 
     def test_prompt_can_include_umls_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -135,7 +162,11 @@ class QwenVLLMSweepTests(unittest.TestCase):
 
     def test_extract_answer_accepts_json_and_fallback_text(self) -> None:
         self.assertEqual(extract_answer('{"answer": "B", "rationale": "text"}', ["A", "B", "C", "D"]), "B")
-        self.assertEqual(extract_answer("The best answer is C. because...", ["A", "B", "C", "D"]), "C")
+        self.assertEqual(extract_answer('{"answer": "b", "rationale": "text"}', ["A", "B", "C", "D"]), "B")
+        self.assertEqual(extract_answer(r"\boxed{ C }", ["A", "B", "C", "D"]), "C")
+        self.assertEqual(extract_answer("Final answer: C", ["A", "B", "C", "D"]), "C")
+        self.assertIsNone(extract_answer("The best answer is C. because...", ["A", "B", "C", "D"]))
+        self.assertIsNone(extract_answer("Option C is tempting but wrong.", ["A", "B", "C", "D"]))
         self.assertIsNone(extract_answer("I cannot determine this.", ["A", "B", "C", "D"]))
 
     def test_summary_counts_accuracy_by_mode(self) -> None:
@@ -177,7 +208,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 self.seen_item_ids: list[str] = []
 
             def chat_completion(self, payload: dict) -> dict:
-                question = payload["messages"][0]["content"]
+                question = payload["messages"][-1]["content"]
                 item_id = "second" if "Second" in question else "unknown"
                 self.seen_item_ids.append(item_id)
                 return {"choices": [{"message": {"content": '{"answer": "A", "rationale": "ok"}'}}]}
@@ -390,7 +421,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 self.prompts: list[str] = []
 
             def chat_completion(self, payload: dict) -> dict:
-                self.prompts.append(payload["messages"][0]["content"])
+                self.prompts.append(payload["messages"][-1]["content"])
                 return {"choices": [{"message": {"content": '{"answer": "A", "rationale": "ok"}'}}]}
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -438,6 +469,77 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertNotIn("UMLS evidence:", client.prompts[0])
         self.assertIn("UMLS evidence:", client.prompts[1])
         self.assertIn("Correct definition.", client.prompts[1])
+
+    def test_downstream_qwen_probe_resumes_without_duplicate_item_condition_rows(self) -> None:
+        class CapturingClient:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def chat_completion(self, payload: dict) -> dict:
+                self.calls += 1
+                return {"choices": [{"message": {"content": '{"answer": "A", "rationale": "ok"}'}}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            output_path = root / "probe.jsonl"
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_A\tCorrect\tT047\tDisease or Syndrome\tMSH\tCorrect definition.\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\nC_Q,C_A,RO,associated_with\n",
+            )
+            item = QAItem(
+                item_id="first",
+                dataset="medQA",
+                split="test",
+                linker="metamap",
+                question="Which option is correct?",
+                options={"A": "Correct", "B": "Incorrect"},
+                gold="A",
+                answer_text="Correct",
+                question_cuis=["C_Q"],
+                option_cuis={"A": ["C_A"], "B": []},
+            )
+            existing = [{
+                "item_id": "first",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model": "Qwen/Qwen3.5-4B",
+                "mode": "non_thinking",
+                "condition": "no_umls",
+                "prediction": "A",
+                "is_correct": True,
+                "error": "",
+            }]
+            write_jsonl(output_path, existing)
+            client = CapturingClient()
+
+            rows = run_qwen_probe(
+                [item],
+                client,
+                model="Qwen/Qwen3.5-4B",
+                mode="non_thinking",
+                max_tokens=16,
+                conditions=("no_umls", "metadata_rich_evidence"),
+                metadata=CuiMetadataIndex.from_zip(meta_path),
+                relations=RelationIndex.from_zip(rel_path, keep_cuis={"C_Q", "C_A"}),
+                output_jsonl=output_path,
+                existing_rows=existing,
+            )
+            persisted = [json.loads(line) for line in output_path.read_text().splitlines()]
+
+        self.assertEqual(client.calls, 1)
+        self.assertEqual([row["condition"] for row in rows], ["no_umls", "metadata_rich_evidence"])
+        self.assertEqual([row["condition"] for row in persisted], ["no_umls", "metadata_rich_evidence"])
 
     def test_conditioned_delta_rows_compare_no_umls_to_umls_condition(self) -> None:
         predictions = [
@@ -503,6 +605,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "linker": "metamap",
                 "model_key": "MockLogits",
                 "model": "mock-local-logits",
+                "mode": "non_thinking",
                 "condition": "no_umls",
                 "prediction": "A",
                 "is_correct": False,
@@ -518,6 +621,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "linker": "metamap",
                 "model_key": "MockLogits",
                 "model": "mock-local-logits",
+                "mode": "non_thinking",
                 "condition": "distractor_contrast_evidence",
                 "prediction": "B",
                 "is_correct": True,
@@ -533,6 +637,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "linker": "metamap",
                 "model_key": "MockLogits",
                 "model": "mock-local-logits",
+                "mode": "non_thinking",
                 "condition": "random_same_size_evidence",
                 "prediction": "A",
                 "is_correct": False,
@@ -548,6 +653,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "linker": "metamap",
                 "model_key": "MockLogits",
                 "model": "mock-local-logits",
+                "mode": "non_thinking",
                 "condition": "shuffled_answer_evidence",
                 "prediction": "A",
                 "is_correct": False,
@@ -601,6 +707,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "linker": "metamap",
                 "model_key": "MockLogits",
                 "model": "mock-local-logits",
+                "mode": "non_thinking",
                 "condition": "no_umls",
                 "prediction": "A",
                 "is_correct": False,
@@ -616,6 +723,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "linker": "metamap",
                 "model_key": "MockLogits",
                 "model": "mock-local-logits",
+                "mode": "non_thinking",
                 "condition": "q_to_a_path_evidence",
                 "prediction": "B",
                 "is_correct": True,
@@ -631,6 +739,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "linker": "metamap",
                 "model_key": "MockLogits",
                 "model": "mock-local-logits",
+                "mode": "non_thinking",
                 "condition": "random_same_size_evidence",
                 "prediction": "A",
                 "is_correct": False,
@@ -646,6 +755,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "linker": "metamap",
                 "model_key": "MockLogits",
                 "model": "mock-local-logits",
+                "mode": "non_thinking",
                 "condition": "shuffled_answer_evidence",
                 "prediction": "A",
                 "is_correct": False,
@@ -785,6 +895,115 @@ class QwenVLLMSweepTests(unittest.TestCase):
             md_path = root / "realistic.md"
             write_downstream_condition_summary_outputs(csv_path, md_path, realistic)
             self.assertIn("NA", md_path.read_text(encoding="utf-8"))
+
+    def test_downstream_strict_accuracy_counts_malformed_as_incorrect(self) -> None:
+        predictions = [
+            {
+                "item_id": "medQA:test:0",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model_key": "Qwen",
+                "model": "Qwen/Qwen3.5-4B",
+                "condition": "no_umls",
+                "prediction": "A",
+                "is_correct": True,
+                "error": "",
+            },
+            {
+                "item_id": "medQA:test:1",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model_key": "Qwen",
+                "model": "Qwen/Qwen3.5-4B",
+                "condition": "no_umls",
+                "prediction": None,
+                "is_correct": False,
+                "error": "missing_prediction",
+            },
+            {
+                "item_id": "medQA:test:0",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model_key": "Qwen",
+                "model": "Qwen/Qwen3.5-4B",
+                "condition": "q_to_a_path_evidence",
+                "prediction": "B",
+                "is_correct": True,
+                "error": "",
+            },
+            {
+                "item_id": "medQA:test:1",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model_key": "Qwen",
+                "model": "Qwen/Qwen3.5-4B",
+                "condition": "q_to_a_path_evidence",
+                "prediction": None,
+                "is_correct": False,
+                "error": "missing_prediction",
+            },
+            {
+                "item_id": "medQA:test:0",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model_key": "Qwen",
+                "model": "Qwen/Qwen3.5-4B",
+                "condition": "random_same_size_evidence",
+                "prediction": "A",
+                "is_correct": False,
+                "error": "",
+            },
+            {
+                "item_id": "medQA:test:1",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model_key": "Qwen",
+                "model": "Qwen/Qwen3.5-4B",
+                "condition": "random_same_size_evidence",
+                "prediction": None,
+                "is_correct": False,
+                "error": "missing_prediction",
+            },
+            {
+                "item_id": "medQA:test:0",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model_key": "Qwen",
+                "model": "Qwen/Qwen3.5-4B",
+                "condition": "shuffled_answer_evidence",
+                "prediction": "A",
+                "is_correct": False,
+                "error": "",
+            },
+            {
+                "item_id": "medQA:test:1",
+                "dataset": "medQA",
+                "split": "test",
+                "linker": "metamap",
+                "model_key": "Qwen",
+                "model": "Qwen/Qwen3.5-4B",
+                "condition": "shuffled_answer_evidence",
+                "prediction": None,
+                "is_correct": False,
+                "error": "missing_prediction",
+            },
+        ]
+
+        realistic = downstream_condition_summary_rows(predictions, table_kind="realistic")
+        q_to_a = next(row for row in realistic if row["condition"] == "q_to_a_path_evidence")
+
+        self.assertEqual(q_to_a["accuracy"], 1.0)
+        self.assertEqual(q_to_a["strict_accuracy"], 0.5)
+        self.assertEqual(q_to_a["strict_delta_vs_no_umls"], 0.0)
+        self.assertEqual(q_to_a["strict_accuracy_gap_vs_random"], 0.5)
+        self.assertEqual(q_to_a["strict_accuracy_gap_vs_shuffled"], 0.5)
 
     def test_intervention_output_writers_create_csv_and_markdown_tables(self) -> None:
         intervention_rows = [{

@@ -96,7 +96,15 @@ class RelationIndex:
         edge_labels: dict[tuple[str, str], tuple[str, str]] | None = None,
     ) -> None:
         self._adjacency = adjacency
+        self._sorted_adjacency = {
+            node: tuple(sorted(neighbors))
+            for node, neighbors in adjacency.items()
+        }
         self._edge_labels = edge_labels or {}
+        self._shortest_path_length_cache: dict[tuple[tuple[str, ...], tuple[str, ...], int], int | None] = {}
+        self._shortest_path_nodes_cache: dict[tuple[tuple[str, ...], tuple[str, ...], int], tuple[str, ...] | None] = {}
+        self._exact_path_nodes_cache: dict[tuple[tuple[str, ...], tuple[str, ...], int], tuple[str, ...] | None] = {}
+        self._all_nodes_sorted_cache: tuple[str, ...] | None = None
 
     @classmethod
     def from_zip(
@@ -134,14 +142,38 @@ class RelationIndex:
         return set(self._adjacency.get(cui, set()))
 
     def all_nodes(self) -> set[str]:
+        if self._all_nodes_sorted_cache is not None:
+            return set(self._all_nodes_sorted_cache)
         nodes = set(self._adjacency)
         for neighbors in self._adjacency.values():
             nodes.update(neighbors)
+        self._all_nodes_sorted_cache = tuple(sorted(nodes))
         return nodes
 
     def relation_label(self, left: str, right: str) -> str:
         re_value, rel_type = self._edge_labels.get(tuple(sorted((left, right))), ("", ""))
         return rel_type or re_value or "related_to"
+
+    def _shortest_path_nodes_max2(self, source_set: set[str], target_set: set[str], max_hops: int) -> list[str] | None:
+        shared = sorted(source_set & target_set)
+        if shared:
+            return [shared[0]]
+        if max_hops <= 0:
+            return None
+
+        for source in sorted(source_set):
+            source_neighbors = self._adjacency.get(source, set())
+            direct = sorted(source_neighbors & target_set)
+            if direct:
+                return [source, direct[0]]
+            if max_hops < 2:
+                continue
+            for target in sorted(target_set):
+                target_neighbors = self._adjacency.get(target, set())
+                common = source_neighbors & target_neighbors
+                if common:
+                    return [source, sorted(common)[0], target]
+        return None
 
     def shortest_path_length(
         self,
@@ -151,10 +183,17 @@ class RelationIndex:
     ) -> int | None:
         source_set = {cui for cui in sources if cui}
         target_set = {cui for cui in targets if cui}
+        cache_key = (tuple(sorted(source_set)), tuple(sorted(target_set)), max_hops)
+        if cache_key in self._shortest_path_length_cache:
+            return self._shortest_path_length_cache[cache_key]
         if not source_set or not target_set:
+            self._shortest_path_length_cache[cache_key] = None
             return None
-        if source_set & target_set:
-            return 0
+        if max_hops <= 2:
+            path = self._shortest_path_nodes_max2(source_set, target_set, max_hops)
+            value = len(path) - 1 if path is not None else None
+            self._shortest_path_length_cache[cache_key] = value
+            return value
 
         queue: deque[tuple[str, int]] = deque((source, 0) for source in source_set)
         seen = set(source_set)
@@ -164,10 +203,12 @@ class RelationIndex:
                 continue
             for neighbor in self._adjacency.get(node, set()):
                 if neighbor in target_set:
+                    self._shortest_path_length_cache[cache_key] = depth + 1
                     return depth + 1
                 if neighbor not in seen:
                     seen.add(neighbor)
                     queue.append((neighbor, depth + 1))
+        self._shortest_path_length_cache[cache_key] = None
         return None
 
     def shortest_path_nodes(
@@ -178,11 +219,17 @@ class RelationIndex:
     ) -> list[str] | None:
         source_set = {cui for cui in sources if cui}
         target_set = {cui for cui in targets if cui}
+        cache_key = (tuple(sorted(source_set)), tuple(sorted(target_set)), max_hops)
+        if cache_key in self._shortest_path_nodes_cache:
+            cached = self._shortest_path_nodes_cache[cache_key]
+            return list(cached) if cached is not None else None
         if not source_set or not target_set:
+            self._shortest_path_nodes_cache[cache_key] = None
             return None
-        shared = sorted(source_set & target_set)
-        if shared:
-            return [shared[0]]
+        if max_hops <= 2:
+            path = self._shortest_path_nodes_max2(source_set, target_set, max_hops)
+            self._shortest_path_nodes_cache[cache_key] = tuple(path) if path is not None else None
+            return path
 
         for source in sorted(source_set):
             queue: deque[tuple[str, list[str]]] = deque([(source, [source])])
@@ -192,14 +239,16 @@ class RelationIndex:
                 depth = len(path) - 1
                 if depth >= max_hops:
                     continue
-                for neighbor in sorted(self._adjacency.get(node, set())):
+                for neighbor in self._sorted_adjacency.get(node, ()):
                     if neighbor in seen:
                         continue
                     next_path = [*path, neighbor]
                     if neighbor in target_set:
+                        self._shortest_path_nodes_cache[cache_key] = tuple(next_path)
                         return next_path
                     seen.add(neighbor)
                     queue.append((neighbor, next_path))
+        self._shortest_path_nodes_cache[cache_key] = None
         return None
 
     def path_nodes_between(
@@ -236,6 +285,70 @@ class RelationIndex:
                 seen.add(key)
                 edges.append((left, right, self.relation_label(left, right)))
         return edges
+
+    def exact_path_nodes(
+        self,
+        sources: Iterable[str],
+        targets: Iterable[str],
+        hops: int,
+    ) -> list[str] | None:
+        """Return a deterministic simple path with exactly ``hops`` edges."""
+        source_set = {cui for cui in sources if cui}
+        target_set = {cui for cui in targets if cui}
+        cache_key = (tuple(sorted(source_set)), tuple(sorted(target_set)), hops)
+        if cache_key in self._exact_path_nodes_cache:
+            cached = self._exact_path_nodes_cache[cache_key]
+            return list(cached) if cached is not None else None
+        if not source_set or not target_set or hops < 0:
+            self._exact_path_nodes_cache[cache_key] = None
+            return None
+        if hops == 0:
+            shared = sorted(source_set & target_set)
+            path = [shared[0]] if shared else None
+            self._exact_path_nodes_cache[cache_key] = tuple(path) if path else None
+            return path
+
+        left_depth = hops // 2
+        right_depth = hops - left_depth
+        left_paths = self._paths_at_depth(source_set, left_depth)
+        right_paths = self._paths_at_depth(target_set, right_depth)
+        for meet in sorted(set(left_paths) & set(right_paths)):
+            left_path = left_paths[meet]
+            right_path = right_paths[meet]
+            path = [*left_path, *reversed(right_path[:-1])]
+            if len(path) == len(set(path)):
+                self._exact_path_nodes_cache[cache_key] = tuple(path)
+                return path
+        self._exact_path_nodes_cache[cache_key] = None
+        return None
+
+    def _paths_at_depth(self, starts: set[str], depth: int) -> dict[str, tuple[str, ...]]:
+        current = {node: (node,) for node in sorted(starts)}
+        for _ in range(depth):
+            next_layer: dict[str, tuple[str, ...]] = {}
+            for node, path in sorted(current.items()):
+                for neighbor in self._sorted_adjacency.get(node, ()):
+                    if neighbor in path or neighbor in next_layer:
+                        continue
+                    next_layer[neighbor] = (*path, neighbor)
+            current = next_layer
+            if not current:
+                break
+        return current
+
+    def exact_path_edges(
+        self,
+        sources: Iterable[str],
+        targets: Iterable[str],
+        hops: int,
+    ) -> list[tuple[str, str, str]]:
+        path = self.exact_path_nodes(sources, targets, hops)
+        if not path or len(path) < 2:
+            return []
+        return [
+            (left, right, self.relation_label(left, right))
+            for left, right in zip(path, path[1:])
+        ]
 
     def pooled_neighborhood(self, seeds: Iterable[str], hops: int, cap: int | None = None) -> set[str]:
         nodes = {seed for seed in seeds if seed}
@@ -277,7 +390,9 @@ class RelationIndex:
         return out
 
     def deterministic_sample(self, size: int, key: str = "") -> set[str]:
-        nodes = sorted(self.all_nodes())
+        if self._all_nodes_sorted_cache is None:
+            self.all_nodes()
+        nodes = list(self._all_nodes_sorted_cache or ())
         if size <= 0 or not nodes:
             return set()
         if size >= len(nodes):

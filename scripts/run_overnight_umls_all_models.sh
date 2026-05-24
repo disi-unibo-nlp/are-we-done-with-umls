@@ -32,6 +32,8 @@ VLLM_EXTRA_ARGS="${VLLM_EXTRA_ARGS:---enable-prefix-caching --enable-chunked-pre
 QWEN_MODEL_LIST="${QWEN_MODEL_LIST:-Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B Qwen/Qwen3.5-27B Qwen/Qwen3.5-35B}"
 QWEN_CONCURRENCY="${QWEN_CONCURRENCY:-32}"
 LIMIT="${LIMIT:-0}"
+LINKERS="${LINKERS:-metamap spacy}"
+STEP23_LINKERS="${STEP23_LINKERS:-spacy}"
 VLLM_READY_TIMEOUT_S="${VLLM_READY_TIMEOUT_S:-300}"
 RUN_STEPS="${RUN_STEPS:-1 2 3}"
 
@@ -104,6 +106,8 @@ run_steps() {
     QWEN_MODEL_LIST="${model}" \
     STEP="${step}" \
     LIMIT="${LIMIT}" \
+    LINKERS="${LINKERS}" \
+    STEP23_LINKERS="${STEP23_LINKERS}" \
     QWEN_CONCURRENCY="${QWEN_CONCURRENCY}" \
       bash scripts/run_operational_umls_experiments.sh
   done
@@ -112,6 +116,8 @@ run_steps() {
 log "=== Overnight UMLS run start: $(date) ==="
 log "Models: ${QWEN_MODEL_LIST}"
 log "LIMIT=${LIMIT}  CONCURRENCY=${QWEN_CONCURRENCY}"
+log "STEP1_LINKERS=${LINKERS}"
+log "STEP23_LINKERS=${STEP23_LINKERS}"
 log "STEPS=${RUN_STEPS}"
 
 for model in ${QWEN_MODEL_LIST}; do
@@ -125,7 +131,7 @@ done
 
 log ""
 log "Building final tables across all models..."
-STEP=tables bash scripts/run_operational_umls_experiments.sh
+LINKERS="${LINKERS}" STEP23_LINKERS="${STEP23_LINKERS}" STEP=tables bash scripts/run_operational_umls_experiments.sh
 
 log "=== Overnight UMLS run complete: $(date) ==="
 log "Outputs: outputs/operational_umls/"

@@ -63,6 +63,36 @@ class OperationalRunScriptTests(unittest.TestCase):
         self.assertNotIn("pooled_width_tight_obscured", text)
         self.assertNotIn("prior_work_obscured_evidence", text)
 
+    def test_operational_runner_defaults_step23_to_spacy_only(self) -> None:
+        text = self.script_text("scripts/run_operational_umls_experiments.sh")
+        self.assertIn('STEP23_LINKERS="${STEP23_LINKERS:-spacy}"', text)
+        self.assertIn('run_filtered_step "step2" "${STEP2_CONDITIONS}" "item_cuis" "${TRIPLETS_ZIP}" "${STEP23_LINKERS}"', text)
+        self.assertIn('run_filtered_step "step3" "${Q2A_DEPTH_CONDITIONS}" "full" "${graph_zip}" "${STEP23_LINKERS}"', text)
+
+    def test_operational_runner_dry_run_step2_uses_step23_linkers(self) -> None:
+        env = os.environ.copy()
+        env.update({
+            "DRY_RUN": "1",
+            "STEP": "2",
+            "LIMIT": "1",
+            "DATASETS": "medQA",
+            "LINKERS": "metamap spacy",
+            "STEP23_LINKERS": "spacy",
+            "QWEN_MODEL_LIST": "Qwen/Qwen3.5-4B",
+        })
+        result = subprocess.run(
+            ["bash", "scripts/run_operational_umls_experiments.sh"],
+            cwd=REPO_ROOT,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("medQA_test_spacy_Qwen__Qwen3_5-4B_non_thinking_baseline_wrong.jsonl", result.stdout)
+        self.assertNotIn("medQA_test_metamap_Qwen__Qwen3_5-4B_non_thinking_baseline_wrong.jsonl", result.stdout)
+
     def test_operational_runner_defaults_step2_to_three_ordered_umls_conditions(self) -> None:
         text = self.script_text("scripts/run_operational_umls_experiments.sh")
         self.assertIn(
@@ -98,6 +128,7 @@ class OperationalRunScriptTests(unittest.TestCase):
     def test_overnight_runner_allows_subset_only_step_selection(self) -> None:
         text = self.script_text("scripts/run_overnight_umls_all_models.sh")
         self.assertIn('RUN_STEPS="${RUN_STEPS:-1 2 3}"', text)
+        self.assertIn('STEP23_LINKERS="${STEP23_LINKERS:-spacy}"', text)
         self.assertIn('run_steps "${model}" "${RUN_STEPS}"', text)
 
     def test_reasoning_mode_plumbs_vllm_budget_and_parser_settings(self) -> None:

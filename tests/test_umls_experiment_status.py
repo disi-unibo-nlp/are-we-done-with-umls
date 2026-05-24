@@ -19,6 +19,12 @@ class UmlsExperimentStatusTests(unittest.TestCase):
             ),
         )
 
+    def test_step23_status_contract_uses_spacy_only_by_default(self) -> None:
+        self.assertEqual(status.LINKERS, ("metamap", "spacy"))
+        self.assertEqual(status.STEP23_LINKERS, ("spacy",))
+        self.assertEqual(len(status.expected_cells()), 24)
+        self.assertEqual(len(status.expected_cells(status.STEP23_LINKERS)), 12)
+
     def test_expected_step3_conditions_are_exact_q_to_a_depths(self) -> None:
         self.assertEqual(
             status.STEP3_CONDITIONS,

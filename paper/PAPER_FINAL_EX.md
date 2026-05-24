@@ -11,7 +11,8 @@ General scope:
 
 - datasets: `medQA`, `medMCQA`
 - split: `test`
-- linkers: `metamap`, `spacy`
+- linkers: STEP 1 builds baseline-wrong manifests for `metamap` and `spacy`;
+  STEP 2 and STEP 3 use `spacy` only
 - models: Qwen3.5 `0.8B`, `2B`, `4B`, `9B`, `27B`, `35B`
 - decoding: non-thinking mode, deterministic settings
 - output root: `outputs/operational_umls/`
@@ -40,7 +41,8 @@ data used:
 
 - original QA items from `medQA` and `medMCQA`
 - linked CUIs from MetaMap and scispaCy
-- UMLS metadata from `data/UMLS/cui_detail.tsv.zip`
+- the MRCONSO/MRDEF/MRSTY-like concept-metadata view from
+  `data/UMLS/cui_detail.tsv.zip`
 - Qwen3.5 predictions
 
 models/linkers:
@@ -89,18 +91,19 @@ data used:
 
 - filtered manifests from STEP 1
 - original QA items
-- linked CUIs from MetaMap and scispaCy
-- UMLS metadata from `data/UMLS/cui_detail.tsv.zip`
-- UMLS relations from `data/UMLS/triplets.csv.zip`
+- linked CUIs from scispaCy
+- the MRCONSO/MRDEF/MRSTY-like concept-metadata view from
+  `data/UMLS/cui_detail.tsv.zip`
+- the MRREL-like relation view from `data/UMLS/triplets.csv.zip`
 
 conditions:
 
-- `relation_only_evidence`: readable UMLS relation edges from the local
-  question/answer neighborhood, without definitions or CUIs
-- `q_to_a_path_evidence`: readable paths from question CUIs to answer-option
-  CUIs, without concept metadata
-- `metadata_rich_evidence`: the same question-to-answer path graph, augmented
-  with concept names, CUIs, definitions, and semantic types
+- `relation_only_evidence`: broad readable relations from MRCONSO/MRREL-derived
+  information
+- `q_to_a_path_evidence`: focused question-to-answer paths from MRCONSO/MRREL-derived
+  information
+- `metadata_rich_evidence`: the focused question-to-answer path graph augmented
+  with MRDEF/MRSTY-derived definitions and semantic types
 
 output:
 
@@ -113,6 +116,9 @@ We learn whether performance changes when the model first sees broad UMLS graph
 relations, then focused question-to-answer paths, and finally the same focused
 paths enriched with UMLS metadata. This keeps the main paper evidence realistic:
 no gold-only or oracle diagnostic condition is used as main-claim evidence.
+After comparing the overnight MetaMap and scispaCy slices, the final downstream
+paper setting uses only scispaCy for STEP 2. MetaMap remains part of the static
+diagnostics and STEP 1 subset audit, but not the final evidence-method sweep.
 
 script:
 
@@ -137,9 +143,10 @@ data used:
 
 - filtered manifests from STEP 1
 - original QA items
-- linked CUIs from MetaMap and scispaCy
-- UMLS metadata from `data/UMLS/cui_detail.tsv.zip`
-- UMLS relations from `data/UMLS/triplets.csv.zip`
+- linked CUIs from scispaCy
+- the MRCONSO/MRDEF/MRSTY-like concept-metadata view from
+  `data/UMLS/cui_detail.tsv.zip`
+- the MRREL-like relation view from `data/UMLS/triplets.csv.zip`
 - optional expanded relations from `data/UMLS/triplets_extended.csv.zip` when
   available
 
@@ -162,13 +169,16 @@ q_to_a_exact_depth_4_evidence
 output:
 
 - prediction files under `outputs/operational_umls/step3_predictions/`
-- Q-to-answer depth tables under `outputs/operational_umls/tables/`
+- Q-to-answer depth tables under
+  `outputs/operational_umls/tables/q_to_a_depth_accuracy.{csv,md}`
 
 what we learn:
 
 We learn whether the model benefits from focused Q-to-answer paths only at
 short depths or whether longer exact paths still provide useful decision
 evidence. This removes the old width axis and isolates path length.
+As in STEP 2, the final operational path-depth sweep uses only the scispaCy
+pipeline.
 
 script:
 

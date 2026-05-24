@@ -24,7 +24,8 @@ SCALE_MODELS = (
     "Qwen/Qwen3.5-35B",
 )
 DATASETS = ("medQA", "medMCQA")
-LINKERS = ("metamap", "spacy")
+LINKERS = tuple(os.environ.get("LINKERS", "metamap spacy").split())
+STEP23_LINKERS = tuple(os.environ.get("STEP23_LINKERS", "spacy").split())
 SPLIT = "test"
 MODE = "non_thinking"
 
@@ -44,7 +45,7 @@ def qwen_slug(model: str) -> str:
     return model.replace("/", "__").replace(".", "_")
 
 
-def expected_cells() -> list[dict[str, str]]:
+def expected_cells(linkers: tuple[str, ...] = LINKERS) -> list[dict[str, str]]:
     return [
         {
             "dataset": dataset,
@@ -54,7 +55,7 @@ def expected_cells() -> list[dict[str, str]]:
             "mode": MODE,
         }
         for dataset in DATASETS
-        for linker in LINKERS
+        for linker in linkers
         for model in SCALE_MODELS
     ]
 
@@ -94,10 +95,14 @@ def read_jsonl(path: Path, limit: int | None = None) -> list[dict[str, Any]]:
     return rows
 
 
-def audit_prediction_dir(root: Path, expected_conditions: tuple[str, ...]) -> tuple[list[dict[str, Any]], list[str]]:
+def audit_prediction_dir(
+    root: Path,
+    expected_conditions: tuple[str, ...],
+    linkers: tuple[str, ...] = LINKERS,
+) -> tuple[list[dict[str, Any]], list[str]]:
     entries: list[dict[str, Any]] = []
     missing: list[str] = []
-    for cell in expected_cells():
+    for cell in expected_cells(linkers):
         path = prediction_path(root, cell)
         entry: dict[str, Any] = {**cell, "path": str(path), "exists": path.is_file(), "nonempty": False}
         if not path.is_file() or path.stat().st_size == 0:
@@ -122,10 +127,10 @@ def audit_prediction_dir(root: Path, expected_conditions: tuple[str, ...]) -> tu
     return entries, missing
 
 
-def audit_subsets() -> tuple[list[dict[str, Any]], list[str]]:
+def audit_subsets(linkers: tuple[str, ...] = LINKERS) -> tuple[list[dict[str, Any]], list[str]]:
     entries: list[dict[str, Any]] = []
     missing: list[str] = []
-    for cell in expected_cells():
+    for cell in expected_cells(linkers):
         path = manifest_path(cell)
         entry: dict[str, Any] = {**cell, "path": str(path), "exists": path.is_file(), "nonempty": False}
         if not path.is_file() or path.stat().st_size == 0:
@@ -186,13 +191,24 @@ def read_step1_summary() -> list[dict[str, str]]:
 def build_status() -> dict[str, Any]:
     step1_predictions, missing_step1_predictions = audit_prediction_dir(STEP1_PREDICTIONS_DIR, STEP1_CONDITIONS)
     subsets, missing_subsets = audit_subsets()
-    step2_predictions, missing_step2_predictions = audit_prediction_dir(STEP2_PREDICTIONS_DIR, STEP2_CONDITIONS)
-    step3_predictions, missing_step3_predictions = audit_prediction_dir(STEP3_PREDICTIONS_DIR, STEP3_CONDITIONS)
+    step2_predictions, missing_step2_predictions = audit_prediction_dir(
+        STEP2_PREDICTIONS_DIR,
+        STEP2_CONDITIONS,
+        STEP23_LINKERS,
+    )
+    step3_predictions, missing_step3_predictions = audit_prediction_dir(
+        STEP3_PREDICTIONS_DIR,
+        STEP3_CONDITIONS,
+        STEP23_LINKERS,
+    )
     summary_tables, missing_summary_tables = audit_summary_tables()
     status: dict[str, Any] = {
         "workflow": "operational_umls",
         "root": str(OUTPUT_ROOT),
         "expected_cells": len(expected_cells()),
+        "expected_step23_cells": len(expected_cells(STEP23_LINKERS)),
+        "step1_linkers": list(LINKERS),
+        "step23_linkers": list(STEP23_LINKERS),
         "step1_predictions": {
             "complete": not missing_step1_predictions,
             "missing": missing_step1_predictions,
@@ -238,7 +254,10 @@ def write_markdown(path: Path, status: dict[str, Any]) -> None:
         "# Operational UMLS Experiment Status",
         "",
         f"- Overall: `{status['overall']}`",
-        f"- Expected cells: `{status['expected_cells']}`",
+        f"- Expected STEP 1 cells: `{status['expected_cells']}`",
+        f"- Expected STEP 2/3 cells: `{status['expected_step23_cells']}`",
+        f"- STEP 1 linkers: `{', '.join(status['step1_linkers'])}`",
+        f"- STEP 2/3 linkers: `{', '.join(status['step23_linkers'])}`",
         f"- STEP 1 predictions complete: `{status['step1_predictions']['complete']}`",
         f"- STEP 1 subsets complete: `{status['step1_subsets']['complete']}`",
         f"- STEP 2 predictions complete: `{status['step2_predictions']['complete']}`",

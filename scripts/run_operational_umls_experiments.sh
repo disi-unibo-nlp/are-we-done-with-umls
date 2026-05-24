@@ -25,6 +25,7 @@ LIMIT="${LIMIT:-10}"
 SPLIT="${SPLIT:-test}"
 DATASETS="${DATASETS:-medQA medMCQA}"
 LINKERS="${LINKERS:-metamap spacy}"
+STEP23_LINKERS="${STEP23_LINKERS:-spacy}"
 QWEN_MODEL_LIST="${QWEN_MODEL_LIST:-Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B Qwen/Qwen3.5-27B Qwen/Qwen3.5-35B}"
 QWEN_MODE="${QWEN_MODE:-non_thinking}"
 QWEN_TEMPERATURE="${QWEN_TEMPERATURE:-0.0}"
@@ -160,10 +161,11 @@ run_filtered_step() {
   local conditions="$2"
   local relation_scope="$3"
   local triplets_zip="$4"
+  local linkers="$5"
   local step_dir="${OUTPUT_ROOT}/${step_name}_predictions"
 
   for dataset in ${DATASETS}; do
-    for linker in ${LINKERS}; do
+    for linker in ${linkers}; do
       for model in ${QWEN_MODEL_LIST}; do
         local manifest
         manifest="$(manifest_file "${dataset}" "${linker}" "${model}")"
@@ -183,7 +185,7 @@ run_filtered_step() {
 }
 
 run_step2() {
-  run_filtered_step "step2" "${STEP2_CONDITIONS}" "item_cuis" "${TRIPLETS_ZIP}"
+  run_filtered_step "step2" "${STEP2_CONDITIONS}" "item_cuis" "${TRIPLETS_ZIP}" "${STEP23_LINKERS}"
 }
 
 run_step3() {
@@ -191,7 +193,18 @@ run_step3() {
   if [[ -s "${EXTENDED_TRIPLETS_ZIP}" ]]; then
     graph_zip="${EXTENDED_TRIPLETS_ZIP}"
   fi
-  run_filtered_step "step3" "${Q2A_DEPTH_CONDITIONS}" "full" "${graph_zip}"
+  run_filtered_step "step3" "${Q2A_DEPTH_CONDITIONS}" "full" "${graph_zip}" "${STEP23_LINKERS}"
+}
+
+collect_prediction_files_for_step23_linkers() {
+  local root="$1"
+  local -n output_ref="$2"
+  output_ref=()
+  for linker in ${STEP23_LINKERS}; do
+    while IFS= read -r file; do
+      output_ref+=("${file}")
+    done < <(find "${root}" -name "*_${linker}_*_qwen_probe.jsonl" -type f 2>/dev/null | sort)
+  done
 }
 
 run_tables() {
@@ -217,7 +230,8 @@ run_tables() {
   fi
 
   local tables_dir="${OUTPUT_ROOT}/tables"
-  mapfile -t step2_predictions < <(find "${OUTPUT_ROOT}/step2_predictions/qwen" -name '*_qwen_probe.jsonl' -type f 2>/dev/null | sort)
+  local step2_predictions=()
+  collect_prediction_files_for_step23_linkers "${OUTPUT_ROOT}/step2_predictions/qwen" step2_predictions
   if (( ${#step2_predictions[@]} > 0 )); then
     log "Building STEP 2 conditioned tables under ${tables_dir}"
     DIAGNOSTICS_DIR="${diagnostics_dir}" \
@@ -228,7 +242,8 @@ run_tables() {
     log "Skipping STEP 2 conditioned tables: no STEP 2 prediction files found."
   fi
 
-  mapfile -t step3_predictions < <(find "${OUTPUT_ROOT}/step3_predictions/qwen" -name '*_qwen_probe.jsonl' -type f 2>/dev/null | sort)
+  local step3_predictions=()
+  collect_prediction_files_for_step23_linkers "${OUTPUT_ROOT}/step3_predictions/qwen" step3_predictions
   if (( ${#step3_predictions[@]} > 0 )); then
     log "Building STEP 3 Q-to-answer depth tables under ${tables_dir}"
     "${UV_BIN}" run python3 src/experiments/q_to_a_depth_analysis.py \

@@ -29,9 +29,14 @@ class EvidenceCardDetails:
     q_to_a_path_found: bool = False
     q_to_a_path_node_count: int = 0
     q_to_a_path_edge_count: int = 0
+    q_to_a_answer_cui_count: int = 0
+    q_to_a_answer_cui_covered_count: int = 0
+    q_to_a_path_selection_policy: str = ""
 
 
 Q_TO_A_DEPTHS = (1, 2, 3, 4)
+Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI = 2
+Q_TO_A_EXACT_PATH_SELECTION_POLICY = "clean_exact_hops_all_answer_cuis_max_2_paths_per_cui"
 Q_TO_A_EXACT_DEPTH_CONDITION_SPECS = {
     f"q_to_a_exact_depth_{depth}_evidence": EvidenceConditionSpec(
         "full_committed_card",
@@ -359,19 +364,55 @@ def _q_to_a_exact_depth_lines(
     relations: RelationIndex,
     metadata: CuiMetadataIndex,
     depth: int,
-) -> tuple[list[str], int, int]:
+) -> tuple[list[str], int, int, int, int, str]:
     answer_cuis = _all_answer_cuis(item)
-    path_edges = relations.exact_path_edges_between(item.question_cuis, answer_cuis, hops=depth)
-    path_nodes = relations.exact_path_nodes_between(item.question_cuis, answer_cuis, hops=depth)
-    if not path_edges:
-        return [f"Q-to-answer exact-depth paths: no exact {depth}-hop UMLS path found."], 0, 0
-    lines = _relation_edge_lines(
-        path_edges,
-        metadata,
-        f"Q-to-answer exact-depth paths: depth={depth}",
-        limit=None,
-    ) or [f"Q-to-answer exact-depth paths: no readable exact {depth}-hop UMLS path found."]
-    return lines, len(path_nodes), len(path_edges)
+    answer_count = len(answer_cuis)
+    if not answer_cuis:
+        return [
+            f"Q-to-answer exact-depth paths: no linked answer-option CUI available for exact {depth}-hop search."
+        ], 0, 0, 0, 0, Q_TO_A_EXACT_PATH_SELECTION_POLICY
+
+    paths_by_target = relations.clean_exact_paths_between(
+        item.question_cuis,
+        answer_cuis,
+        hops=depth,
+        forbidden_internal=set(answer_cuis),
+        max_paths_per_target=Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI,
+    )
+    covered_count = len(paths_by_target)
+    if covered_count != answer_count:
+        missing = [
+            f"{metadata.get(cui).name or cui} (CUI: {cui})"
+            for cui in answer_cuis
+            if cui not in paths_by_target
+        ]
+        return [
+            f"Q-to-answer exact-depth paths: no complete exact {depth}-hop UMLS path set found.",
+            "Missing answer CUIs: " + ", ".join(missing),
+        ], 0, 0, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY
+
+    lines = [f"Q-to-answer exact-depth paths: depth={depth}"]
+    nodes: set[str] = set()
+    edge_keys: set[tuple[str, str]] = set()
+    edge_count = 0
+    for target in answer_cuis:
+        target_name = metadata.get(target).name or target
+        lines.append(f"Paths to {target_name} (CUI: {target}):")
+        for index, path in enumerate(paths_by_target[target], start=1):
+            lines.append(f"- Path {index}:")
+            nodes.update(path)
+            for left, right in zip(path, path[1:]):
+                left_name = _concept_name(left, metadata)
+                right_name = _concept_name(right, metadata)
+                if not left_name or not right_name:
+                    continue
+                label = relations.relation_label(left, right)
+                lines.append(f"  - {left_name} -- {_plain_relation_label(label)} --> {right_name}")
+                key = tuple(sorted((left, right)))
+                if key not in edge_keys:
+                    edge_keys.add(key)
+                    edge_count += 1
+    return lines, len(nodes), edge_count, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY
 
 
 def _random_nodes(item: QAItem, relations: RelationIndex) -> set[str]:
@@ -470,7 +511,14 @@ def build_evidence_card_details(
 
     exact_depth = _parse_q_to_a_exact_depth_condition(condition)
     if exact_depth is not None:
-        graph_lines, node_count, edge_count = _q_to_a_exact_depth_lines(
+        (
+            graph_lines,
+            node_count,
+            edge_count,
+            answer_count,
+            covered_count,
+            selection_policy,
+        ) = _q_to_a_exact_depth_lines(
             item,
             relations,
             metadata,
@@ -481,9 +529,12 @@ def build_evidence_card_details(
             "\n".join(lines),
             q_to_a_depth_semantics="exact_hops",
             q_to_a_depth=exact_depth,
-            q_to_a_path_found=edge_count > 0,
+            q_to_a_path_found=answer_count > 0 and covered_count == answer_count,
             q_to_a_path_node_count=node_count,
             q_to_a_path_edge_count=edge_count,
+            q_to_a_answer_cui_count=answer_count,
+            q_to_a_answer_cui_covered_count=covered_count,
+            q_to_a_path_selection_policy=selection_policy,
         )
 
     if condition == "random_same_size_evidence":

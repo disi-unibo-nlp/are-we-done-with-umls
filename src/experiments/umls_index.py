@@ -321,6 +321,98 @@ class RelationIndex:
                 edges.append((left, right, self.relation_label(left, right)))
         return edges
 
+    def clean_exact_paths_between(
+        self,
+        sources: Iterable[str],
+        targets: Iterable[str],
+        hops: int,
+        forbidden_internal: Iterable[str] = (),
+        max_paths_per_target: int = 2,
+    ) -> dict[str, list[list[str]]]:
+        """Return deterministic clean exact-hop paths for each target.
+
+        A clean path starts at a source, ends at the requested target, has
+        exactly ``hops`` edges, is simple, and does not use any
+        ``forbidden_internal`` node as an internal bridge.
+        """
+        source_set = {cui for cui in sources if cui}
+        target_set = {cui for cui in targets if cui}
+        forbidden = {cui for cui in forbidden_internal if cui}
+        out: dict[str, list[list[str]]] = {}
+        for target in sorted(target_set):
+            paths = self.clean_exact_paths(
+                source_set,
+                target,
+                hops,
+                forbidden_internal=forbidden,
+                max_paths=max_paths_per_target,
+            )
+            if paths:
+                out[target] = paths
+        return out
+
+    def clean_exact_paths(
+        self,
+        sources: Iterable[str],
+        target: str,
+        hops: int,
+        forbidden_internal: Iterable[str] = (),
+        max_paths: int = 2,
+    ) -> list[list[str]]:
+        source_set = {cui for cui in sources if cui}
+        target = target.strip()
+        forbidden = {cui for cui in forbidden_internal if cui}
+        if not source_set or not target or hops < 0 or max_paths <= 0:
+            return []
+        if hops == 0:
+            return [[target]] if target in source_set else []
+
+        # If an answer CUI is also linked in the question, do not let it become
+        # the source for a path to another answer CUI.
+        source_set = {
+            source
+            for source in source_set
+            if source == target or source not in forbidden
+        }
+        if not source_set:
+            return []
+
+        left_depth = hops // 2
+        right_depth = hops - left_depth
+        left_paths = self._paths_at_depth_multi(
+            source_set,
+            left_depth,
+            forbidden_internal=forbidden,
+            max_paths_per_node=max_paths,
+        )
+        right_paths = self._paths_at_depth_multi(
+            {target},
+            right_depth,
+            forbidden_internal=forbidden - {target},
+            max_paths_per_node=max_paths,
+        )
+
+        paths: list[list[str]] = []
+        seen: set[tuple[str, ...]] = set()
+        for meet in sorted(set(left_paths) & set(right_paths)):
+            for left_path in left_paths[meet]:
+                for right_path in right_paths[meet]:
+                    path = [*left_path, *reversed(right_path[:-1])]
+                    key = tuple(path)
+                    if key in seen:
+                        continue
+                    if len(path) != hops + 1 or len(path) != len(set(path)):
+                        continue
+                    if path[-1] != target or path[0] not in source_set:
+                        continue
+                    if set(path[1:-1]) & forbidden:
+                        continue
+                    seen.add(key)
+                    paths.append(path)
+                    if len(paths) >= max_paths:
+                        return paths
+        return paths
+
     def exact_path_nodes(
         self,
         sources: Iterable[str],
@@ -366,6 +458,34 @@ class RelationIndex:
                     if neighbor in path or neighbor in next_layer:
                         continue
                     next_layer[neighbor] = (*path, neighbor)
+            current = next_layer
+            if not current:
+                break
+        return current
+
+    def _paths_at_depth_multi(
+        self,
+        starts: set[str],
+        depth: int,
+        forbidden_internal: set[str] | None = None,
+        max_paths_per_node: int = 2,
+    ) -> dict[str, list[tuple[str, ...]]]:
+        forbidden_internal = forbidden_internal or set()
+        current: dict[str, list[tuple[str, ...]]] = {
+            node: [(node,)]
+            for node in sorted(starts)
+        }
+        for _ in range(depth):
+            next_layer: dict[str, list[tuple[str, ...]]] = {}
+            for node in sorted(current):
+                for path in current[node]:
+                    for neighbor in self._sorted_adjacency.get(node, ()):
+                        if neighbor in path or neighbor in forbidden_internal:
+                            continue
+                        paths = next_layer.setdefault(neighbor, [])
+                        if len(paths) >= max_paths_per_node:
+                            continue
+                        paths.append((*path, neighbor))
             current = next_layer
             if not current:
                 break

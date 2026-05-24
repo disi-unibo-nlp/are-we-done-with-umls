@@ -66,6 +66,9 @@ def _annotate_probe_row(row: dict, condition: str, card_details=None) -> dict:
     out["q_to_a_path_found"] = bool(getattr(card_details, "q_to_a_path_found", False))
     out["q_to_a_path_node_count"] = int(getattr(card_details, "q_to_a_path_node_count", 0))
     out["q_to_a_path_edge_count"] = int(getattr(card_details, "q_to_a_path_edge_count", 0))
+    out["q_to_a_answer_cui_count"] = int(getattr(card_details, "q_to_a_answer_cui_count", 0))
+    out["q_to_a_answer_cui_covered_count"] = int(getattr(card_details, "q_to_a_answer_cui_covered_count", 0))
+    out["q_to_a_path_selection_policy"] = getattr(card_details, "q_to_a_path_selection_policy", "")
     return out
 
 

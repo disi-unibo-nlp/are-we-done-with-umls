@@ -631,13 +631,20 @@ class DiagnosticTests(unittest.TestCase):
                 "C_MID_A,C_A,RO,alpha_relation\n"
                 "C_Q,C_MID_B,RO,beta_bridge\n"
                 "C_MID_B,C_B,RO,beta_relation\n"
+                "C_Q,C_MID_C,RO,gamma_bridge\n"
+                "C_MID_C,C_C,RO,gamma_relation\n"
+                "C_Q,C_MID_D,RO,delta_bridge\n"
+                "C_MID_D,C_D,RO,delta_relation\n"
                 "C_Q,C_NOISE,RO,noise\n",
             )
             item = load_metamap_records(data_path, dataset="medqa", split="test")[0]
             metadata = CuiMetadataIndex.from_zip(meta_path)
             relations = RelationIndex.from_zip(
                 rel_path,
-                keep_cuis={"C_Q", "C_A", "C_B", "C_C", "C_D", "C_MID_A", "C_MID_B", "C_NOISE"},
+                keep_cuis={
+                    "C_Q", "C_A", "C_B", "C_C", "C_D",
+                    "C_MID_A", "C_MID_B", "C_MID_C", "C_MID_D", "C_NOISE",
+                },
             )
 
             card = build_evidence_card(
@@ -692,8 +699,145 @@ class DiagnosticTests(unittest.TestCase):
 
             card = build_evidence_card(item, "q_to_a_exact_depth_2_evidence", metadata, relations)
 
-        self.assertIn("Q-to-answer exact-depth paths: no exact 2-hop UMLS path found.", card)
+        self.assertIn("Q-to-answer exact-depth paths: no complete exact 2-hop UMLS path set found.", card)
         self.assertNotIn("direct relation", card)
+
+    def test_q_to_a_exact_depth_requires_every_answer_cui_to_have_clean_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_path = root / "test.jsonl"
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_jsonl(data_path, [{
+                "question": "Question",
+                "options": {"A": "Alpha", "B": "Beta"},
+                "answer_idx": "A",
+                "answer": "Alpha",
+                "concept": ["C_Q"],
+                "option0": ["C_A"],
+                "option1": ["C_B"],
+            }])
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_A\tAlpha\tT047\tDisease or Syndrome\t\t\n"
+                "C_B\tBeta\tT047\tDisease or Syndrome\t\t\n"
+                "C_MID_A\tMid alpha\tT033\tFinding\t\t\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\n"
+                "C_Q,C_MID_A,RO,alpha_bridge\n"
+                "C_MID_A,C_A,RO,alpha_relation\n",
+            )
+            item = load_metamap_records(data_path, dataset="medqa", split="test")[0]
+            metadata = CuiMetadataIndex.from_zip(meta_path)
+            relations = RelationIndex.from_zip(rel_path, keep_cuis={"C_Q", "C_A", "C_B", "C_MID_A"})
+
+            details = build_evidence_card_details(item, "q_to_a_exact_depth_2_evidence", metadata, relations)
+
+        self.assertFalse(details.q_to_a_path_found)
+        self.assertEqual(details.q_to_a_answer_cui_count, 2)
+        self.assertEqual(details.q_to_a_answer_cui_covered_count, 1)
+        self.assertIn("no complete exact 2-hop UMLS path set", details.text or "")
+        self.assertNotIn("alpha relation", details.text or "")
+
+    def test_q_to_a_exact_depth_rejects_paths_through_other_answer_cuis(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_path = root / "test.jsonl"
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_jsonl(data_path, [{
+                "question": "Question",
+                "options": {"A": "Alpha", "B": "Beta"},
+                "answer_idx": "B",
+                "answer": "Beta",
+                "concept": ["C_Q"],
+                "option0": ["C_A"],
+                "option1": ["C_B"],
+            }])
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_A\tAlpha\tT047\tDisease or Syndrome\t\t\n"
+                "C_B\tBeta\tT047\tDisease or Syndrome\t\t\n"
+                "C_MID_A\tMid alpha\tT033\tFinding\t\t\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\n"
+                "C_Q,C_MID_A,RO,alpha_bridge\n"
+                "C_MID_A,C_A,RO,alpha_relation\n"
+                "C_Q,C_A,RO,beta_dirty_bridge\n"
+                "C_A,C_B,RO,beta_dirty_relation\n",
+            )
+            item = load_metamap_records(data_path, dataset="medqa", split="test")[0]
+            metadata = CuiMetadataIndex.from_zip(meta_path)
+            relations = RelationIndex.from_zip(rel_path, keep_cuis={"C_Q", "C_A", "C_B", "C_MID_A"})
+
+            details = build_evidence_card_details(item, "q_to_a_exact_depth_2_evidence", metadata, relations)
+
+        self.assertFalse(details.q_to_a_path_found)
+        self.assertEqual(details.q_to_a_answer_cui_count, 2)
+        self.assertEqual(details.q_to_a_answer_cui_covered_count, 1)
+        self.assertNotIn("beta dirty relation", details.text or "")
+
+    def test_q_to_a_exact_depth_caps_clean_paths_per_answer_cui(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_path = root / "test.jsonl"
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_jsonl(data_path, [{
+                "question": "Question",
+                "options": {"A": "Alpha"},
+                "answer_idx": "A",
+                "answer": "Alpha",
+                "concept": ["C_Q"],
+                "option0": ["C_A"],
+            }])
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_A\tAlpha\tT047\tDisease or Syndrome\t\t\n"
+                "C_MID_1\tMid one\tT033\tFinding\t\t\n"
+                "C_MID_2\tMid two\tT033\tFinding\t\t\n"
+                "C_MID_3\tMid three\tT033\tFinding\t\t\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\n"
+                "C_Q,C_MID_1,RO,path_one_a\n"
+                "C_MID_1,C_A,RO,path_one_b\n"
+                "C_Q,C_MID_2,RO,path_two_a\n"
+                "C_MID_2,C_A,RO,path_two_b\n"
+                "C_Q,C_MID_3,RO,path_three_a\n"
+                "C_MID_3,C_A,RO,path_three_b\n",
+            )
+            item = load_metamap_records(data_path, dataset="medqa", split="test")[0]
+            metadata = CuiMetadataIndex.from_zip(meta_path)
+            relations = RelationIndex.from_zip(rel_path, keep_cuis={"C_Q", "C_A", "C_MID_1", "C_MID_2", "C_MID_3"})
+
+            details = build_evidence_card_details(item, "q_to_a_exact_depth_2_evidence", metadata, relations)
+
+        self.assertTrue(details.q_to_a_path_found)
+        self.assertEqual(details.q_to_a_answer_cui_count, 1)
+        self.assertEqual(details.q_to_a_answer_cui_covered_count, 1)
+        self.assertEqual(details.q_to_a_path_selection_policy, "clean_exact_hops_all_answer_cuis_max_2_paths_per_cui")
+        self.assertEqual(details.q_to_a_path_edge_count, 4)
+        self.assertIn("path one a", details.text or "")
+        self.assertIn("path two a", details.text or "")
+        self.assertNotIn("path three a", details.text or "")
 
     def test_distractor_contrast_evidence_is_gold_label_invariant(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

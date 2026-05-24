@@ -76,8 +76,13 @@ def analyse(rows: list[dict], conditions: tuple[str, ...] = DEFAULT_CONDITIONS) 
         n = len(group)
         malformed = [1.0 if row.get("malformed") or row.get("prediction") is None else 0.0 for row in group]
         path_found = [1.0 if row.get("q_to_a_path_found") else 0.0 for row in group]
+        path_present_group = [row for row in group if row.get("q_to_a_path_found")]
         edge_counts = [float(row.get("q_to_a_path_edge_count") or 0) for row in group]
         node_counts = [float(row.get("q_to_a_path_node_count") or 0) for row in group]
+        path_present_accuracy = _mean([1.0 if row.get("is_correct") else 0.0 for row in path_present_group])
+        path_present_strict_accuracy = _mean([1.0 if _strict_correct(row) else 0.0 for row in path_present_group])
+        raw_accuracy = _mean([1.0 if row.get("is_correct") else 0.0 for row in group])
+        raw_strict_accuracy = _mean([1.0 if _strict_correct(row) else 0.0 for row in group])
         summary_rows.append({
             "model_key": model_key,
             "model": model,
@@ -88,8 +93,13 @@ def analyse(rows: list[dict], conditions: tuple[str, ...] = DEFAULT_CONDITIONS) 
             "condition": condition,
             "depth": depth,
             "n": n,
-            "accuracy": _mean([1.0 if row.get("is_correct") else 0.0 for row in group]),
-            "strict_accuracy": _mean([1.0 if _strict_correct(row) else 0.0 for row in group]),
+            "accuracy": path_present_accuracy,
+            "strict_accuracy": path_present_strict_accuracy,
+            "raw_accuracy": raw_accuracy,
+            "raw_strict_accuracy": raw_strict_accuracy,
+            "path_present_n": len(path_present_group),
+            "path_present_accuracy": path_present_accuracy,
+            "path_present_strict_accuracy": path_present_strict_accuracy,
             "malformed_rate": _mean(malformed),
             "path_found_rate": _mean(path_found),
             "mean_path_edge_count": _mean(edge_counts),
@@ -112,6 +122,11 @@ def write_csv(path: Path, rows: list[dict]) -> None:
         "n",
         "accuracy",
         "strict_accuracy",
+        "raw_accuracy",
+        "raw_strict_accuracy",
+        "path_present_n",
+        "path_present_accuracy",
+        "path_present_strict_accuracy",
         "malformed_rate",
         "path_found_rate",
         "mean_path_edge_count",
@@ -136,12 +151,13 @@ def write_markdown(path: Path, rows: list[dict]) -> None:
         if group != current_group:
             model, dataset, linker, mode = group
             lines.extend(["", f"## {model} / {dataset} / {linker} / {mode}", ""])
-            lines.append("| Depth | N | Accuracy | Strict accuracy | Path found | Malformed |")
-            lines.append("|---:|---:|---:|---:|---:|---:|")
+            lines.append("| Depth | N | Path N | Path accuracy | Raw accuracy | Path found | Malformed |")
+            lines.append("|---:|---:|---:|---:|---:|---:|---:|")
             current_group = group
         lines.append(
-            f"| {row['depth']} | {row['n']} | {row['accuracy']:.3f} | "
-            f"{row['strict_accuracy']:.3f} | {row['path_found_rate']:.3f} | "
+            f"| {row['depth']} | {row['n']} | {row['path_present_n']} | "
+            f"{row['path_present_accuracy']:.3f} | {row['raw_accuracy']:.3f} | "
+            f"{row['path_found_rate']:.3f} | "
             f"{row['malformed_rate']:.3f} |"
         )
     if not rows:

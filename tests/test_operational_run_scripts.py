@@ -104,12 +104,13 @@ class OperationalRunScriptTests(unittest.TestCase):
             text,
         )
 
-    def test_operational_runner_default_sweep_includes_large_qwen35_models(self) -> None:
+    def test_operational_runner_default_sweep_uses_fixed_step1_models(self) -> None:
         operational = self.script_text("scripts/run_operational_umls_experiments.sh")
         overnight = self.script_text("scripts/run_overnight_umls_all_models.sh")
         for text in (operational, overnight):
-            self.assertIn("Qwen/Qwen3.5-27B", text)
-            self.assertIn("Qwen/Qwen3.5-35B", text)
+            self.assertIn("Qwen/Qwen3.5-0.8B", text)
+            self.assertIn("Qwen/Qwen3.5-9B", text)
+            self.assertNotIn("Qwen/Qwen3.5-27B Qwen/Qwen3.5-35B", text)
 
     def test_downstream_wrapper_accepts_subset_and_relation_scope(self) -> None:
         text = self.script_text("scripts/run_downstream_umls_probe.sh")
@@ -127,7 +128,7 @@ class OperationalRunScriptTests(unittest.TestCase):
 
     def test_overnight_runner_allows_subset_only_step_selection(self) -> None:
         text = self.script_text("scripts/run_overnight_umls_all_models.sh")
-        self.assertIn('RUN_STEPS="${RUN_STEPS:-1 2 3}"', text)
+        self.assertIn('RUN_STEPS="${RUN_STEPS:-2 3}"', text)
         self.assertIn('STEP23_LINKERS="${STEP23_LINKERS:-spacy}"', text)
         self.assertIn('run_steps "${model}" "${RUN_STEPS}"', text)
 

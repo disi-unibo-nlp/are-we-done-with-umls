@@ -20,8 +20,6 @@ SCALE_MODELS = (
     "Qwen/Qwen3.5-2B",
     "Qwen/Qwen3.5-4B",
     "Qwen/Qwen3.5-9B",
-    "Qwen/Qwen3.5-27B",
-    "Qwen/Qwen3.5-35B",
 )
 DATASETS = ("medQA", "medMCQA")
 LINKERS = tuple(os.environ.get("LINKERS", "metamap spacy").split())

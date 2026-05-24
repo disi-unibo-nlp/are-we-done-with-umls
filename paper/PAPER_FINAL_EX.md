@@ -13,7 +13,7 @@ General scope:
 - split: `test`
 - linkers: STEP 1 builds baseline-wrong manifests for `metamap` and `spacy`;
   STEP 2 and STEP 3 use `spacy` only
-- models: Qwen3.5 `0.8B`, `2B`, `4B`, `9B`, `27B`, `35B`
+- models: Qwen3.5 `0.8B`, `2B`, `4B`, `9B`
 - decoding: non-thinking mode, deterministic settings
 - output root: `outputs/operational_umls/`
 
@@ -47,7 +47,7 @@ data used:
 
 models/linkers:
 
-- Qwen3.5 `0.8B`, `2B`, `4B`, `9B`, `27B`, `35B`
+- Qwen3.5 `0.8B`, `2B`, `4B`, `9B`
 - MetaMap and scispaCy
 
 conditions:

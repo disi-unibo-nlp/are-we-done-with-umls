@@ -6,7 +6,7 @@ from src.experiments import umls_experiment_status as status
 
 
 class UmlsExperimentStatusTests(unittest.TestCase):
-    def test_scale_model_contract_is_full_qwen35_sweep(self) -> None:
+    def test_scale_model_contract_uses_fixed_step1_models(self) -> None:
         self.assertEqual(
             status.SCALE_MODELS,
             (
@@ -14,16 +14,14 @@ class UmlsExperimentStatusTests(unittest.TestCase):
                 "Qwen/Qwen3.5-2B",
                 "Qwen/Qwen3.5-4B",
                 "Qwen/Qwen3.5-9B",
-                "Qwen/Qwen3.5-27B",
-                "Qwen/Qwen3.5-35B",
             ),
         )
 
     def test_step23_status_contract_uses_spacy_only_by_default(self) -> None:
         self.assertEqual(status.LINKERS, ("metamap", "spacy"))
         self.assertEqual(status.STEP23_LINKERS, ("spacy",))
-        self.assertEqual(len(status.expected_cells()), 24)
-        self.assertEqual(len(status.expected_cells(status.STEP23_LINKERS)), 12)
+        self.assertEqual(len(status.expected_cells()), 16)
+        self.assertEqual(len(status.expected_cells(status.STEP23_LINKERS)), 8)
 
     def test_expected_step3_conditions_are_exact_q_to_a_depths(self) -> None:
         self.assertEqual(

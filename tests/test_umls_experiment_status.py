@@ -6,9 +6,9 @@ from src.experiments import umls_experiment_status as status
 
 
 class UmlsExperimentStatusTests(unittest.TestCase):
-    def test_scale_model_contract_uses_fixed_step1_models(self) -> None:
+    def test_model_contract_separates_fixed_step1_from_downstream_sweep(self) -> None:
         self.assertEqual(
-            status.SCALE_MODELS,
+            status.STEP1_MODELS,
             (
                 "Qwen/Qwen3.5-0.8B",
                 "Qwen/Qwen3.5-2B",
@@ -16,12 +16,25 @@ class UmlsExperimentStatusTests(unittest.TestCase):
                 "Qwen/Qwen3.5-9B",
             ),
         )
+        self.assertEqual(
+            status.SCALE_MODELS,
+            (
+                "Qwen/Qwen3.5-0.8B",
+                "Qwen/Qwen3.5-2B",
+                "Qwen/Qwen3.5-4B",
+                "Qwen/Qwen3.5-9B",
+                "Qwen/Qwen3.5-27B",
+                "Qwen/Qwen3.5-35B",
+            ),
+        )
+        self.assertEqual(status.STEP1_SUBSET_FALLBACK_MODEL, "Qwen/Qwen3.5-9B")
 
     def test_step23_status_contract_uses_spacy_only_by_default(self) -> None:
         self.assertEqual(status.LINKERS, ("metamap", "spacy"))
         self.assertEqual(status.STEP23_LINKERS, ("spacy",))
-        self.assertEqual(len(status.expected_cells()), 16)
-        self.assertEqual(len(status.expected_cells(status.STEP23_LINKERS)), 8)
+        self.assertEqual(len(status.expected_cells()), 24)
+        self.assertEqual(len(status.expected_cells(models=status.STEP1_MODELS)), 16)
+        self.assertEqual(len(status.expected_cells(status.STEP23_LINKERS, status.SCALE_MODELS)), 12)
 
     def test_expected_step3_conditions_are_exact_q_to_a_depths(self) -> None:
         self.assertEqual(
@@ -65,6 +78,32 @@ class UmlsExperimentStatusTests(unittest.TestCase):
             built["commands"][0],
             "STEP=1 LIMIT=0 bash scripts/run_operational_umls_experiments.sh",
         )
+
+    def test_subset_audit_resolves_large_models_to_9b_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            old_subsets = status.SUBSETS_DIR
+            status.SUBSETS_DIR = Path(tmp)
+            manifest = status.SUBSETS_DIR / (
+                "medQA_test_spacy_Qwen__Qwen3_5-9B_non_thinking_baseline_wrong.jsonl"
+            )
+            manifest.write_text('{"subset_label":"still_wrong"}\n', encoding="utf-8")
+            try:
+                entries, missing = status.audit_subsets(linkers=("spacy",))
+            finally:
+                status.SUBSETS_DIR = old_subsets
+
+        by_model = {
+            entry["model"]: entry
+            for entry in entries
+            if entry["dataset"] == "medQA" and entry["linker"] == "spacy"
+        }
+        self.assertTrue(by_model["Qwen/Qwen3.5-9B"]["nonempty"])
+        self.assertIsNone(by_model["Qwen/Qwen3.5-9B"].get("fallback_model"))
+        self.assertTrue(by_model["Qwen/Qwen3.5-27B"]["nonempty"])
+        self.assertEqual(by_model["Qwen/Qwen3.5-27B"]["fallback_model"], "Qwen/Qwen3.5-9B")
+        self.assertTrue(by_model["Qwen/Qwen3.5-35B"]["nonempty"])
+        self.assertEqual(by_model["Qwen/Qwen3.5-35B"]["fallback_model"], "Qwen/Qwen3.5-9B")
+        self.assertNotIn("medQA_test_spacy_Qwen__Qwen3_5-27B", "\n".join(missing))
 
 
 if __name__ == "__main__":

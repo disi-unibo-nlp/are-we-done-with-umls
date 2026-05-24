@@ -15,15 +15,21 @@ STEP3_PREDICTIONS_DIR = OUTPUT_ROOT / "step3_predictions" / "qwen"
 SUBSETS_DIR = OUTPUT_ROOT / "step1_subsets"
 TABLES_DIR = OUTPUT_ROOT / "tables"
 
-SCALE_MODELS = (
+STEP1_MODELS = (
     "Qwen/Qwen3.5-0.8B",
     "Qwen/Qwen3.5-2B",
     "Qwen/Qwen3.5-4B",
     "Qwen/Qwen3.5-9B",
 )
+SCALE_MODELS = (
+    *STEP1_MODELS,
+    "Qwen/Qwen3.5-27B",
+    "Qwen/Qwen3.5-35B",
+)
 DATASETS = ("medQA", "medMCQA")
 LINKERS = tuple(os.environ.get("LINKERS", "metamap spacy").split())
 STEP23_LINKERS = tuple(os.environ.get("STEP23_LINKERS", "spacy").split())
+STEP1_SUBSET_FALLBACK_MODEL = os.environ.get("STEP1_SUBSET_FALLBACK_MODEL", "Qwen/Qwen3.5-9B")
 SPLIT = "test"
 MODE = "non_thinking"
 
@@ -43,7 +49,10 @@ def qwen_slug(model: str) -> str:
     return model.replace("/", "__").replace(".", "_")
 
 
-def expected_cells(linkers: tuple[str, ...] = LINKERS) -> list[dict[str, str]]:
+def expected_cells(
+    linkers: tuple[str, ...] = LINKERS,
+    models: tuple[str, ...] = SCALE_MODELS,
+) -> list[dict[str, str]]:
     return [
         {
             "dataset": dataset,
@@ -54,7 +63,7 @@ def expected_cells(linkers: tuple[str, ...] = LINKERS) -> list[dict[str, str]]:
         }
         for dataset in DATASETS
         for linker in linkers
-        for model in SCALE_MODELS
+        for model in models
     ]
 
 
@@ -82,6 +91,18 @@ def manifest_path(cell: dict[str, str]) -> Path:
     return SUBSETS_DIR / f"{stem}.jsonl"
 
 
+def resolved_manifest_path(cell: dict[str, str]) -> tuple[Path, str | None]:
+    path = manifest_path(cell)
+    if path.is_file() and path.stat().st_size > 0:
+        return path, None
+    if STEP1_SUBSET_FALLBACK_MODEL and cell["model"] != STEP1_SUBSET_FALLBACK_MODEL:
+        fallback_cell = {**cell, "model": STEP1_SUBSET_FALLBACK_MODEL}
+        fallback_path = manifest_path(fallback_cell)
+        if fallback_path.is_file() and fallback_path.stat().st_size > 0:
+            return fallback_path, STEP1_SUBSET_FALLBACK_MODEL
+    return path, None
+
+
 def read_jsonl(path: Path, limit: int | None = None) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as fh:
@@ -97,10 +118,11 @@ def audit_prediction_dir(
     root: Path,
     expected_conditions: tuple[str, ...],
     linkers: tuple[str, ...] = LINKERS,
+    models: tuple[str, ...] = SCALE_MODELS,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     entries: list[dict[str, Any]] = []
     missing: list[str] = []
-    for cell in expected_cells(linkers):
+    for cell in expected_cells(linkers, models):
         path = prediction_path(root, cell)
         entry: dict[str, Any] = {**cell, "path": str(path), "exists": path.is_file(), "nonempty": False}
         if not path.is_file() or path.stat().st_size == 0:
@@ -125,14 +147,26 @@ def audit_prediction_dir(
     return entries, missing
 
 
-def audit_subsets(linkers: tuple[str, ...] = LINKERS) -> tuple[list[dict[str, Any]], list[str]]:
+def audit_subsets(
+    linkers: tuple[str, ...] = LINKERS,
+    models: tuple[str, ...] = SCALE_MODELS,
+) -> tuple[list[dict[str, Any]], list[str]]:
     entries: list[dict[str, Any]] = []
     missing: list[str] = []
-    for cell in expected_cells(linkers):
-        path = manifest_path(cell)
-        entry: dict[str, Any] = {**cell, "path": str(path), "exists": path.is_file(), "nonempty": False}
+    for cell in expected_cells(linkers, models):
+        expected_path = manifest_path(cell)
+        path, fallback_model = resolved_manifest_path(cell)
+        entry: dict[str, Any] = {
+            **cell,
+            "path": str(path),
+            "expected_path": str(expected_path),
+            "fallback_model": fallback_model,
+            "uses_fallback": fallback_model is not None,
+            "exists": path.is_file(),
+            "nonempty": False,
+        }
         if not path.is_file() or path.stat().st_size == 0:
-            missing.append(str(path))
+            missing.append(str(expected_path))
             entries.append(entry)
             continue
         rows = read_jsonl(path)
@@ -187,7 +221,12 @@ def read_step1_summary() -> list[dict[str, str]]:
 
 
 def build_status() -> dict[str, Any]:
-    step1_predictions, missing_step1_predictions = audit_prediction_dir(STEP1_PREDICTIONS_DIR, STEP1_CONDITIONS)
+    step1_predictions, missing_step1_predictions = audit_prediction_dir(
+        STEP1_PREDICTIONS_DIR,
+        STEP1_CONDITIONS,
+        LINKERS,
+        STEP1_MODELS,
+    )
     subsets, missing_subsets = audit_subsets()
     step2_predictions, missing_step2_predictions = audit_prediction_dir(
         STEP2_PREDICTIONS_DIR,
@@ -203,10 +242,14 @@ def build_status() -> dict[str, Any]:
     status: dict[str, Any] = {
         "workflow": "operational_umls",
         "root": str(OUTPUT_ROOT),
-        "expected_cells": len(expected_cells()),
-        "expected_step23_cells": len(expected_cells(STEP23_LINKERS)),
+        "expected_cells": len(expected_cells(LINKERS, STEP1_MODELS)),
+        "expected_step1_cells": len(expected_cells(LINKERS, STEP1_MODELS)),
+        "expected_step23_cells": len(expected_cells(STEP23_LINKERS, SCALE_MODELS)),
+        "step1_models": list(STEP1_MODELS),
+        "downstream_models": list(SCALE_MODELS),
         "step1_linkers": list(LINKERS),
         "step23_linkers": list(STEP23_LINKERS),
+        "step1_subset_fallback_model": STEP1_SUBSET_FALLBACK_MODEL,
         "step1_predictions": {
             "complete": not missing_step1_predictions,
             "missing": missing_step1_predictions,
@@ -256,6 +299,7 @@ def write_markdown(path: Path, status: dict[str, Any]) -> None:
         f"- Expected STEP 2/3 cells: `{status['expected_step23_cells']}`",
         f"- STEP 1 linkers: `{', '.join(status['step1_linkers'])}`",
         f"- STEP 2/3 linkers: `{', '.join(status['step23_linkers'])}`",
+        f"- STEP 1 subset fallback model: `{status['step1_subset_fallback_model'] or 'none'}`",
         f"- STEP 1 predictions complete: `{status['step1_predictions']['complete']}`",
         f"- STEP 1 subsets complete: `{status['step1_subsets']['complete']}`",
         f"- STEP 2 predictions complete: `{status['step2_predictions']['complete']}`",

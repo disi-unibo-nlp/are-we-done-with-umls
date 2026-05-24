@@ -26,7 +26,7 @@ SPLIT="${SPLIT:-test}"
 DATASETS="${DATASETS:-medQA medMCQA}"
 LINKERS="${LINKERS:-metamap spacy}"
 STEP23_LINKERS="${STEP23_LINKERS:-spacy}"
-QWEN_MODEL_LIST="${QWEN_MODEL_LIST:-Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B}"
+QWEN_MODEL_LIST="${QWEN_MODEL_LIST:-Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B Qwen/Qwen3.5-27B Qwen/Qwen3.5-35B}"
 QWEN_MODE="${QWEN_MODE:-non_thinking}"
 QWEN_TEMPERATURE="${QWEN_TEMPERATURE:-0.0}"
 QWEN_TOP_P="${QWEN_TOP_P:-1.0}"
@@ -50,6 +50,7 @@ DRY_RUN="${DRY_RUN:-0}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-outputs/operational_umls}"
 STEP1_SUBSET_ROOT="${STEP1_SUBSET_ROOT:-${OUTPUT_ROOT}/step1_subsets}"
 STEP1_SUBSET_MODE="${STEP1_SUBSET_MODE:-${QWEN_MODE}}"
+STEP1_SUBSET_FALLBACK_MODEL="${STEP1_SUBSET_FALLBACK_MODEL:-Qwen/Qwen3.5-9B}"
 TRIPLETS_ZIP="${TRIPLETS_ZIP:-data/UMLS/triplets.csv.zip}"
 EXTENDED_TRIPLETS_ZIP="${EXTENDED_TRIPLETS_ZIP:-data/UMLS/triplets_extended.csv.zip}"
 
@@ -169,6 +170,14 @@ run_filtered_step() {
       for model in ${QWEN_MODEL_LIST}; do
         local manifest
         manifest="$(manifest_file "${dataset}" "${linker}" "${model}")"
+        if [[ ! -s "${manifest}" && -n "${STEP1_SUBSET_FALLBACK_MODEL}" && "${model}" != "${STEP1_SUBSET_FALLBACK_MODEL}" ]]; then
+          local fallback_manifest
+          fallback_manifest="$(manifest_file "${dataset}" "${linker}" "${STEP1_SUBSET_FALLBACK_MODEL}")"
+          if [[ -s "${fallback_manifest}" ]]; then
+            log "Using STEP 1 fallback manifest for model=${model}: fallback_model=${STEP1_SUBSET_FALLBACK_MODEL} manifest=${fallback_manifest}"
+            manifest="${fallback_manifest}"
+          fi
+        fi
         if [[ ! -s "${manifest}" ]]; then
           if [[ "${DRY_RUN}" == "1" ]]; then
             log "DRY_RUN=1: would use manifest ${manifest}"

@@ -1,5 +1,6 @@
 import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -104,13 +105,51 @@ class OperationalRunScriptTests(unittest.TestCase):
             text,
         )
 
-    def test_operational_runner_default_sweep_uses_fixed_step1_models(self) -> None:
+    def test_operational_runner_default_sweep_keeps_large_models_with_step1_fallback(self) -> None:
         operational = self.script_text("scripts/run_operational_umls_experiments.sh")
         overnight = self.script_text("scripts/run_overnight_umls_all_models.sh")
         for text in (operational, overnight):
             self.assertIn("Qwen/Qwen3.5-0.8B", text)
             self.assertIn("Qwen/Qwen3.5-9B", text)
-            self.assertNotIn("Qwen/Qwen3.5-27B Qwen/Qwen3.5-35B", text)
+            self.assertIn("Qwen/Qwen3.5-27B", text)
+            self.assertIn("Qwen/Qwen3.5-35B", text)
+            self.assertIn('STEP1_SUBSET_FALLBACK_MODEL="${STEP1_SUBSET_FALLBACK_MODEL:-Qwen/Qwen3.5-9B}"', text)
+
+    def test_operational_runner_uses_9b_step1_manifest_for_large_models(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subsets = root / "step1_subsets"
+            subsets.mkdir(parents=True)
+            fallback_manifest = subsets / (
+                "medQA_test_spacy_Qwen__Qwen3_5-9B_non_thinking_baseline_wrong.jsonl"
+            )
+            fallback_manifest.write_text('{"item_id":"x"}\n', encoding="utf-8")
+
+            env = os.environ.copy()
+            env.update({
+                "DRY_RUN": "1",
+                "STEP": "2",
+                "LIMIT": "1",
+                "DATASETS": "medQA",
+                "STEP23_LINKERS": "spacy",
+                "QWEN_MODEL_LIST": "Qwen/Qwen3.5-27B",
+                "OUTPUT_ROOT": str(root),
+                "UV_BIN": "/usr/bin/true",
+            })
+            result = subprocess.run(
+                ["bash", "scripts/run_operational_umls_experiments.sh"],
+                cwd=REPO_ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Using STEP 1 fallback manifest for model=Qwen/Qwen3.5-27B", result.stdout)
+        self.assertIn(str(fallback_manifest), result.stdout)
+        self.assertIn("Qwen3.5-27B", result.stdout)
 
     def test_downstream_wrapper_accepts_subset_and_relation_scope(self) -> None:
         text = self.script_text("scripts/run_downstream_umls_probe.sh")

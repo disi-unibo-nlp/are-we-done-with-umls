@@ -13,7 +13,11 @@ General scope:
 - split: `test`
 - linkers: STEP 1 builds baseline-wrong manifests for `metamap` and `spacy`;
   STEP 2 and STEP 3 use `spacy` only
-- models: Qwen3.5 `0.8B`, `2B`, `4B`, `9B`
+- downstream model sweep: Qwen3.5 `0.8B`, `2B`, `4B`, `9B`, `27B`,
+  `35B`
+- fixed subset policy: STEP 2 and STEP 3 use existing STEP 1
+  baseline-wrong manifests; if a `27B` or `35B` STEP 1 manifest is absent,
+  use the corresponding `9B` manifest rather than regenerating STEP 1
 - decoding: non-thinking mode, deterministic settings
 - output root: `outputs/operational_umls/`
 
@@ -49,6 +53,11 @@ models/linkers:
 
 - Qwen3.5 `0.8B`, `2B`, `4B`, `9B`
 - MetaMap and scispaCy
+
+The `27B` and `35B` checkpoints are included in downstream STEP 2/3 scale
+experiments by reusing the fixed `9B` baseline-wrong manifests when their own
+STEP 1 manifests are unavailable. This keeps the evaluation set fixed and
+avoids rerunning STEP 1.
 
 conditions:
 

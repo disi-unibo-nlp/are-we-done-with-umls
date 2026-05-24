@@ -12,7 +12,7 @@ General scope:
 - datasets: `medQA`, `medMCQA`
 - split: `test`
 - linkers: `metamap`, `spacy`
-- models: Qwen3.5 `0.8B`, `2B`, `4B`, `9B`
+- models: Qwen3.5 `0.8B`, `2B`, `4B`, `9B`, `27B`, `35B`
 - decoding: non-thinking mode, deterministic settings
 - output root: `outputs/operational_umls/`
 
@@ -45,7 +45,7 @@ data used:
 
 models/linkers:
 
-- Qwen3.5 `0.8B`, `2B`, `4B`, `9B`
+- Qwen3.5 `0.8B`, `2B`, `4B`, `9B`, `27B`, `35B`
 - MetaMap and scispaCy
 
 conditions:
@@ -95,15 +95,12 @@ data used:
 
 conditions:
 
-- `relation_only_evidence`: UMLS concept names plus relation edges
-- `metadata_rich_evidence`: concept names, definitions, semantic types, and
-  option concept metadata
-- `gold_only_evidence`: evidence for the gold answer only; diagnostic upper
-  bound, not realistic at inference time
-- `shuffled_answer_evidence`: answer evidence assigned to different option
-  labels; control for whether the model follows the injected evidence
-- `q_to_a_path_evidence`: metadata plus paths from question CUIs to answer
-  option CUIs
+- `relation_only_evidence`: readable UMLS relation edges from the local
+  question/answer neighborhood, without definitions or CUIs
+- `q_to_a_path_evidence`: readable paths from question CUIs to answer-option
+  CUIs, without concept metadata
+- `metadata_rich_evidence`: the same question-to-answer path graph, augmented
+  with concept names, CUIs, definitions, and semantic types
 
 output:
 
@@ -112,9 +109,10 @@ output:
 
 what we learn:
 
-We learn which UMLS evidence forms help, hurt, or control the model on items
-where the baseline model was wrong. `gold_only_evidence` is interpreted only as
-an upper bound. It is not main-claim evidence.
+We learn whether performance changes when the model first sees broad UMLS graph
+relations, then focused question-to-answer paths, and finally the same focused
+paths enriched with UMLS metadata. This keeps the main paper evidence realistic:
+no gold-only or oracle diagnostic condition is used as main-claim evidence.
 
 script:
 
@@ -126,13 +124,14 @@ STEP=2 LIMIT=0 bash scripts/run_operational_umls_experiments.sh
 
 purpose:
 
-Test whether the model can use chains in the UMLS graph, and how performance
-changes when the graph path becomes longer or the injected graph becomes wider.
+Test what happens when the STEP 2 Q-to-answer path method is constrained to
+shorter or longer exact paths from question CUIs to answer-option CUIs.
 
 claim:
 
-The usefulness of UMLS graph evidence depends on both chain depth and context
-width. More UMLS graph context is not automatically better.
+The usefulness of focused UMLS path evidence depends on path length. Direct and
+short paths should be easier to use than longer exact paths, which are more
+likely to pass through generic or weakly relevant UMLS nodes.
 
 data used:
 
@@ -146,38 +145,30 @@ data used:
 
 conditions:
 
-- rows: path depth from question CUI to correct answer CUI
-  - depth 1
-  - depth 2
-  - depth 3
-  - depth 4
-- columns: total UMLS graph context injected around the path
-  - `tight`: up to 20 nodes
-  - `medium`: up to 50 nodes
-  - `wide`: up to 100 nodes
-  - `full`: up to 200 nodes
+- exact Q-to-answer path depth 1
+- exact Q-to-answer path depth 2
+- exact Q-to-answer path depth 3
+- exact Q-to-answer path depth 4
 
 The condition names are:
 
 ```text
-chain_depth_1_width_tight_evidence
-chain_depth_1_width_medium_evidence
-chain_depth_1_width_wide_evidence
-chain_depth_1_width_full_evidence
-...
-chain_depth_4_width_full_evidence
+q_to_a_exact_depth_1_evidence
+q_to_a_exact_depth_2_evidence
+q_to_a_exact_depth_3_evidence
+q_to_a_exact_depth_4_evidence
 ```
 
 output:
 
 - prediction files under `outputs/operational_umls/step3_predictions/`
-- depth x width matrix tables under `outputs/operational_umls/tables/`
+- Q-to-answer depth tables under `outputs/operational_umls/tables/`
 
 what we learn:
 
-We learn whether performance changes as the graph chain gets longer and as more
-connected UMLS context nodes are injected. This tests graph use rather than
-only metadata use.
+We learn whether the model benefits from focused Q-to-answer paths only at
+short depths or whether longer exact paths still provide useful decision
+evidence. This removes the old width axis and isolates path length.
 
 script:
 
@@ -263,6 +254,7 @@ claims:
 - `prior_work_obscured_evidence`
 - `q_to_a_depth_*_obscured`
 - `pooled_width_*_obscured`
+- depth-width graph-context sweeps
 - `distractor_only_path_evidence`
 - `scripts/run_new_conditions_sweep.sh`
 - `scripts/run_scale_sweep.sh`

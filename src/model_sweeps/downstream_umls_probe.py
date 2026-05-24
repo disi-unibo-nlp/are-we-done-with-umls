@@ -61,6 +61,11 @@ def _annotate_probe_row(row: dict, condition: str, card_details=None) -> dict:
     out["oracle_selected_cui_source"] = getattr(card_details, "oracle_selected_cui_source", "")
     out["option_evidence_symmetric"] = bool(getattr(card_details, "option_evidence_symmetric", False))
     out["uses_gold_label_for_evidence"] = bool(getattr(card_details, "uses_gold_label_for_evidence", False))
+    out["q_to_a_depth_semantics"] = getattr(card_details, "q_to_a_depth_semantics", "")
+    out["q_to_a_depth"] = int(getattr(card_details, "q_to_a_depth", 0))
+    out["q_to_a_path_found"] = bool(getattr(card_details, "q_to_a_path_found", False))
+    out["q_to_a_path_node_count"] = int(getattr(card_details, "q_to_a_path_node_count", 0))
+    out["q_to_a_path_edge_count"] = int(getattr(card_details, "q_to_a_path_edge_count", 0))
     return out
 
 
@@ -107,6 +112,7 @@ def run_qwen_probe(
     max_retries: int = 2,
     retry_sleep_s: float = 2.0,
     decoding_overrides: dict | None = None,
+    thinking_token_budget: int | None = None,
     output_jsonl: Path | None = None,
     existing_rows: list[dict] | None = None,
     concurrency: int = 1,
@@ -152,6 +158,7 @@ def run_qwen_probe(
             max_retries=max_retries,
             retry_sleep_s=retry_sleep_s,
             decoding_overrides=decoding_overrides,
+            thinking_token_budget=thinking_token_budget,
         )
         return _annotate_probe_row(row, condition, card)
 
@@ -298,6 +305,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top-p", type=float, default=None)
     parser.add_argument("--top-k", type=int, default=None)
     parser.add_argument("--presence-penalty", type=float, default=None)
+    parser.add_argument("--thinking-token-budget", type=int, default=None)
     parser.add_argument("--concurrency", type=int, default=1, help="Number of concurrent vLLM requests.")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--output-jsonl", type=Path, required=True)
@@ -339,6 +347,7 @@ def main() -> None:
             "top_p": args.top_p,
             "top_k": args.top_k,
             "presence_penalty": args.presence_penalty,
+            "thinking_token_budget": args.thinking_token_budget,
             "seed": args.seed,
             "enable_thinking": args.qwen_mode == "thinking",
             "output_jsonl": str(args.output_jsonl),
@@ -368,6 +377,7 @@ def main() -> None:
             metadata=metadata,
             relations=relations,
             decoding_overrides=decoding_overrides,
+            thinking_token_budget=args.thinking_token_budget,
             output_jsonl=args.output_jsonl,
             existing_rows=load_existing_rows(args.output_jsonl) if args.resume else [],
             concurrency=args.concurrency,

@@ -286,6 +286,41 @@ class RelationIndex:
                 edges.append((left, right, self.relation_label(left, right)))
         return edges
 
+    def exact_path_nodes_between(
+        self,
+        sources: Iterable[str],
+        targets: Iterable[str],
+        hops: int,
+    ) -> set[str]:
+        source_set = {cui for cui in sources if cui}
+        out: set[str] = set()
+        for target in sorted({cui for cui in targets if cui}):
+            path = self.exact_path_nodes(source_set, [target], hops=hops)
+            if path:
+                out.update(path)
+        return out
+
+    def exact_path_edges_between(
+        self,
+        sources: Iterable[str],
+        targets: Iterable[str],
+        hops: int,
+    ) -> list[tuple[str, str, str]]:
+        source_set = {cui for cui in sources if cui}
+        edges: list[tuple[str, str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        for target in sorted({cui for cui in targets if cui}):
+            path = self.exact_path_nodes(source_set, [target], hops=hops)
+            if not path or len(path) < 2:
+                continue
+            for left, right in zip(path, path[1:]):
+                key = tuple(sorted((left, right)))
+                if key in seen:
+                    continue
+                seen.add(key)
+                edges.append((left, right, self.relation_label(left, right)))
+        return edges
+
     def exact_path_nodes(
         self,
         sources: Iterable[str],

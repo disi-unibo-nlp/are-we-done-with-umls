@@ -15,6 +15,7 @@ class OperationalRunScriptTests(unittest.TestCase):
         scripts = [
             "scripts/run_downstream_umls_probe.sh",
             "scripts/run_operational_umls_experiments.sh",
+            "scripts/run_overnight_umls_all_models.sh",
             "scripts/umls_experiment_monitor.sh",
             "scripts/openclaw.sh",
         ]
@@ -52,12 +53,33 @@ class OperationalRunScriptTests(unittest.TestCase):
         self.assertIn("metadata_rich_evidence", result.stdout)
         self.assertIn("DRY_RUN=1", result.stdout)
 
-    def test_operational_runner_defines_chain_matrix_without_obscured_conditions(self) -> None:
+    def test_operational_runner_defines_exact_q_to_a_step3_without_width_matrix(self) -> None:
         text = self.script_text("scripts/run_operational_umls_experiments.sh")
-        self.assertIn("chain_depth_${depth}_width_${width}_evidence", text)
+        self.assertIn("q_to_a_exact_depth_${depth}_evidence", text)
+        self.assertIn("Q2A_DEPTH_CONDITIONS", text)
+        self.assertNotIn("CHAIN_CONDITIONS", text)
+        self.assertNotIn("chain_depth_${depth}_width_${width}_evidence", text)
         self.assertNotIn("q_to_a_depth_2_obscured", text)
         self.assertNotIn("pooled_width_tight_obscured", text)
         self.assertNotIn("prior_work_obscured_evidence", text)
+
+    def test_operational_runner_defaults_step2_to_three_ordered_umls_conditions(self) -> None:
+        text = self.script_text("scripts/run_operational_umls_experiments.sh")
+        self.assertIn(
+            'STEP2_CONDITIONS="${STEP2_CONDITIONS:-relation_only_evidence q_to_a_path_evidence metadata_rich_evidence}"',
+            text,
+        )
+        self.assertNotIn(
+            'STEP2_CONDITIONS="${STEP2_CONDITIONS:-relation_only_evidence metadata_rich_evidence gold_only_evidence shuffled_answer_evidence q_to_a_path_evidence}"',
+            text,
+        )
+
+    def test_operational_runner_default_sweep_includes_large_qwen35_models(self) -> None:
+        operational = self.script_text("scripts/run_operational_umls_experiments.sh")
+        overnight = self.script_text("scripts/run_overnight_umls_all_models.sh")
+        for text in (operational, overnight):
+            self.assertIn("Qwen/Qwen3.5-27B", text)
+            self.assertIn("Qwen/Qwen3.5-35B", text)
 
     def test_downstream_wrapper_accepts_subset_and_relation_scope(self) -> None:
         text = self.script_text("scripts/run_downstream_umls_probe.sh")
@@ -65,6 +87,39 @@ class OperationalRunScriptTests(unittest.TestCase):
         self.assertIn("--item-id-file", text)
         self.assertIn("RELATION_SCOPE", text)
         self.assertIn("--relation-scope", text)
+
+    def test_operational_runner_can_reuse_fixed_nonthinking_subset_for_reasoning_outputs(self) -> None:
+        text = self.script_text("scripts/run_operational_umls_experiments.sh")
+        self.assertIn("STEP1_SUBSET_ROOT", text)
+        self.assertIn('STEP1_SUBSET_MODE="${STEP1_SUBSET_MODE:-${QWEN_MODE}}"', text)
+        self.assertIn('"${STEP1_SUBSET_ROOT}"', text)
+        self.assertIn('"${STEP1_SUBSET_MODE}"', text)
+
+    def test_overnight_runner_allows_subset_only_step_selection(self) -> None:
+        text = self.script_text("scripts/run_overnight_umls_all_models.sh")
+        self.assertIn('RUN_STEPS="${RUN_STEPS:-1 2 3}"', text)
+        self.assertIn('run_steps "${model}" "${RUN_STEPS}"', text)
+
+    def test_reasoning_mode_plumbs_vllm_budget_and_parser_settings(self) -> None:
+        downstream = self.script_text("scripts/run_downstream_umls_probe.sh")
+        operational = self.script_text("scripts/run_operational_umls_experiments.sh")
+        overnight = self.script_text("scripts/run_overnight_umls_all_models.sh")
+
+        self.assertIn("QWEN_THINKING_TOKEN_BUDGET", downstream)
+        self.assertIn("--thinking-token-budget", downstream)
+        self.assertIn("QWEN_ANSWER_TOKEN_BUDGET", downstream)
+        self.assertIn("QWEN_THINKING_TOKEN_BUDGET", operational)
+        self.assertIn("QWEN_ANSWER_TOKEN_BUDGET", operational)
+        self.assertIn("QWEN_THINKING_TOKEN_BUDGET + QWEN_ANSWER_TOKEN_BUDGET", operational)
+        self.assertIn("VLLM_REASONING_PARSER", overnight)
+        self.assertIn("--reasoning-parser", overnight)
+        self.assertIn("VLLM_REASONING_CONFIG", overnight)
+        self.assertIn("--reasoning-config", overnight)
+
+    def test_operational_tables_use_q_to_a_depth_analysis_not_depth_width(self) -> None:
+        text = self.script_text("scripts/run_operational_umls_experiments.sh")
+        self.assertIn("q_to_a_depth_analysis.py", text)
+        self.assertNotIn("depth_width_analysis.py", text)
 
 
 if __name__ == "__main__":

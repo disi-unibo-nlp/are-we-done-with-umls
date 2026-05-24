@@ -51,6 +51,9 @@ def _normalize_gold(raw: dict, options: dict[str, str]) -> tuple[str | None, str
     answer = raw.get("answer")
     if answer is None and gold in options:
         answer = options[gold]
+    # For formats where the answer field itself is an option key (e.g. pubmedQA)
+    if gold is None and answer is not None and str(answer) in options:
+        gold = str(answer)
     return gold, str(answer) if answer is not None else None
 
 

@@ -7,11 +7,15 @@ from pathlib import Path
 
 from src.experiments.loaders import load_metamap_records
 from src.model_sweeps.qwen_vllm_sweep import (
+    NON_REASONING_PROMPT,
+    REASONING_PROMPT,
+    boxed_answer_regex,
     build_prompt,
     build_request_payload,
     decoding_params,
     extract_answer,
     normalize_limit,
+    response_text,
     run_sweep,
     summarize_predictions,
 )
@@ -80,6 +84,18 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertEqual(thinking["repetition_penalty"], 1.0)
         self.assertTrue(thinking["enable_thinking"])
 
+    def test_mode_prompts_are_module_level_templates(self) -> None:
+        self.assertIn("medical expert tasked with answering multiple-choice medical questions", NON_REASONING_PROMPT)
+        self.assertIn("{question}", NON_REASONING_PROMPT)
+        self.assertIn("{options}", NON_REASONING_PROMPT)
+        self.assertIn("{umls_subgraph}", NON_REASONING_PROMPT)
+        self.assertIn("medical expert tasked with answering multiple-choice medical questions", REASONING_PROMPT)
+        self.assertIn("Briefly reason over the clinically relevant facts and UMLS relations", REASONING_PROMPT)
+        self.assertIn("When private reasoning ends", REASONING_PROMPT)
+        self.assertIn("{question}", REASONING_PROMPT)
+        self.assertIn("{options}", REASONING_PROMPT)
+        self.assertIn("{umls_subgraph}", REASONING_PROMPT)
+
     def test_payload_contains_vllm_extra_params_and_thinking_toggle(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "test.jsonl"
@@ -110,9 +126,9 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertEqual(payload["repetition_penalty"], 1.0)
         self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": False})
         self.assertEqual(payload["messages"][0]["role"], "system")
-        self.assertIn("strict multiple-choice classifier", payload["messages"][0]["content"])
-        self.assertIn(r"\boxed{X}", payload["messages"][-1]["content"])
-        self.assertIn("Do not explain", payload["messages"][-1]["content"])
+        self.assertIn("medical expert tasked with answering multiple-choice medical questions", payload["messages"][0]["content"])
+        self.assertIn(r"\boxed{}", payload["messages"][-1]["content"])
+        self.assertIn("Do not include explanation", payload["messages"][-1]["content"])
         self.assertIn("A. Warfarin", payload["messages"][-1]["content"])
 
     def test_payload_accepts_deterministic_intervention_decoding_overrides(self) -> None:
@@ -139,6 +155,76 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertEqual(payload["seed"], 42)
         self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": False})
 
+    def test_thinking_payload_sets_budget_and_final_answer_prompt(self) -> None:
+        item = self.make_item("first")
+
+        payload = build_request_payload(
+            item,
+            model="Qwen/Qwen3.5-0.8B",
+            mode="thinking",
+            max_tokens=1536,
+            evidence="C_Q -> associated_with -> C_A",
+            thinking_token_budget=1024,
+        )
+
+        self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": True})
+        self.assertEqual(payload["thinking_token_budget"], 1024)
+        self.assertEqual(payload["structured_outputs"], {"regex": r"\\boxed\{(?:A|B)\}"})
+        user_prompt = payload["messages"][-1]["content"]
+        self.assertIn("Briefly reason over the clinically relevant facts and UMLS relations", user_prompt)
+        self.assertIn("C_Q -> associated_with -> C_A", user_prompt)
+        self.assertIn(r"\boxed{}", user_prompt)
+        self.assertNotIn("{umls_subgraph}", user_prompt)
+        self.assertNotIn("Do not explain your reasoning", user_prompt)
+
+    def test_response_text_accepts_vllm_reasoning_field_names(self) -> None:
+        response = {
+            "choices": [{
+                "message": {
+                    "content": r"\boxed{B}",
+                    "reasoning": "private trace",
+                }
+            }]
+        }
+
+        self.assertEqual(response_text(response), (r"\boxed{B}", "private trace"))
+
+        legacy_response = {
+            "choices": [{
+                "message": {
+                    "content": r"\boxed{C}",
+                    "reasoning_content": "legacy private trace",
+                }
+            }]
+        }
+
+        self.assertEqual(response_text(legacy_response), (r"\boxed{C}", "legacy private trace"))
+
+    def test_non_thinking_payload_omits_thinking_budget(self) -> None:
+        item = self.make_item("first")
+
+        payload = build_request_payload(
+            item,
+            model="Qwen/Qwen3.5-0.8B",
+            mode="non_thinking",
+            max_tokens=32,
+            thinking_token_budget=1024,
+        )
+
+        self.assertEqual(payload["chat_template_kwargs"], {"enable_thinking": False})
+        self.assertNotIn("thinking_token_budget", payload)
+        self.assertNotIn("structured_outputs", payload)
+
+    def test_boxed_answer_regex_escapes_non_letter_options(self) -> None:
+        self.assertEqual(
+            boxed_answer_regex(["yes", "no", "maybe"]),
+            r"\\boxed\{(?:yes|no|maybe)\}",
+        )
+        self.assertEqual(
+            boxed_answer_regex(["A", "B.1"]),
+            r"\\boxed\{(?:A|B\.1)\}",
+        )
+
     def test_prompt_can_include_umls_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "test.jsonl"
@@ -159,6 +245,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
 
         self.assertIn("UMLS evidence:", prompt)
         self.assertIn("heparin -> monitored_by", prompt)
+        self.assertNotIn("{umls_subgraph}", prompt)
 
     def test_extract_answer_accepts_json_and_fallback_text(self) -> None:
         self.assertEqual(extract_answer('{"answer": "B", "rationale": "text"}', ["A", "B", "C", "D"]), "B")
@@ -168,6 +255,14 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertIsNone(extract_answer("The best answer is C. because...", ["A", "B", "C", "D"]))
         self.assertIsNone(extract_answer("Option C is tempting but wrong.", ["A", "B", "C", "D"]))
         self.assertIsNone(extract_answer("I cannot determine this.", ["A", "B", "C", "D"]))
+
+    def test_extract_answer_preserves_option_case_for_pubmedqa(self) -> None:
+        # pubmedQA uses lowercase option keys; extract_answer must return the canonical key
+        self.assertEqual(extract_answer(r"\boxed{yes}", ["yes", "no", "maybe"]), "yes")
+        self.assertEqual(extract_answer(r"\boxed{YES}", ["yes", "no", "maybe"]), "yes")
+        self.assertEqual(extract_answer(r"\boxed{No}", ["yes", "no", "maybe"]), "no")
+        self.assertEqual(extract_answer("Final answer: maybe", ["yes", "no", "maybe"]), "maybe")
+        self.assertEqual(extract_answer('{"answer": "yes"}', ["yes", "no", "maybe"]), "yes")
 
     def test_summary_counts_accuracy_by_mode(self) -> None:
         rows = [
@@ -469,6 +564,60 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertNotIn("UMLS evidence:", client.prompts[0])
         self.assertIn("UMLS evidence:", client.prompts[1])
         self.assertIn("Correct definition.", client.prompts[1])
+
+    def test_downstream_qwen_probe_annotates_exact_q_to_a_depth_rows(self) -> None:
+        class CapturingClient:
+            def chat_completion(self, payload: dict) -> dict:
+                return {"choices": [{"message": {"content": r"\boxed{A}"}}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_A\tCorrect\tT047\tDisease or Syndrome\tMSH\tCorrect definition.\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\nC_Q,C_A,RO,associated_with\n",
+            )
+            item = QAItem(
+                item_id="first",
+                dataset="medQA",
+                split="test",
+                linker="metamap",
+                question="Which option is correct?",
+                options={"A": "Correct", "B": "Incorrect"},
+                gold="A",
+                answer_text="Correct",
+                question_cuis=["C_Q"],
+                option_cuis={"A": ["C_A"], "B": []},
+            )
+
+            rows = run_qwen_probe(
+                [item],
+                CapturingClient(),
+                model="Qwen/Qwen3.5-4B",
+                mode="non_thinking",
+                max_tokens=16,
+                conditions=("q_to_a_exact_depth_1_evidence",),
+                metadata=CuiMetadataIndex.from_zip(meta_path),
+                relations=RelationIndex.from_zip(rel_path, keep_cuis={"C_Q", "C_A"}),
+            )
+
+        self.assertEqual(rows[0]["condition"], "q_to_a_exact_depth_1_evidence")
+        self.assertEqual(rows[0]["condition_type"], "realistic")
+        self.assertEqual(rows[0]["retrieval_method"], "q_to_a_exact_depth_1")
+        self.assertEqual(rows[0]["q_to_a_depth_semantics"], "exact_hops")
+        self.assertEqual(rows[0]["q_to_a_depth"], 1)
+        self.assertTrue(rows[0]["q_to_a_path_found"])
+        self.assertEqual(rows[0]["q_to_a_path_edge_count"], 1)
+        self.assertEqual(rows[0]["q_to_a_path_node_count"], 2)
 
     def test_downstream_qwen_probe_resumes_without_duplicate_item_condition_rows(self) -> None:
         class CapturingClient:

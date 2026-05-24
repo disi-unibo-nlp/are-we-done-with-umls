@@ -25,6 +25,50 @@ from src.experiments.schemas import QAItem
 DEFAULT_MODEL = "Qwen/Qwen3.5-0.8B"
 DEFAULT_BASE_URL = "http://localhost:8000/v1"
 
+NON_REASONING_PROMPT = r"""You are a medical expert tasked with answering multiple-choice medical questions.
+
+Use the question stem and, when present, the provided UMLS subgraph as evidence.
+Select the single best answer and output the answer option letter inside \boxed{}.
+Do not include explanation, reasoning, or any text outside \boxed{}.
+
+UMLS evidence:
+{umls_subgraph}
+
+Question:
+{question}
+
+Options:
+{options}
+
+Now answer the question."""
+
+REASONING_PROMPT = r"""You are a medical expert tasked with answering multiple-choice medical questions.
+
+Task:
+- Use the question stem, options, and provided UMLS subgraph as evidence.
+- Briefly reason over the clinically relevant facts and UMLS relations in the provided UMLS subgraph.
+- Decide the single best answer option.
+
+Private reasoning protocol:
+- First decide the answer and write `FINAL: <option letter>`.
+- Then use at most two short bullets to check the key clinical fact and UMLS relation.
+
+Visible answer protocol:
+- When private reasoning ends, immediately copy the `FINAL` letter into the boxed answer.
+- Output exactly one final line in the \boxed{} format, such as \boxed{A}, \boxed{B}, or \boxed{C}.
+- Do not continue analysis or output any text after the boxed answer.
+
+UMLS evidence:
+{umls_subgraph}
+
+Question:
+{question}
+
+Options:
+{options}
+
+Now answer the question."""
+
 
 def decoding_params(mode: str) -> dict:
     if mode == "non_thinking":
@@ -58,31 +102,24 @@ def apply_decoding_overrides(params: dict, overrides: dict | None = None) -> dic
     return resolved
 
 
-def build_prompt(item: QAItem, evidence: str | None = None) -> str:
-    lines = [
-        "You are answering a medical multiple-choice question.",
-        "Choose exactly one answer option.",
-        r"Output exactly one token in this format: \boxed{A}",
-        "Do not explain your reasoning. Do not restate the question. Do not add any other text.",
-    ]
-    if evidence:
-        lines.append("Use the provided UMLS evidence as the only external evidence source.")
-    lines.extend([
-        "",
-        "Question:",
-        item.question,
-        "",
-        "Options:",
-    ])
-    for key, value in item.options.items():
-        lines.append(f"{key}. {value}")
-    if evidence:
-        lines.extend(["", "UMLS evidence:", evidence])
-    lines.extend([
-        "",
-        r"Final answer only: \boxed{X}",
-    ])
-    return "\n".join(lines)
+def build_prompt(item: QAItem, evidence: str | None = None, mode: str = "non_thinking") -> str:
+    template = REASONING_PROMPT if mode == "thinking" else NON_REASONING_PROMPT
+    options = "\n".join(f"{key}. {value}" for key, value in item.options.items())
+    prompt_template = template
+    umls_subgraph = evidence or ""
+    if not evidence:
+        prompt_template = prompt_template.replace("\n\nUMLS evidence:\n{umls_subgraph}\n\n", "\n\n")
+    return (
+        prompt_template
+        .replace("{umls_subgraph}", umls_subgraph)
+        .replace("{question}", item.question)
+        .replace("{options}", options)
+    )
+
+
+def boxed_answer_regex(allowed_options: Iterable[str]) -> str:
+    option_pattern = "|".join(re.escape(option) for option in allowed_options)
+    return rf"\\boxed\{{(?:{option_pattern})\}}"
 
 
 def build_request_payload(
@@ -92,18 +129,28 @@ def build_request_payload(
     max_tokens: int,
     evidence: str | None = None,
     decoding_overrides: dict | None = None,
+    thinking_token_budget: int | None = None,
 ) -> dict:
     params = apply_decoding_overrides(decoding_params(mode), decoding_overrides)
+    system_content = (
+        r"You are a medical expert tasked with answering multiple-choice medical questions. Follow the user prompt exactly and output the answer option letter inside \boxed{}."
+    )
+    if mode == "thinking":
+        system_content = (
+            r"You are a medical expert tasked with answering multiple-choice medical questions. "
+            r"Use private reasoning briefly. When private reasoning ends, "
+            r"the next tokens must be exactly one boxed answer like \boxed{A}; do not continue visible analysis."
+        )
     payload = {
         "model": model,
         "messages": [
             {
                 "role": "system",
-                "content": r"You are a strict multiple-choice classifier. Reply with exactly one token: \boxed{A}, \boxed{B}, etc. No explanation.",
+                "content": system_content,
             },
             {
                 "role": "user",
-                "content": build_prompt(item, evidence=evidence),
+                "content": build_prompt(item, evidence=evidence, mode=mode),
             }
         ],
         "temperature": params["temperature"],
@@ -117,6 +164,12 @@ def build_request_payload(
     }
     if params.get("seed") is not None:
         payload["seed"] = params["seed"]
+    if mode == "thinking" and thinking_token_budget is not None:
+        payload["thinking_token_budget"] = thinking_token_budget
+    if mode == "thinking":
+        payload["structured_outputs"] = {
+            "regex": boxed_answer_regex(item.options.keys()),
+        }
     return payload
 
 
@@ -155,25 +208,29 @@ def _message_from_response(response: dict) -> dict:
 def response_text(response: dict) -> tuple[str, str]:
     message = _message_from_response(response)
     content = message.get("content") or ""
-    reasoning = message.get("reasoning_content") or ""
+    reasoning = message.get("reasoning_content") or message.get("reasoning") or ""
     return str(content), str(reasoning)
 
 
 def extract_answer(text: str, allowed_options: Iterable[str]) -> str | None:
     allowed = list(allowed_options)
     option_pattern = "|".join(re.escape(option) for option in allowed)
+    allowed_upper = {opt.upper(): opt for opt in allowed}
+
+    def _canonical(matched: str) -> str:
+        return allowed_upper.get(matched.upper(), matched.upper())
 
     # Primary: \boxed{X} format
     boxed_match = re.search(rf"\\boxed\s*\{{\s*({option_pattern})\s*\}}", text, flags=re.IGNORECASE)
     if boxed_match:
-        return boxed_match.group(1).upper()
+        return _canonical(boxed_match.group(1))
 
     # Fallback: JSON {"answer": "X"}
     try:
         parsed = json.loads(text)
         answer = str(parsed.get("answer", "")).strip()
-        if answer.upper() in allowed:
-            return answer.upper()
+        if answer.upper() in allowed_upper:
+            return _canonical(answer)
     except json.JSONDecodeError:
         pass
 
@@ -189,7 +246,7 @@ def extract_answer(text: str, allowed_options: Iterable[str]) -> str | None:
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
         if match:
-            return match.group(1).upper()
+            return _canonical(match.group(1))
     return None
 
 
@@ -273,6 +330,7 @@ def predict_item(
     max_retries: int = 2,
     retry_sleep_s: float = 2.0,
     decoding_overrides: dict | None = None,
+    thinking_token_budget: int | None = None,
 ) -> dict:
     payload = build_request_payload(
         item,
@@ -281,6 +339,7 @@ def predict_item(
         max_tokens=max_tokens,
         evidence=evidence,
         decoding_overrides=decoding_overrides,
+        thinking_token_budget=thinking_token_budget,
     )
     started = time.time()
     last_error: Exception | None = None
@@ -350,6 +409,7 @@ def run_sweep(
     max_retries: int = 2,
     retry_sleep_s: float = 2.0,
     decoding_overrides: dict | None = None,
+    thinking_token_budget: int | None = None,
 ) -> list[dict]:
     rows = list(existing_rows or [])
     completed_item_ids = {str(row.get("item_id")) for row in rows}
@@ -371,6 +431,7 @@ def run_sweep(
                     max_retries=max_retries,
                     retry_sleep_s=retry_sleep_s,
                     decoding_overrides=decoding_overrides,
+                    thinking_token_budget=thinking_token_budget,
                 )
                 for item in pending_items
             )
@@ -389,6 +450,7 @@ def run_sweep(
                     max_retries,
                     retry_sleep_s,
                     decoding_overrides,
+                    thinking_token_budget,
                 )
                 for item in pending_items
             ]
@@ -433,6 +495,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top-k", type=int, default=None)
     parser.add_argument("--presence-penalty", type=float, default=None)
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--thinking-token-budget", type=int, default=None)
     parser.add_argument("--output-jsonl", type=Path, default=None)
     parser.add_argument("--summary-csv", type=Path, default=None)
     parser.add_argument("--resume", action="store_true", help="Append to an existing JSONL and skip completed item IDs.")
@@ -470,11 +533,13 @@ def main() -> None:
             args.mode,
             max_tokens,
             decoding_overrides=decoding_overrides,
+            thinking_token_budget=args.thinking_token_budget,
         ) if items else {}
         print(json.dumps({
             "base_url": args.base_url,
             "model": args.model,
             "mode": args.mode,
+            "thinking_token_budget": args.thinking_token_budget,
             "items": len(items),
             "sample_payload": payload,
         }, indent=2))
@@ -499,6 +564,7 @@ def main() -> None:
         max_retries=args.max_retries,
         retry_sleep_s=args.retry_sleep_s,
         decoding_overrides=decoding_overrides,
+        thinking_token_budget=args.thinking_token_budget,
     )
     write_jsonl(output_jsonl, rows)
     write_summary_csv(summary_csv, rows)

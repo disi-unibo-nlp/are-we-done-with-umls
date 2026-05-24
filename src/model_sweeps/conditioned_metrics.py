@@ -24,10 +24,8 @@ DEFAULT_DIAGNOSTICS = (
 
 DEFAULT_EVIDENCE_CONDITIONS = (
     "relation_only_evidence",
-    "metadata_rich_evidence",
     "q_to_a_path_evidence",
-    "gold_only_evidence",
-    "shuffled_answer_evidence",
+    "metadata_rich_evidence",
 )
 
 REALISTIC_CONDITIONS_FOR_CONTROL_GAPS = {
@@ -718,11 +716,11 @@ def main_claim_summary_rows() -> list[dict]:
         {
             "claim_name": "Evidence view matters.",
             "diagnostic_metric": "gold_answer_evidence_available, evidence_view_adds_new_signal_over_relation_only",
-            "diagnostic_result_summary": "Compare relation-only evidence with metadata-rich committed UMLS cards.",
-            "downstream_metric": "delta_vs_no_umls for relation_only_evidence versus metadata_rich_evidence",
+            "diagnostic_result_summary": "Compare relation-only evidence, question-to-answer path evidence, and metadata-rich path evidence.",
+            "downstream_metric": "delta_vs_no_umls for relation_only_evidence, q_to_a_path_evidence, and metadata_rich_evidence",
             "downstream_result_summary": "Fill after downstream probe runs; report paired effects only for realistic conditions.",
-            "control_check": "metadata_rich_evidence should be interpreted against random_same_size_evidence and shuffled_answer_evidence where available.",
-            "safe_interpretation": "Richer committed UMLS metadata exposes evidence not visible in relation-only views; metadata availability is not clinical sufficiency.",
+            "control_check": "metadata_rich_evidence should be interpreted as metadata added to the same q_to_a_path_evidence graph, not as gold or oracle evidence.",
+            "safe_interpretation": "Richer committed UMLS metadata exposes evidence not visible in graph-only views; metadata availability is not clinical sufficiency.",
         },
         {
             "claim_name": "Answer grounding matters.",
@@ -738,8 +736,8 @@ def main_claim_summary_rows() -> list[dict]:
             "diagnostic_metric": "gold_path_available, decision_relevance_ratio_proxy",
             "diagnostic_result_summary": "Compare q_to_a_2hop retrieval with pooled and random retrieval; graph size alone is not enough.",
             "downstream_metric": "delta_vs_no_umls and net_correction for q_to_a_path_evidence conditioned on gold_path_available",
-            "downstream_result_summary": "Fill after downstream probe runs; report gaps versus random_same_size_evidence and shuffled_answer_evidence.",
-            "control_check": "q_to_a_path_evidence effect should exceed random_same_size_evidence and shuffled_answer_evidence.",
+            "downstream_result_summary": "Fill after downstream probe runs; compare q_to_a_path_evidence against relation_only_evidence and metadata_rich_evidence.",
+            "control_check": "q_to_a_path_evidence should be interpreted as focused retrieval, while metadata_rich_evidence tests metadata added on the same focused retrieval.",
             "safe_interpretation": "UMLS retrieval should be evaluated by decision relevance, not graph size alone; this does not prove model path reasoning.",
         },
         {
@@ -747,8 +745,8 @@ def main_claim_summary_rows() -> list[dict]:
             "diagnostic_metric": "correct_answer_grounded, gold_path_available, gold_answer_evidence_available, distractor_contrast_available",
             "diagnostic_result_summary": "Use diagnostic-success strata before interpreting LLM probe behavior.",
             "downstream_metric": "paired wrong_to_right, right_to_wrong, net_correction, confidence_delta, entropy_delta",
-            "downstream_result_summary": "Fill after downstream probe runs; diagnostic and oracle conditions are upper-bound or sanity-check analyses.",
-            "control_check": "Every realistic intervention is paired against no_umls and compared with random/shuffled negative controls.",
+            "downstream_result_summary": "Fill after downstream probe runs; diagnostic and oracle conditions, if run, are upper-bound or sanity-check analyses.",
+            "control_check": "Every realistic intervention is paired against no_umls; gold-only or oracle diagnostics are not main-claim evidence.",
             "safe_interpretation": "LLMs are downstream probes of constructed evidence conditions, not the main object of evaluation and not proof that UMLS universally improves QA.",
         },
     ]

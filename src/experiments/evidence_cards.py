@@ -24,22 +24,34 @@ class EvidenceCardDetails:
     oracle_selected_cui_source: str = ""
     option_evidence_symmetric: bool = False
     uses_gold_label_for_evidence: bool = False
+    q_to_a_depth_semantics: str = ""
+    q_to_a_depth: int = 0
+    q_to_a_path_found: bool = False
+    q_to_a_path_node_count: int = 0
+    q_to_a_path_edge_count: int = 0
 
 
-CHAIN_WIDTH_CAPS = {
-    "tight": 20,
-    "medium": 50,
-    "wide": 100,
-    "full": 200,
-}
-CHAIN_DEPTHS = (1, 2, 3, 4)
-CHAIN_CONDITION_SPECS = {
-    f"chain_depth_{depth}_width_{width}_evidence": EvidenceConditionSpec(
+Q_TO_A_DEPTHS = (1, 2, 3, 4)
+Q_TO_A_EXACT_DEPTH_CONDITION_SPECS = {
+    f"q_to_a_exact_depth_{depth}_evidence": EvidenceConditionSpec(
         "full_committed_card",
-        f"chain_depth_{depth}_width_{width}",
+        f"q_to_a_exact_depth_{depth}",
     )
-    for depth in CHAIN_DEPTHS
-    for width in CHAIN_WIDTH_CAPS
+    for depth in Q_TO_A_DEPTHS
+}
+
+RELATION_LABELS = {
+    "AQ": "has allowed qualifier",
+    "CHD": "has child",
+    "PAR": "has parent",
+    "QB": "can be qualified by",
+    "RB": "has broader relation to",
+    "RN": "has narrower relation to",
+    "RO": "related to",
+    "RQ": "related and possibly synonymous with",
+    "SY": "synonymous with",
+    "isa": "is a",
+    "inverse_isa": "has subtype",
 }
 
 
@@ -52,7 +64,7 @@ CONDITION_SPECS = {
     "gold_only_evidence": EvidenceConditionSpec("full_committed_card", None),
     "distractor_contrast_evidence": EvidenceConditionSpec("full_committed_card", None),
     "oracle_gold_evidence": EvidenceConditionSpec("full_committed_card", None, oracle=True),
-    **CHAIN_CONDITION_SPECS,
+    **Q_TO_A_EXACT_DEPTH_CONDITION_SPECS,
 }
 
 
@@ -66,7 +78,7 @@ CONDITION_TYPES = {
     "shuffled_answer_evidence": "negative_control",
     "gold_only_evidence": "diagnostic",
     "oracle_gold_evidence": "oracle",
-    **{condition: "graph_chain" for condition in CHAIN_CONDITION_SPECS},
+    **{condition: "realistic" for condition in Q_TO_A_EXACT_DEPTH_CONDITION_SPECS},
 }
 
 
@@ -83,6 +95,33 @@ def _format_concept(cui: str, metadata: CuiMetadataIndex, view: str, label: str 
     name = detail.name or cui
     prefix = f"{label} " if label else ""
     lines = [f"- {prefix}{cui}: {name}"]
+    if view in {"MRCONSO_MRREL_MRDEF", "full_committed_card"} and detail.definition:
+        lines.append(f"  Definition: {detail.definition}")
+    if view in {"MRCONSO_MRREL_MRSTY", "full_committed_card"} and detail.semantic_types:
+        lines.append(f"  Semantic types: {', '.join(detail.semantic_types)}")
+    return lines
+
+
+def _concept_name(cui: str, metadata: CuiMetadataIndex) -> str | None:
+    name = metadata.get(cui).name.strip()
+    return name or "unnamed UMLS concept"
+
+
+def _plain_relation_label(label: str) -> str:
+    cleaned = label.strip()
+    if not cleaned:
+        return "related to"
+    if cleaned in RELATION_LABELS:
+        return RELATION_LABELS[cleaned]
+    return cleaned.replace("_", " ").replace("-", " ")
+
+
+def _format_plain_concept(cui: str, metadata: CuiMetadataIndex, view: str) -> list[str]:
+    detail = metadata.get(cui)
+    name = detail.name.strip()
+    if not name:
+        return []
+    lines = [f"- {name} (CUI: {cui})"]
     if view in {"MRCONSO_MRREL_MRDEF", "full_committed_card"} and detail.definition:
         lines.append(f"  Definition: {detail.definition}")
     if view in {"MRCONSO_MRREL_MRSTY", "full_committed_card"} and detail.semantic_types:
@@ -121,6 +160,23 @@ def _metadata_lines(item: QAItem, metadata: CuiMetadataIndex, view: str, shuffle
                 continue
             for cui in list(dict.fromkeys(cuis))[:4]:
                 lines.extend(_format_concept(cui, metadata, view, label=label))
+    return lines
+
+
+def _source_agnostic_metadata_lines(item: QAItem, metadata: CuiMetadataIndex, view: str) -> list[str]:
+    lines = ["Relevant concepts:"]
+    cuis: list[str] = []
+    cuis.extend(list(dict.fromkeys(item.question_cuis))[:8])
+    for option_cuis in item.option_cuis.values():
+        cuis.extend(list(dict.fromkeys(option_cuis))[:4])
+    seen: set[str] = set()
+    for cui in cuis:
+        if cui in seen:
+            continue
+        seen.add(cui)
+        lines.extend(_format_plain_concept(cui, metadata, view))
+    if len(lines) == 1:
+        lines.append("- no linked UMLS concepts with readable names")
     return lines
 
 
@@ -197,25 +253,125 @@ def _validate_symmetric_option_evidence(item: QAItem, lines: list[str]) -> None:
         )
 
 
-def _relation_lines(nodes: set[str], relations: RelationIndex, limit: int = 24) -> list[str]:
-    edges = relations.edges(nodes, limit=limit)
+def _node_priority(item: QAItem) -> dict[str, int]:
+    priority: dict[str, int] = {}
+    index = 0
+    for cui in item.question_cuis:
+        if cui and cui not in priority:
+            priority[cui] = index
+            index += 1
+    for option_cuis in item.option_cuis.values():
+        for cui in option_cuis:
+            if cui and cui not in priority:
+                priority[cui] = index
+                index += 1
+    return priority
+
+
+def _orient_edge(left: str, right: str, node_priority: dict[str, int] | None = None) -> tuple[str, str]:
+    if not node_priority:
+        return left, right
+    left_priority = node_priority.get(left)
+    right_priority = node_priority.get(right)
+    if right_priority is not None and (left_priority is None or right_priority < left_priority):
+        return right, left
+    return left, right
+
+
+def _relation_edge_lines(
+    edges: list[tuple[str, str, str]],
+    metadata: CuiMetadataIndex,
+    header: str,
+    limit: int | None = 24,
+    node_priority: dict[str, int] | None = None,
+) -> list[str]:
     if not edges:
         return []
-    lines = ["Relations:"]
+    lines = [header]
+    emitted = 0
     for left, right, label in edges:
-        lines.append(f"- {left} --{label}-- {right}")
+        oriented_left, oriented_right = _orient_edge(left, right, node_priority)
+        left_name = _concept_name(oriented_left, metadata)
+        right_name = _concept_name(oriented_right, metadata)
+        if not left_name or not right_name:
+            continue
+        lines.append(f"- {left_name} -- {_plain_relation_label(label)} --> {right_name}")
+        emitted += 1
+        if limit is not None and emitted >= limit:
+            break
+    if emitted == 0:
+        return []
     return lines
 
 
-def _path_lines(item: QAItem, relations: RelationIndex) -> list[str]:
+def _relation_lines(
+    nodes: set[str],
+    relations: RelationIndex,
+    metadata: CuiMetadataIndex,
+    limit: int = 24,
+    node_priority: dict[str, int] | None = None,
+) -> list[str]:
+    return _relation_edge_lines(
+        relations.edges(nodes),
+        metadata,
+        "UMLS graph:",
+        limit=limit,
+        node_priority=node_priority,
+    )
+
+
+def _path_lines(item: QAItem, relations: RelationIndex, metadata: CuiMetadataIndex) -> list[str]:
     answer_cuis = _all_answer_cuis(item)
     edges = relations.path_edges_between(item.question_cuis, answer_cuis, max_hops=2)
     if not edges:
         return ["Q-to-answer paths: no two-hop or shorter UMLS path found."]
-    lines = ["Q-to-answer paths:"]
-    for left, right, label in edges:
-        lines.append(f"- {left} --{label}-- {right}")
-    return lines
+    return _relation_edge_lines(
+        edges,
+        metadata,
+        "Q-to-answer paths:",
+        limit=None,
+    ) or ["Q-to-answer paths: no readable two-hop or shorter UMLS path found."]
+
+
+def _q_to_a_graph_lines(
+    item: QAItem,
+    relations: RelationIndex,
+    metadata: CuiMetadataIndex,
+) -> tuple[list[str], int, int]:
+    answer_cuis = _all_answer_cuis(item)
+    path_nodes = relations.path_nodes_between(item.question_cuis, answer_cuis, max_hops=2)
+    lines = _path_lines(item, relations, metadata)
+    if path_nodes:
+        lines.extend(
+            _relation_lines(
+                path_nodes,
+                relations,
+                metadata,
+                node_priority=_node_priority(item),
+            )
+        )
+    edge_count = len(relations.path_edges_between(item.question_cuis, answer_cuis, max_hops=2))
+    return lines, len(path_nodes), edge_count
+
+
+def _q_to_a_exact_depth_lines(
+    item: QAItem,
+    relations: RelationIndex,
+    metadata: CuiMetadataIndex,
+    depth: int,
+) -> tuple[list[str], int, int]:
+    answer_cuis = _all_answer_cuis(item)
+    path_edges = relations.exact_path_edges_between(item.question_cuis, answer_cuis, hops=depth)
+    path_nodes = relations.exact_path_nodes_between(item.question_cuis, answer_cuis, hops=depth)
+    if not path_edges:
+        return [f"Q-to-answer exact-depth paths: no exact {depth}-hop UMLS path found."], 0, 0
+    lines = _relation_edge_lines(
+        path_edges,
+        metadata,
+        f"Q-to-answer exact-depth paths: depth={depth}",
+        limit=None,
+    ) or [f"Q-to-answer exact-depth paths: no readable exact {depth}-hop UMLS path found."]
+    return lines, len(path_nodes), len(path_edges)
 
 
 def _random_nodes(item: QAItem, relations: RelationIndex) -> set[str]:
@@ -224,45 +380,19 @@ def _random_nodes(item: QAItem, relations: RelationIndex) -> set[str]:
     return relations.deterministic_sample(max(1, len(path_nodes)), key=item.item_id)
 
 
-def _parse_chain_condition(condition: str) -> tuple[int, str, int] | None:
-    prefix = "chain_depth_"
+def _parse_q_to_a_exact_depth_condition(condition: str) -> int | None:
+    prefix = "q_to_a_exact_depth_"
     suffix = "_evidence"
     if not condition.startswith(prefix) or not condition.endswith(suffix):
         return None
-    body = condition[len(prefix):-len(suffix)]
-    depth_text, sep, width = body.partition("_width_")
-    if not sep or width not in CHAIN_WIDTH_CAPS:
-        return None
+    depth_text = condition[len(prefix):-len(suffix)]
     try:
         depth = int(depth_text)
     except ValueError:
         return None
-    if depth not in CHAIN_DEPTHS:
+    if depth not in Q_TO_A_DEPTHS:
         return None
-    return depth, width, CHAIN_WIDTH_CAPS[width]
-
-
-def _path_context_nodes(path_nodes: list[str] | None, relations: RelationIndex, cap: int) -> set[str]:
-    if not path_nodes:
-        return set()
-    ordered: list[str] = []
-    seen: set[str] = set()
-
-    def add(node: str) -> None:
-        if node and node not in seen:
-            seen.add(node)
-            ordered.append(node)
-
-    for node in path_nodes:
-        add(node)
-    for node in path_nodes:
-        if len(ordered) >= cap:
-            break
-        for neighbor in sorted(relations.neighbors(node)):
-            add(neighbor)
-            if len(ordered) >= cap:
-                break
-    return set(ordered)
+    return depth
 
 
 def build_evidence_card_details(
@@ -313,46 +443,68 @@ def build_evidence_card_details(
         lines.extend(_metadata_lines(item, metadata, spec.evidence_view, shuffled=True))
         return EvidenceCardDetails("\n".join(lines))
 
-    if condition == "q_to_a_path_evidence":
-        path_nodes = relations.path_nodes_between(item.question_cuis, _all_answer_cuis(item), max_hops=2)
-        lines.extend(_metadata_lines(item, metadata, spec.evidence_view))
-        lines.extend(_path_lines(item, relations))
-        if path_nodes:
-            lines.extend(_relation_lines(path_nodes, relations))
-        return EvidenceCardDetails("\n".join(lines))
+    if condition == "metadata_rich_evidence":
+        lines.extend(_source_agnostic_metadata_lines(item, metadata, spec.evidence_view))
+        graph_lines, node_count, edge_count = _q_to_a_graph_lines(item, relations, metadata)
+        lines.extend(graph_lines)
+        return EvidenceCardDetails(
+            "\n".join(lines),
+            q_to_a_depth_semantics="max_hops",
+            q_to_a_depth=2,
+            q_to_a_path_found=edge_count > 0,
+            q_to_a_path_node_count=node_count,
+            q_to_a_path_edge_count=edge_count,
+        )
 
-    chain = _parse_chain_condition(condition)
-    if chain is not None:
-        depth, width_label, cap = chain
-        gold_cuis = item.gold_cuis()
-        path_nodes = relations.exact_path_nodes(item.question_cuis, gold_cuis, hops=depth)
-        path_edges = relations.exact_path_edges(item.question_cuis, gold_cuis, hops=depth)
-        context_nodes = _path_context_nodes(path_nodes, relations, cap)
-        lines.extend(_metadata_lines(item, metadata, spec.evidence_view))
-        if path_edges:
-            lines.append(f"Exact Q-to-gold path: depth={depth}, width={width_label}, cap={cap}")
-            for left, right, label in path_edges:
-                lines.append(f"- {left} --{label}-- {right}")
-        else:
-            lines.append(f"Exact Q-to-gold path: none found at depth={depth}.")
-        relation_lines = _relation_lines(context_nodes, relations, limit=cap)
-        if relation_lines:
-            lines.extend(relation_lines)
-        else:
-            lines.append("Relations: no chain-context relation edges available.")
-        return EvidenceCardDetails("\n".join(lines))
+    if condition == "q_to_a_path_evidence":
+        graph_lines, node_count, edge_count = _q_to_a_graph_lines(item, relations, metadata)
+        lines.extend(graph_lines)
+        return EvidenceCardDetails(
+            "\n".join(lines),
+            q_to_a_depth_semantics="max_hops",
+            q_to_a_depth=2,
+            q_to_a_path_found=edge_count > 0,
+            q_to_a_path_node_count=node_count,
+            q_to_a_path_edge_count=edge_count,
+        )
+
+    exact_depth = _parse_q_to_a_exact_depth_condition(condition)
+    if exact_depth is not None:
+        graph_lines, node_count, edge_count = _q_to_a_exact_depth_lines(
+            item,
+            relations,
+            metadata,
+            exact_depth,
+        )
+        lines.extend(graph_lines)
+        return EvidenceCardDetails(
+            "\n".join(lines),
+            q_to_a_depth_semantics="exact_hops",
+            q_to_a_depth=exact_depth,
+            q_to_a_path_found=edge_count > 0,
+            q_to_a_path_node_count=node_count,
+            q_to_a_path_edge_count=edge_count,
+        )
 
     if condition == "random_same_size_evidence":
         nodes = _random_nodes(item, relations)
-        lines.extend(_relation_lines(nodes, relations))
+        lines.extend(_relation_lines(nodes, relations, metadata, node_priority=_node_priority(item)))
         if len(lines) == 1:
-            lines.append("Relations: no random same-size relation edges available.")
+            lines.append("UMLS graph: no readable random same-size relation edges available.")
+        return EvidenceCardDetails("\n".join(lines))
+
+    if condition == "relation_only_evidence":
+        seeds = set(item.question_cuis + _all_answer_cuis(item))
+        graph_lines = _relation_lines(
+            relations.pooled_neighborhood(seeds, hops=1, cap=80),
+            relations,
+            metadata,
+            node_priority=_node_priority(item),
+        )
+        lines.extend(graph_lines or ["UMLS graph: no readable relation edges available."])
         return EvidenceCardDetails("\n".join(lines))
 
     lines.extend(_metadata_lines(item, metadata, spec.evidence_view))
-    if condition == "relation_only_evidence":
-        seeds = set(item.question_cuis + _all_answer_cuis(item))
-        lines.extend(_relation_lines(relations.pooled_neighborhood(seeds, hops=1, cap=80), relations))
     return EvidenceCardDetails("\n".join(lines))
 
 

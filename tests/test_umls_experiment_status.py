@@ -6,7 +6,7 @@ from src.experiments import umls_experiment_status as status
 
 
 class UmlsExperimentStatusTests(unittest.TestCase):
-    def test_scale_model_contract_is_qwen35_only(self) -> None:
+    def test_scale_model_contract_is_full_qwen35_sweep(self) -> None:
         self.assertEqual(
             status.SCALE_MODELS,
             (
@@ -14,14 +14,22 @@ class UmlsExperimentStatusTests(unittest.TestCase):
                 "Qwen/Qwen3.5-2B",
                 "Qwen/Qwen3.5-4B",
                 "Qwen/Qwen3.5-9B",
+                "Qwen/Qwen3.5-27B",
+                "Qwen/Qwen3.5-35B",
             ),
         )
 
-    def test_expected_step3_conditions_are_depth_width_matrix(self) -> None:
-        self.assertEqual(len(status.STEP3_CONDITIONS), 16)
-        self.assertIn("chain_depth_1_width_tight_evidence", status.STEP3_CONDITIONS)
-        self.assertIn("chain_depth_4_width_full_evidence", status.STEP3_CONDITIONS)
-        self.assertNotIn("q_to_a_depth_2_obscured", status.STEP3_CONDITIONS)
+    def test_expected_step3_conditions_are_exact_q_to_a_depths(self) -> None:
+        self.assertEqual(
+            status.STEP3_CONDITIONS,
+            (
+                "q_to_a_exact_depth_1_evidence",
+                "q_to_a_exact_depth_2_evidence",
+                "q_to_a_exact_depth_3_evidence",
+                "q_to_a_exact_depth_4_evidence",
+            ),
+        )
+        self.assertNotIn("chain_depth_1_width_tight_evidence", status.STEP3_CONDITIONS)
 
     def test_recovery_commands_start_with_step1_when_predictions_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

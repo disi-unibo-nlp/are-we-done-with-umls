@@ -16,6 +16,7 @@ export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-/mnt/nvme/llms/transformers}"
 export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-/mnt/nvme/llms/datasets}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/mnt/nvme/llms/uv-cache}"
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/mnt/nvme/llms/venvs/are-we-done-with-umls}"
+UV_BIN="${UV_BIN:-/home/molfetta/.local/bin/uv}"
 
 DIAGNOSTICS_DIR="${DIAGNOSTICS_DIR:-outputs/diagnostics/main}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/paper_tables}"
@@ -23,7 +24,7 @@ BOOTSTRAP_ITERATIONS="${BOOTSTRAP_ITERATIONS:-1000}"
 PREDICTIONS="${PREDICTIONS:-}"
 CONDITIONS="${CONDITIONS:-correct_answer_grounded all_options_grounded gold_path_available gold_answer_evidence_available distractor_contrast_available}"
 UMLS_CONDITION="${UMLS_CONDITION:-q_to_a_path_evidence}"
-EVIDENCE_CONDITIONS="${EVIDENCE_CONDITIONS:-relation_only_evidence metadata_rich_evidence q_to_a_path_evidence gold_only_evidence shuffled_answer_evidence}"
+EVIDENCE_CONDITIONS="${EVIDENCE_CONDITIONS:-relation_only_evidence q_to_a_path_evidence metadata_rich_evidence}"
 
 if [[ ! -d "${DIAGNOSTICS_DIR}" ]]; then
   DIAGNOSTICS_DIR="outputs/diagnostics"
@@ -38,7 +39,7 @@ fi
 mkdir -p "${OUTPUT_DIR}"
 
 echo "+ Building diagnostic paper tables"
-uv run python3 src/experiments/make_paper_diagnostic_tables.py \
+"${UV_BIN}" run python3 src/experiments/make_paper_diagnostic_tables.py \
   "${diagnostic_files[@]}" \
   --bootstrap-iterations "${BOOTSTRAP_ITERATIONS}" \
   --output-dir "${OUTPUT_DIR}"
@@ -76,7 +77,7 @@ if (( ${#prediction_files[@]} > 0 )); then
     evidence_condition_args+=(--evidence-condition "${condition}")
   done
   echo "+ Building downstream conditioned paper tables from ${PREDICTIONS}"
-  uv run python3 src/model_sweeps/conditioned_metrics.py \
+  "${UV_BIN}" run python3 src/model_sweeps/conditioned_metrics.py \
     --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     "${condition_args[@]}" \
@@ -84,7 +85,7 @@ if (( ${#prediction_files[@]} > 0 )); then
     --umls-condition "${UMLS_CONDITION}" \
     --output-csv "${OUTPUT_DIR}/table_downstream_conditioned.csv" \
     --output-md "${OUTPUT_DIR}/table_downstream_conditioned.md"
-  uv run python3 src/model_sweeps/conditioned_metrics.py \
+  "${UV_BIN}" run python3 src/model_sweeps/conditioned_metrics.py \
     --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     "${condition_args[@]}" \
@@ -92,7 +93,7 @@ if (( ${#prediction_files[@]} > 0 )); then
     --intervention-table \
     --output-csv "${OUTPUT_DIR}/table_intervention_by_diagnostic.csv" \
     --output-md "${OUTPUT_DIR}/table_intervention_by_diagnostic.md"
-  uv run python3 src/model_sweeps/conditioned_metrics.py \
+  "${UV_BIN}" run python3 src/model_sweeps/conditioned_metrics.py \
     --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     "${condition_args[@]}" \
@@ -100,25 +101,25 @@ if (( ${#prediction_files[@]} > 0 )); then
     --paired-table \
     --output-csv "${OUTPUT_DIR}/table_paired_intervention_effects.csv" \
     --output-md "${OUTPUT_DIR}/table_paired_intervention_effects.md"
-  uv run python3 src/model_sweeps/conditioned_metrics.py \
+  "${UV_BIN}" run python3 src/model_sweeps/conditioned_metrics.py \
     --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     --downstream-table-kind realistic \
     --output-csv "${OUTPUT_DIR}/table_downstream_realistic.csv" \
     --output-md "${OUTPUT_DIR}/table_downstream_realistic.md"
-  uv run python3 src/model_sweeps/conditioned_metrics.py \
+  "${UV_BIN}" run python3 src/model_sweeps/conditioned_metrics.py \
     --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     --downstream-table-kind controls \
     --output-csv "${OUTPUT_DIR}/table_downstream_controls.csv" \
     --output-md "${OUTPUT_DIR}/table_downstream_controls.md"
-  uv run python3 src/model_sweeps/conditioned_metrics.py \
+  "${UV_BIN}" run python3 src/model_sweeps/conditioned_metrics.py \
     --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     --downstream-table-kind diagnostic_oracle \
     --output-csv "${OUTPUT_DIR}/table_downstream_diagnostic_oracle.csv" \
     --output-md "${OUTPUT_DIR}/table_downstream_diagnostic_oracle.md"
-  uv run python3 src/model_sweeps/conditioned_metrics.py \
+  "${UV_BIN}" run python3 src/model_sweeps/conditioned_metrics.py \
     --predictions "${prediction_files[@]}" \
     --diagnostics "${diagnostic_files[@]}" \
     --main-claim-summary \

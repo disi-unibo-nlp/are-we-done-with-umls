@@ -16,6 +16,7 @@ export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-/mnt/nvme/llms/transformers}"
 export HF_DATASETS_CACHE="${HF_DATASETS_CACHE:-/mnt/nvme/llms/datasets}"
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/mnt/nvme/llms/uv-cache}"
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/mnt/nvme/llms/venvs/are-we-done-with-umls}"
+UV_BIN="${UV_BIN:-/home/molfetta/.local/bin/uv}"
 
 MODE="${MODE:-audit}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-outputs/operational_umls}"
@@ -26,7 +27,7 @@ LOG_DIR="${LOG_DIR:-${OUTPUT_ROOT}/logs}"
 mkdir -p "${OUTPUT_ROOT}"
 
 run_status() {
-  uv run python3 src/experiments/umls_experiment_status.py \
+  "${UV_BIN}" run python3 src/experiments/umls_experiment_status.py \
     --output-json "${STATUS_JSON}" \
     --output-md "${STATUS_MD}" \
     "$@"

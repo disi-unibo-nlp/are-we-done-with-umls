@@ -20,6 +20,8 @@ SCALE_MODELS = (
     "Qwen/Qwen3.5-2B",
     "Qwen/Qwen3.5-4B",
     "Qwen/Qwen3.5-9B",
+    "Qwen/Qwen3.5-27B",
+    "Qwen/Qwen3.5-35B",
 )
 DATASETS = ("medQA", "medMCQA")
 LINKERS = ("metamap", "spacy")
@@ -29,17 +31,12 @@ MODE = "non_thinking"
 STEP1_CONDITIONS = ("no_umls", "metadata_rich_evidence")
 STEP2_CONDITIONS = (
     "relation_only_evidence",
-    "metadata_rich_evidence",
-    "gold_only_evidence",
-    "shuffled_answer_evidence",
     "q_to_a_path_evidence",
+    "metadata_rich_evidence",
 )
-CHAIN_DEPTHS = (1, 2, 3, 4)
-CHAIN_WIDTHS = ("tight", "medium", "wide", "full")
 STEP3_CONDITIONS = tuple(
-    f"chain_depth_{depth}_width_{width}_evidence"
-    for depth in CHAIN_DEPTHS
-    for width in CHAIN_WIDTHS
+    f"q_to_a_exact_depth_{depth}_evidence"
+    for depth in (1, 2, 3, 4)
 )
 
 

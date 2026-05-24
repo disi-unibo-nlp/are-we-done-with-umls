@@ -18,6 +18,7 @@ export UV_CACHE_DIR="${UV_CACHE_DIR:-/mnt/nvme/llms/uv-cache}"
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/mnt/nvme/llms/venvs/are-we-done-with-umls}"
 export OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://localhost:8000/v1}"
 export OPENAI_API_KEY="${VLLM_API_KEY:-EMPTY}"
+UV_BIN="${UV_BIN:-/home/molfetta/.local/bin/uv}"
 
 DATASET="${DATASET:-medQA}"
 SPLIT="${SPLIT:-test}"
@@ -31,7 +32,7 @@ RUN_MEDGEMMA="${RUN_MEDGEMMA:-1}"
 RUN_QWEN="${RUN_QWEN:-0}"
 MOCK_MODEL="${MOCK_MODEL:-0}"
 DRY_RUN="${DRY_RUN:-0}"
-CONDITIONS="${CONDITIONS:-no_umls relation_only_evidence metadata_rich_evidence q_to_a_path_evidence shuffled_answer_evidence gold_only_evidence}"
+CONDITIONS="${CONDITIONS:-no_umls relation_only_evidence q_to_a_path_evidence metadata_rich_evidence}"
 
 MEDGEMMA_MODEL_KEY="${MEDGEMMA_MODEL_KEY:-MedGemma-1.5-4B-it}"
 MEDGEMMA_MODEL_ID="${MEDGEMMA_MODEL_ID:-google/medgemma-1.5-4b-it}"
@@ -42,7 +43,6 @@ SEED="${SEED:-42}"
 
 QWEN_MODEL="${QWEN_MODEL:-Qwen/Qwen3.5-4B}"
 QWEN_MODE="${QWEN_MODE:-non_thinking}"
-QWEN_MAX_TOKENS="${QWEN_MAX_TOKENS:-32}"
 QWEN_TIMEOUT_S="${QWEN_TIMEOUT_S:-300}"
 QWEN_TEMPERATURE="${QWEN_TEMPERATURE:-0.0}"
 QWEN_TOP_P="${QWEN_TOP_P:-1.0}"
@@ -50,6 +50,16 @@ QWEN_TOP_K="${QWEN_TOP_K:-20}"
 QWEN_PRESENCE_PENALTY="${QWEN_PRESENCE_PENALTY:-0.0}"
 QWEN_SEED="${QWEN_SEED:-42}"
 QWEN_CONCURRENCY="${QWEN_CONCURRENCY:-1}"
+QWEN_THINKING_TOKEN_BUDGET="${QWEN_THINKING_TOKEN_BUDGET:-}"
+if [[ "${QWEN_MODE}" == "thinking" ]]; then
+  QWEN_THINKING_TOKEN_BUDGET="${QWEN_THINKING_TOKEN_BUDGET:-4096}"
+fi
+QWEN_ANSWER_TOKEN_BUDGET="${QWEN_ANSWER_TOKEN_BUDGET:-64}"
+_default_max_tokens=32
+if [[ "${QWEN_MODE}" == "thinking" ]]; then
+  _default_max_tokens=$((QWEN_THINKING_TOKEN_BUDGET + QWEN_ANSWER_TOKEN_BUDGET))
+fi
+QWEN_MAX_TOKENS="${QWEN_MAX_TOKENS:-${_default_max_tokens}}"
 RESUME="${RESUME:-1}"
 
 if [[ "${DRY_RUN}" != "1" ]]; then
@@ -74,6 +84,11 @@ fi
 
 relation_args=(--triplets-zip "${TRIPLETS_ZIP}" --relation-scope "${RELATION_SCOPE}")
 
+thinking_budget_args=()
+if [[ -n "${QWEN_THINKING_TOKEN_BUDGET}" ]]; then
+  thinking_budget_args+=(--thinking-token-budget "${QWEN_THINKING_TOKEN_BUDGET}")
+fi
+
 if [[ "${RUN_MEDGEMMA}" == "1" ]]; then
   model_args=(
     --model-key "${MEDGEMMA_MODEL_KEY}"
@@ -84,7 +99,7 @@ if [[ "${RUN_MEDGEMMA}" == "1" ]]; then
     model_args=(--mock-model --model-key MockLogits --model-id mock-local-logits)
   fi
   echo "+ Running MedGemma downstream UMLS probe"
-  uv run --extra models python3 src/model_sweeps/downstream_umls_probe.py \
+  "${UV_BIN}" run --extra models python3 src/model_sweeps/downstream_umls_probe.py \
     --backend medgemma \
     --dataset "${DATASET}" \
     --split "${SPLIT}" \
@@ -114,7 +129,7 @@ if [[ "${RUN_QWEN}" == "1" ]]; then
   else
     echo "+ Running Qwen downstream UMLS probe; requires vLLM at ${OPENAI_BASE_URL}"
   fi
-  uv run python3 src/model_sweeps/downstream_umls_probe.py \
+  "${UV_BIN}" run python3 src/model_sweeps/downstream_umls_probe.py \
     --backend qwen \
     --dataset "${DATASET}" \
     --split "${SPLIT}" \
@@ -132,6 +147,7 @@ if [[ "${RUN_QWEN}" == "1" ]]; then
     --top-p "${QWEN_TOP_P}" \
     --top-k "${QWEN_TOP_K}" \
     --presence-penalty "${QWEN_PRESENCE_PENALTY}" \
+    "${thinking_budget_args[@]}" \
     --seed "${QWEN_SEED}" \
     --concurrency "${QWEN_CONCURRENCY}" \
     "${resume_args[@]}" \

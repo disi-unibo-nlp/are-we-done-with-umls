@@ -18,36 +18,47 @@ export UV_CACHE_DIR="${UV_CACHE_DIR:-/mnt/nvme/llms/uv-cache}"
 export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-/mnt/nvme/llms/venvs/are-we-done-with-umls}"
 export OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://localhost:8000/v1}"
 export OPENAI_API_KEY="${VLLM_API_KEY:-EMPTY}"
+UV_BIN="${UV_BIN:-/home/molfetta/.local/bin/uv}"
 
 STEP="${STEP:-all}"
 LIMIT="${LIMIT:-10}"
 SPLIT="${SPLIT:-test}"
 DATASETS="${DATASETS:-medQA medMCQA}"
 LINKERS="${LINKERS:-metamap spacy}"
-QWEN_MODEL_LIST="${QWEN_MODEL_LIST:-Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B}"
+QWEN_MODEL_LIST="${QWEN_MODEL_LIST:-Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B Qwen/Qwen3.5-27B Qwen/Qwen3.5-35B}"
 QWEN_MODE="${QWEN_MODE:-non_thinking}"
-QWEN_MAX_TOKENS="${QWEN_MAX_TOKENS:-32}"
 QWEN_TEMPERATURE="${QWEN_TEMPERATURE:-0.0}"
 QWEN_TOP_P="${QWEN_TOP_P:-1.0}"
 QWEN_TOP_K="${QWEN_TOP_K:-20}"
 QWEN_PRESENCE_PENALTY="${QWEN_PRESENCE_PENALTY:-0.0}"
 QWEN_SEED="${QWEN_SEED:-42}"
 QWEN_CONCURRENCY="${QWEN_CONCURRENCY:-1}"
+QWEN_THINKING_TOKEN_BUDGET="${QWEN_THINKING_TOKEN_BUDGET:-}"
+if [[ "${QWEN_MODE}" == "thinking" ]]; then
+  QWEN_THINKING_TOKEN_BUDGET="${QWEN_THINKING_TOKEN_BUDGET:-4096}"
+fi
+QWEN_ANSWER_TOKEN_BUDGET="${QWEN_ANSWER_TOKEN_BUDGET:-64}"
+# thinking mode needs the reasoning budget plus a small final-answer window
+_default_max_tokens=32
+if [[ "${QWEN_MODE}" == "thinking" ]]; then
+  _default_max_tokens=$((QWEN_THINKING_TOKEN_BUDGET + QWEN_ANSWER_TOKEN_BUDGET))
+fi
+QWEN_MAX_TOKENS="${QWEN_MAX_TOKENS:-${_default_max_tokens}}"
 RESUME="${RESUME:-1}"
 DRY_RUN="${DRY_RUN:-0}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-outputs/operational_umls}"
+STEP1_SUBSET_ROOT="${STEP1_SUBSET_ROOT:-${OUTPUT_ROOT}/step1_subsets}"
+STEP1_SUBSET_MODE="${STEP1_SUBSET_MODE:-${QWEN_MODE}}"
 TRIPLETS_ZIP="${TRIPLETS_ZIP:-data/UMLS/triplets.csv.zip}"
 EXTENDED_TRIPLETS_ZIP="${EXTENDED_TRIPLETS_ZIP:-data/UMLS/triplets_extended.csv.zip}"
 
 STEP1_CONDITIONS="${STEP1_CONDITIONS:-no_umls metadata_rich_evidence}"
-STEP2_CONDITIONS="${STEP2_CONDITIONS:-relation_only_evidence metadata_rich_evidence gold_only_evidence shuffled_answer_evidence q_to_a_path_evidence}"
+STEP2_CONDITIONS="${STEP2_CONDITIONS:-relation_only_evidence q_to_a_path_evidence metadata_rich_evidence}"
 
-CHAIN_CONDITIONS="${CHAIN_CONDITIONS:-}"
-if [[ -z "${CHAIN_CONDITIONS}" ]]; then
+Q2A_DEPTH_CONDITIONS="${Q2A_DEPTH_CONDITIONS:-}"
+if [[ -z "${Q2A_DEPTH_CONDITIONS}" ]]; then
   for depth in 1 2 3 4; do
-    for width in tight medium wide full; do
-      CHAIN_CONDITIONS+="${CHAIN_CONDITIONS:+ }chain_depth_${depth}_width_${width}_evidence"
-    done
+    Q2A_DEPTH_CONDITIONS+="${Q2A_DEPTH_CONDITIONS:+ }q_to_a_exact_depth_${depth}_evidence"
   done
 fi
 
@@ -93,6 +104,7 @@ run_probe() {
   QWEN_PRESENCE_PENALTY="${QWEN_PRESENCE_PENALTY}" \
   QWEN_SEED="${QWEN_SEED}" \
   QWEN_CONCURRENCY="${QWEN_CONCURRENCY}" \
+  QWEN_THINKING_TOKEN_BUDGET="${QWEN_THINKING_TOKEN_BUDGET}" \
   RESUME="${RESUME}" \
   DRY_RUN="${DRY_RUN}" \
   bash scripts/run_downstream_umls_probe.sh
@@ -114,7 +126,7 @@ manifest_file() {
   local model="$3"
   local slug
   slug="$(qwen_slug "${model}")"
-  printf '%s/step1_subsets/%s_%s_%s_%s_%s_baseline_wrong.jsonl' "${OUTPUT_ROOT}" "${dataset}" "${SPLIT}" "${linker}" "${slug}" "${QWEN_MODE}"
+  printf '%s/%s_%s_%s_%s_%s_baseline_wrong.jsonl' "${STEP1_SUBSET_ROOT}" "${dataset}" "${SPLIT}" "${linker}" "${slug}" "${STEP1_SUBSET_MODE}"
 }
 
 run_step1() {
@@ -137,7 +149,7 @@ run_step1() {
     echo "No STEP 1 prediction files found under ${step_dir}/qwen" >&2
     exit 2
   fi
-  uv run python3 src/experiments/operational_subset_analysis.py \
+  "${UV_BIN}" run python3 src/experiments/operational_subset_analysis.py \
     --predictions "${prediction_files[@]}" \
     --output-dir "${OUTPUT_ROOT}/step1_subsets" \
     --standard-condition metadata_rich_evidence
@@ -179,7 +191,7 @@ run_step3() {
   if [[ -s "${EXTENDED_TRIPLETS_ZIP}" ]]; then
     graph_zip="${EXTENDED_TRIPLETS_ZIP}"
   fi
-  run_filtered_step "step3" "${CHAIN_CONDITIONS}" "full" "${graph_zip}"
+  run_filtered_step "step3" "${Q2A_DEPTH_CONDITIONS}" "full" "${graph_zip}"
 }
 
 run_tables() {
@@ -217,15 +229,13 @@ run_tables() {
   fi
 
   mapfile -t step3_predictions < <(find "${OUTPUT_ROOT}/step3_predictions/qwen" -name '*_qwen_probe.jsonl' -type f 2>/dev/null | sort)
-  mapfile -t exp3_files < <(find "${diagnostics_dir}" -name 'exp3_retrieval_faithfulness_*.jsonl' -type f | sort)
-  if (( ${#step3_predictions[@]} > 0 && ${#exp3_files[@]} > 0 )); then
-    log "Building STEP 3 depth-width tables under ${tables_dir}"
-    uv run python3 src/experiments/depth_width_analysis.py \
-      --exp3-jsonl "${exp3_files[@]}" \
+  if (( ${#step3_predictions[@]} > 0 )); then
+    log "Building STEP 3 Q-to-answer depth tables under ${tables_dir}"
+    "${UV_BIN}" run python3 src/experiments/q_to_a_depth_analysis.py \
       --pred-jsonl "${step3_predictions[@]}" \
       --output-dir "${tables_dir}"
   else
-    log "Skipping STEP 3 depth-width tables: need STEP 3 predictions and Exp3 diagnostics."
+    log "Skipping STEP 3 Q-to-answer depth tables: no STEP 3 prediction files found."
   fi
 }
 

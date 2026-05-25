@@ -369,7 +369,7 @@ def _q_to_a_exact_depth_lines(
     answer_count = len(answer_cuis)
     if not answer_cuis:
         return [
-            f"Q-to-answer exact-depth paths: no linked answer-option CUI available for exact {depth}-hop search."
+            "Q-to-answer paths: no linked answer-option CUI available."
         ], 0, 0, 0, 0, Q_TO_A_EXACT_PATH_SELECTION_POLICY
 
     paths_by_target = relations.clean_exact_paths_between(
@@ -387,11 +387,11 @@ def _q_to_a_exact_depth_lines(
             if cui not in paths_by_target
         ]
         return [
-            f"Q-to-answer exact-depth paths: no complete exact {depth}-hop UMLS path set found.",
+            "Q-to-answer paths: no complete UMLS path set found.",
             "Missing answer CUIs: " + ", ".join(missing),
         ], 0, 0, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY
 
-    lines = [f"Q-to-answer exact-depth paths: depth={depth}"]
+    lines = ["Q-to-answer paths:"]
     nodes: set[str] = set()
     edge_keys: set[tuple[str, str]] = set()
     edge_count = 0
@@ -449,7 +449,7 @@ def build_evidence_card_details(
     if spec.evidence_view == "none":
         raise ValueError(f"Unsupported downstream probe condition: {condition}")
 
-    lines = [f"Evidence condition: {condition}"]
+    lines = []
     oracle_source = ""
 
     if condition == "oracle_gold_evidence":
@@ -540,7 +540,7 @@ def build_evidence_card_details(
     if condition == "random_same_size_evidence":
         nodes = _random_nodes(item, relations)
         lines.extend(_relation_lines(nodes, relations, metadata, node_priority=_node_priority(item)))
-        if len(lines) == 1:
+        if not lines:
             lines.append("UMLS graph: no readable random same-size relation edges available.")
         return EvidenceCardDetails("\n".join(lines))
 

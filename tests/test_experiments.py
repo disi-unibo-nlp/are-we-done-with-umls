@@ -654,7 +654,11 @@ class DiagnosticTests(unittest.TestCase):
                 relations,
             )
 
-        self.assertIn("Q-to-answer exact-depth paths: depth=2", card)
+        self.assertIn("Q-to-answer paths:", card)
+        self.assertNotIn("Evidence condition:", card)
+        self.assertNotIn("q_to_a_exact_depth_2_evidence", card)
+        self.assertNotIn("depth=2", card)
+        self.assertNotIn("exact-depth", card)
         self.assertIn("Question concept -- alpha bridge --> unnamed UMLS concept", card)
         self.assertIn("unnamed UMLS concept -- alpha relation --> Alpha", card)
         self.assertIn("Question concept -- beta bridge --> unnamed UMLS concept", card)
@@ -699,7 +703,10 @@ class DiagnosticTests(unittest.TestCase):
 
             card = build_evidence_card(item, "q_to_a_exact_depth_2_evidence", metadata, relations)
 
-        self.assertIn("Q-to-answer exact-depth paths: no complete exact 2-hop UMLS path set found.", card)
+        self.assertIn("Q-to-answer paths: no complete UMLS path set found.", card)
+        self.assertNotIn("Evidence condition:", card)
+        self.assertNotIn("q_to_a_exact_depth_2_evidence", card)
+        self.assertNotIn("2-hop", card)
         self.assertNotIn("direct relation", card)
 
     def test_q_to_a_exact_depth_requires_every_answer_cui_to_have_clean_path(self) -> None:
@@ -742,7 +749,8 @@ class DiagnosticTests(unittest.TestCase):
         self.assertFalse(details.q_to_a_path_found)
         self.assertEqual(details.q_to_a_answer_cui_count, 2)
         self.assertEqual(details.q_to_a_answer_cui_covered_count, 1)
-        self.assertIn("no complete exact 2-hop UMLS path set", details.text or "")
+        self.assertIn("no complete UMLS path set", details.text or "")
+        self.assertNotIn("2-hop", details.text or "")
         self.assertNotIn("alpha relation", details.text or "")
 
     def test_q_to_a_exact_depth_rejects_paths_through_other_answer_cuis(self) -> None:

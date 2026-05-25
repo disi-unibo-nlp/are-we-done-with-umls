@@ -44,6 +44,7 @@ class UmlsExperimentStatusTests(unittest.TestCase):
                 "q_to_a_exact_depth_2_evidence",
                 "q_to_a_exact_depth_3_evidence",
                 "q_to_a_exact_depth_4_evidence",
+                "q_to_a_exact_depth_5_evidence",
             ),
         )
         self.assertNotIn("chain_depth_1_width_tight_evidence", status.STEP3_CONDITIONS)

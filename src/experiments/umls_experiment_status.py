@@ -41,7 +41,7 @@ STEP2_CONDITIONS = (
 )
 STEP3_CONDITIONS = tuple(
     f"q_to_a_exact_depth_{depth}_evidence"
-    for depth in (1, 2, 3, 4)
+    for depth in (1, 2, 3, 4, 5)
 )
 
 

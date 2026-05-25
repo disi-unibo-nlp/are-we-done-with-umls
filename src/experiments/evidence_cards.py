@@ -34,7 +34,7 @@ class EvidenceCardDetails:
     q_to_a_path_selection_policy: str = ""
 
 
-Q_TO_A_DEPTHS = (1, 2, 3, 4)
+Q_TO_A_DEPTHS = (1, 2, 3, 4, 5)
 Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI = 2
 Q_TO_A_EXACT_PATH_SELECTION_POLICY = "clean_exact_hops_all_answer_cuis_max_2_paths_per_cui"
 Q_TO_A_EXACT_DEPTH_CONDITION_SPECS = {

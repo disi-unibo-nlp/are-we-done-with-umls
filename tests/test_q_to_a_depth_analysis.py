@@ -6,6 +6,7 @@ from src.experiments.q_to_a_depth_analysis import analyse, parse_exact_depth
 class QToADepthAnalysisTests(unittest.TestCase):
     def test_parse_exact_depth_condition(self) -> None:
         self.assertEqual(parse_exact_depth("q_to_a_exact_depth_3_evidence"), 3)
+        self.assertEqual(parse_exact_depth("q_to_a_exact_depth_5_evidence"), 5)
         self.assertIsNone(parse_exact_depth("q_to_a_path_evidence"))
         self.assertIsNone(parse_exact_depth("chain_depth_3_width_full_evidence"))
 

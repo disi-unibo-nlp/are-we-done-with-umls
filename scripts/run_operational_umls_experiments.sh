@@ -61,7 +61,7 @@ STEP2_CONDITIONS="${STEP2_CONDITIONS:-relation_only_evidence q_to_a_path_evidenc
 
 Q2A_DEPTH_CONDITIONS="${Q2A_DEPTH_CONDITIONS:-}"
 if [[ -z "${Q2A_DEPTH_CONDITIONS}" ]]; then
-  for depth in 1 2 3 4; do
+  for depth in 1 2 3 4 5; do
     Q2A_DEPTH_CONDITIONS+="${Q2A_DEPTH_CONDITIONS:+ }q_to_a_exact_depth_${depth}_evidence"
   done
 fi

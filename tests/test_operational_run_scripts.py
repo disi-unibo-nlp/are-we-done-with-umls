@@ -57,6 +57,7 @@ class OperationalRunScriptTests(unittest.TestCase):
     def test_operational_runner_defines_exact_q_to_a_step3_without_width_matrix(self) -> None:
         text = self.script_text("scripts/run_operational_umls_experiments.sh")
         self.assertIn("q_to_a_exact_depth_${depth}_evidence", text)
+        self.assertIn("for depth in 1 2 3 4 5", text)
         self.assertIn("Q2A_DEPTH_CONDITIONS", text)
         self.assertNotIn("CHAIN_CONDITIONS", text)
         self.assertNotIn("chain_depth_${depth}_width_${width}_evidence", text)

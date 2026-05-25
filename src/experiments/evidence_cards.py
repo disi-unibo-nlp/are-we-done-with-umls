@@ -396,10 +396,7 @@ def _q_to_a_exact_depth_lines(
     edge_keys: set[tuple[str, str]] = set()
     edge_count = 0
     for target in answer_cuis:
-        target_name = metadata.get(target).name or target
-        lines.append(f"Paths to {target_name} (CUI: {target}):")
-        for index, path in enumerate(paths_by_target[target], start=1):
-            lines.append(f"- Path {index}:")
+        for path in paths_by_target[target]:
             nodes.update(path)
             for left, right in zip(path, path[1:]):
                 left_name = _concept_name(left, metadata)
@@ -407,10 +404,10 @@ def _q_to_a_exact_depth_lines(
                 if not left_name or not right_name:
                     continue
                 label = relations.relation_label(left, right)
-                lines.append(f"  - {left_name} -- {_plain_relation_label(label)} --> {right_name}")
                 key = tuple(sorted((left, right)))
                 if key not in edge_keys:
                     edge_keys.add(key)
+                    lines.append(f"- {left_name} -- {_plain_relation_label(label)} --> {right_name}")
                     edge_count += 1
     return lines, len(nodes), edge_count, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY
 

@@ -579,12 +579,15 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 "cui_detail.tsv",
                 "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
                 "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
-                "C_A\tCorrect\tT047\tDisease or Syndrome\tMSH\tCorrect definition.\n",
+                "C_A\tCorrect\tT047\tDisease or Syndrome\tMSH\tCorrect definition.\n"
+                "C_B\tIncorrect\tT047\tDisease or Syndrome\tMSH\tIncorrect definition.\n",
             )
             write_zip_text(
                 rel_path,
                 "triplets.csv",
-                "cui_1,cui_2,re,rel_type\nC_Q,C_A,RO,associated_with\n",
+                "cui_1,cui_2,re,rel_type\n"
+                "C_Q,C_A,RO,associated_with\n"
+                "C_Q,C_B,RO,associated_with\n",
             )
             item = QAItem(
                 item_id="first",
@@ -596,7 +599,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 gold="A",
                 answer_text="Correct",
                 question_cuis=["C_Q"],
-                option_cuis={"A": ["C_A"], "B": []},
+                option_cuis={"A": ["C_A"], "B": ["C_B"]},
             )
 
             rows = run_qwen_probe(
@@ -607,7 +610,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
                 max_tokens=16,
                 conditions=("q_to_a_exact_depth_1_evidence",),
                 metadata=CuiMetadataIndex.from_zip(meta_path),
-                relations=RelationIndex.from_zip(rel_path, keep_cuis={"C_Q", "C_A"}),
+                relations=RelationIndex.from_zip(rel_path, keep_cuis={"C_Q", "C_A", "C_B"}),
             )
 
         self.assertEqual(rows[0]["condition"], "q_to_a_exact_depth_1_evidence")
@@ -616,8 +619,8 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertEqual(rows[0]["q_to_a_depth_semantics"], "exact_hops")
         self.assertEqual(rows[0]["q_to_a_depth"], 1)
         self.assertTrue(rows[0]["q_to_a_path_found"])
-        self.assertEqual(rows[0]["q_to_a_path_edge_count"], 1)
-        self.assertEqual(rows[0]["q_to_a_path_node_count"], 2)
+        self.assertEqual(rows[0]["q_to_a_path_edge_count"], 2)
+        self.assertEqual(rows[0]["q_to_a_path_node_count"], 3)
 
     def test_downstream_qwen_probe_can_skip_missing_exact_q_to_a_paths(self) -> None:
         class CapturingClient:

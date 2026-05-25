@@ -364,13 +364,19 @@ def _q_to_a_exact_depth_lines(
     relations: RelationIndex,
     metadata: CuiMetadataIndex,
     depth: int,
-) -> tuple[list[str], int, int, int, int, str]:
+) -> tuple[list[str], int, int, int, int, str, bool]:
     answer_cuis = _all_answer_cuis(item)
     answer_count = len(answer_cuis)
     if not answer_cuis:
         return [
-            "Q-to-answer paths: no linked answer-option CUI available."
-        ], 0, 0, 0, 0, Q_TO_A_EXACT_PATH_SELECTION_POLICY
+            "No complete UMLS path set found."
+        ], 0, 0, 0, 0, Q_TO_A_EXACT_PATH_SELECTION_POLICY, False
+
+    linked_options_complete = all(
+        bool(item.option_cuis.get(label))
+        for label, option_text in item.options.items()
+        if option_text
+    )
 
     paths_by_target = relations.clean_exact_paths_between(
         item.question_cuis,
@@ -380,18 +386,12 @@ def _q_to_a_exact_depth_lines(
         max_paths_per_target=Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI,
     )
     covered_count = len(paths_by_target)
-    if covered_count != answer_count:
-        missing = [
-            f"{metadata.get(cui).name or cui} (CUI: {cui})"
-            for cui in answer_cuis
-            if cui not in paths_by_target
-        ]
+    if not linked_options_complete or covered_count != answer_count:
         return [
-            "Q-to-answer paths: no complete UMLS path set found.",
-            "Missing answer CUIs: " + ", ".join(missing),
-        ], 0, 0, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY
+            "No complete UMLS path set found."
+        ], 0, 0, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY, linked_options_complete
 
-    lines = ["Q-to-answer paths:"]
+    lines: list[str] = []
     nodes: set[str] = set()
     edge_keys: set[tuple[str, str]] = set()
     edge_count = 0
@@ -409,7 +409,9 @@ def _q_to_a_exact_depth_lines(
                     edge_keys.add(key)
                     lines.append(f"- {left_name} -- {_plain_relation_label(label)} --> {right_name}")
                     edge_count += 1
-    return lines, len(nodes), edge_count, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY
+    if not lines:
+        lines.append("No readable UMLS graph edges available.")
+    return lines, len(nodes), edge_count, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY, True
 
 
 def _random_nodes(item: QAItem, relations: RelationIndex) -> set[str]:
@@ -515,6 +517,7 @@ def build_evidence_card_details(
             answer_count,
             covered_count,
             selection_policy,
+            linked_options_complete,
         ) = _q_to_a_exact_depth_lines(
             item,
             relations,
@@ -526,7 +529,7 @@ def build_evidence_card_details(
             "\n".join(lines),
             q_to_a_depth_semantics="exact_hops",
             q_to_a_depth=exact_depth,
-            q_to_a_path_found=answer_count > 0 and covered_count == answer_count,
+            q_to_a_path_found=linked_options_complete and answer_count > 0 and covered_count == answer_count,
             q_to_a_path_node_count=node_count,
             q_to_a_path_edge_count=edge_count,
             q_to_a_answer_cui_count=answer_count,

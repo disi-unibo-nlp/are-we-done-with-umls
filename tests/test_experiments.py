@@ -654,11 +654,13 @@ class DiagnosticTests(unittest.TestCase):
                 relations,
             )
 
-        self.assertIn("Q-to-answer paths:", card)
+        self.assertTrue(card.startswith("- Question concept -- alpha bridge --> unnamed UMLS concept"))
         self.assertNotIn("Evidence condition:", card)
         self.assertNotIn("q_to_a_exact_depth_2_evidence", card)
         self.assertNotIn("depth=2", card)
         self.assertNotIn("exact-depth", card)
+        self.assertNotIn("Q-to-answer", card)
+        self.assertNotIn("UMLS graph:", card)
         self.assertNotIn("Paths to", card)
         self.assertNotIn("- Path", card)
         self.assertNotIn("CUI:", card)
@@ -706,11 +708,52 @@ class DiagnosticTests(unittest.TestCase):
 
             card = build_evidence_card(item, "q_to_a_exact_depth_2_evidence", metadata, relations)
 
-        self.assertIn("Q-to-answer paths: no complete UMLS path set found.", card)
+        self.assertIn("No complete UMLS path set found.", card)
+        self.assertNotIn("Q-to-answer", card)
         self.assertNotIn("Evidence condition:", card)
         self.assertNotIn("q_to_a_exact_depth_2_evidence", card)
         self.assertNotIn("2-hop", card)
         self.assertNotIn("direct relation", card)
+
+    def test_q_to_a_exact_depth_requires_every_answer_option_to_have_linked_cui(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_path = root / "test.jsonl"
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_jsonl(data_path, [{
+                "question": "Question",
+                "options": {"A": "Alpha", "B": "Beta"},
+                "answer_idx": "A",
+                "answer": "Alpha",
+                "concept": ["C_Q"],
+                "option0": ["C_A"],
+                "option1": [],
+            }])
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_A\tAlpha\tT047\tDisease or Syndrome\t\t\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\n"
+                "C_Q,C_A,RO,direct_relation\n",
+            )
+            item = load_metamap_records(data_path, dataset="medqa", split="test")[0]
+            metadata = CuiMetadataIndex.from_zip(meta_path)
+            relations = RelationIndex.from_zip(rel_path, keep_cuis={"C_Q", "C_A"})
+
+            details = build_evidence_card_details(item, "q_to_a_exact_depth_1_evidence", metadata, relations)
+
+        self.assertFalse(details.q_to_a_path_found)
+        self.assertEqual(details.q_to_a_answer_cui_count, 1)
+        self.assertEqual(details.q_to_a_answer_cui_covered_count, 1)
+        self.assertIn("No complete UMLS path set found.", details.text or "")
+        self.assertNotIn("direct relation", details.text or "")
 
     def test_q_to_a_exact_depth_requires_every_answer_cui_to_have_clean_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -752,7 +795,8 @@ class DiagnosticTests(unittest.TestCase):
         self.assertFalse(details.q_to_a_path_found)
         self.assertEqual(details.q_to_a_answer_cui_count, 2)
         self.assertEqual(details.q_to_a_answer_cui_covered_count, 1)
-        self.assertIn("no complete UMLS path set", details.text or "")
+        self.assertIn("No complete UMLS path set", details.text or "")
+        self.assertNotIn("Q-to-answer", details.text or "")
         self.assertNotIn("2-hop", details.text or "")
         self.assertNotIn("alpha relation", details.text or "")
 

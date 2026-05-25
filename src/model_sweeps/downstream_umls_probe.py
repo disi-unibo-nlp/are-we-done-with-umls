@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
+import random
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -72,6 +74,40 @@ def _annotate_probe_row(row: dict, condition: str, card_details=None) -> dict:
     return out
 
 
+def _stable_condition_seed(seed: int, condition: str) -> int:
+    digest = hashlib.sha256(condition.encode("utf-8")).hexdigest()
+    return seed + int(digest[:8], 16)
+
+
+def _capped_tasks(
+    tasks: list[tuple[str, QAItem, Any]],
+    max_items_per_condition: int | None,
+    seed: int,
+    condition: str,
+) -> list[tuple[str, QAItem, Any]]:
+    if max_items_per_condition is None or max_items_per_condition <= 0:
+        return tasks
+    if len(tasks) <= max_items_per_condition:
+        return tasks
+    indexed = list(enumerate(tasks))
+    rng = random.Random(_stable_condition_seed(seed, condition))
+    rng.shuffle(indexed)
+    selected_indexes = {index for index, _ in indexed[:max_items_per_condition]}
+    return [task for index, task in enumerate(tasks) if index in selected_indexes]
+
+
+def _capped_items(items: list[QAItem], max_items: int | None, seed: int) -> list[QAItem]:
+    if max_items is None or max_items <= 0:
+        return items
+    if len(items) <= max_items:
+        return items
+    indexed = list(enumerate(items))
+    rng = random.Random(_stable_condition_seed(seed, "global_items"))
+    rng.shuffle(indexed)
+    selected_indexes = {index for index, _ in indexed[:max_items]}
+    return [item for index, item in enumerate(items) if index in selected_indexes]
+
+
 def run_medgemma_probe(
     items: list[QAItem],
     model_bundle: dict[str, Any],
@@ -119,6 +155,9 @@ def run_qwen_probe(
     output_jsonl: Path | None = None,
     existing_rows: list[dict] | None = None,
     concurrency: int = 1,
+    require_q_to_a_path: bool = False,
+    max_items_per_condition: int | None = None,
+    selection_seed: int = 42,
 ) -> list[dict]:
     rows: list[dict] = list(existing_rows or [])
     completed = {
@@ -134,12 +173,36 @@ def run_qwen_probe(
         for row in rows
     }
 
-    pending = [
-        (condition, item)
-        for condition in conditions
-        for item in items
-        if (item.item_id, item.dataset, item.split, item.linker, model, mode, condition) not in completed
-    ]
+    source_items = (
+        items
+        if require_q_to_a_path
+        else _capped_items(items, max_items_per_condition, selection_seed)
+    )
+
+    pending: list[tuple[str, QAItem, Any]] = []
+    for condition in conditions:
+        condition_tasks: list[tuple[str, QAItem, Any]] = []
+        for item in source_items:
+            card = build_evidence_card_details(item, condition, metadata, relations)
+            if (
+                require_q_to_a_path
+                and card.q_to_a_depth_semantics
+                and not card.q_to_a_path_found
+            ):
+                continue
+            condition_tasks.append((condition, item, card))
+        if require_q_to_a_path:
+            condition_tasks = _capped_tasks(
+                condition_tasks,
+                max_items_per_condition=max_items_per_condition,
+                seed=selection_seed,
+                condition=condition,
+            )
+        pending.extend(
+            (condition, item, card)
+            for condition, item, card in condition_tasks
+            if (item.item_id, item.dataset, item.split, item.linker, model, mode, condition) not in completed
+        )
 
     output_fh = None
     if output_jsonl is not None:
@@ -148,8 +211,7 @@ def run_qwen_probe(
 
     write_lock = threading.Lock()
 
-    def _process(condition: str, item: QAItem) -> dict:
-        card = build_evidence_card_details(item, condition, metadata, relations)
+    def _process(condition: str, item: QAItem, card) -> dict:
         row = predict_item(
             item,
             client,
@@ -182,11 +244,11 @@ def run_qwen_probe(
 
     try:
         if concurrency <= 1:
-            for condition, item in pending:
-                _flush(_process(condition, item))
+            for condition, item, card in pending:
+                _flush(_process(condition, item, card))
         else:
             with ThreadPoolExecutor(max_workers=concurrency) as executor:
-                futures = {executor.submit(_process, c, i): (c, i) for c, i in pending}
+                futures = {executor.submit(_process, c, i, card): (c, i) for c, i, card in pending}
                 for future in as_completed(futures):
                     annotated = future.result()
                     with write_lock:
@@ -310,6 +372,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--presence-penalty", type=float, default=None)
     parser.add_argument("--thinking-token-budget", type=int, default=None)
     parser.add_argument("--concurrency", type=int, default=1, help="Number of concurrent vLLM requests.")
+    parser.add_argument("--require-q-to-a-path", action="store_true",
+                        help="For Q-to-answer evidence conditions, skip model generation when no path is present.")
+    parser.add_argument("--max-items-per-condition", type=int, default=0,
+                        help="Deterministically cap generated items per evidence condition after filtering.")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--output-jsonl", type=Path, required=True)
     parser.add_argument("--summary-csv", type=Path, required=True)
@@ -352,6 +418,8 @@ def main() -> None:
             "presence_penalty": args.presence_penalty,
             "thinking_token_budget": args.thinking_token_budget,
             "seed": args.seed,
+            "require_q_to_a_path": args.require_q_to_a_path,
+            "max_items_per_condition": args.max_items_per_condition,
             "enable_thinking": args.qwen_mode == "thinking",
             "output_jsonl": str(args.output_jsonl),
             "summary_csv": str(args.summary_csv),
@@ -384,6 +452,9 @@ def main() -> None:
             output_jsonl=args.output_jsonl,
             existing_rows=load_existing_rows(args.output_jsonl) if args.resume else [],
             concurrency=args.concurrency,
+            require_q_to_a_path=args.require_q_to_a_path,
+            max_items_per_condition=normalize_limit(args.max_items_per_condition),
+            selection_seed=args.seed,
         )
     elif args.mock_model:
         rows = run_medgemma_probe(

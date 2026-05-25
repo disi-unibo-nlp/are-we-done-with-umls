@@ -67,8 +67,8 @@ class OperationalRunScriptTests(unittest.TestCase):
     def test_operational_runner_defaults_step23_to_spacy_only(self) -> None:
         text = self.script_text("scripts/run_operational_umls_experiments.sh")
         self.assertIn('STEP23_LINKERS="${STEP23_LINKERS:-spacy}"', text)
-        self.assertIn('run_filtered_step "step2" "${STEP2_CONDITIONS}" "item_cuis" "${TRIPLETS_ZIP}" "${STEP23_LINKERS}"', text)
-        self.assertIn('run_filtered_step "step3" "${Q2A_DEPTH_CONDITIONS}" "full" "${graph_zip}" "${STEP23_LINKERS}"', text)
+        self.assertIn('run_filtered_step "step2" "${STEP2_CONDITIONS}" "item_cuis" "${TRIPLETS_ZIP}" "${STEP23_LINKERS}" "0"', text)
+        self.assertIn('run_filtered_step "step3" "${Q2A_DEPTH_CONDITIONS}" "full" "${graph_zip}" "${STEP23_LINKERS}" "${STEP3_REQUIRE_Q_TO_A_PATH}"', text)
 
     def test_operational_runner_dry_run_step2_uses_step23_linkers(self) -> None:
         env = os.environ.copy()
@@ -157,6 +157,17 @@ class OperationalRunScriptTests(unittest.TestCase):
         self.assertIn("--item-id-file", text)
         self.assertIn("RELATION_SCOPE", text)
         self.assertIn("--relation-scope", text)
+        self.assertIn("MAX_ITEMS_PER_CONDITION", text)
+        self.assertIn("--max-items-per-condition", text)
+        self.assertIn("REQUIRE_Q_TO_A_PATH", text)
+        self.assertIn("--require-q-to-a-path", text)
+
+    def test_operational_step3_defaults_to_path_present_sampling(self) -> None:
+        operational = self.script_text("scripts/run_operational_umls_experiments.sh")
+        overnight = self.script_text("scripts/run_overnight_umls_all_models.sh")
+        for text in (operational, overnight):
+            self.assertIn('MAX_ITEMS_PER_CONDITION="${MAX_ITEMS_PER_CONDITION:-${MAX_EXPERIMENT_INSTANCES:-100}}"', text)
+            self.assertIn('STEP3_REQUIRE_Q_TO_A_PATH="${STEP3_REQUIRE_Q_TO_A_PATH:-1}"', text)
 
     def test_operational_runner_can_reuse_fixed_nonthinking_subset_for_reasoning_outputs(self) -> None:
         text = self.script_text("scripts/run_operational_umls_experiments.sh")

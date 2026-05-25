@@ -33,6 +33,8 @@ RUN_QWEN="${RUN_QWEN:-0}"
 MOCK_MODEL="${MOCK_MODEL:-0}"
 DRY_RUN="${DRY_RUN:-0}"
 CONDITIONS="${CONDITIONS:-no_umls relation_only_evidence q_to_a_path_evidence metadata_rich_evidence}"
+MAX_ITEMS_PER_CONDITION="${MAX_ITEMS_PER_CONDITION:-${MAX_EXPERIMENT_INSTANCES:-0}}"
+REQUIRE_Q_TO_A_PATH="${REQUIRE_Q_TO_A_PATH:-0}"
 
 MEDGEMMA_MODEL_KEY="${MEDGEMMA_MODEL_KEY:-MedGemma-1.5-4B-it}"
 MEDGEMMA_MODEL_ID="${MEDGEMMA_MODEL_ID:-google/medgemma-1.5-4b-it}"
@@ -82,6 +84,14 @@ if [[ -n "${ITEM_ID_FILE}" ]]; then
   subset_args+=(--item-id-file "${ITEM_ID_FILE}")
 fi
 
+filter_args=()
+if [[ "${REQUIRE_Q_TO_A_PATH}" == "1" ]]; then
+  filter_args+=(--require-q-to-a-path)
+fi
+if [[ -n "${MAX_ITEMS_PER_CONDITION}" && "${MAX_ITEMS_PER_CONDITION}" != "0" ]]; then
+  filter_args+=(--max-items-per-condition "${MAX_ITEMS_PER_CONDITION}")
+fi
+
 relation_args=(--triplets-zip "${TRIPLETS_ZIP}" --relation-scope "${RELATION_SCOPE}")
 
 thinking_budget_args=()
@@ -106,6 +116,7 @@ if [[ "${RUN_MEDGEMMA}" == "1" ]]; then
     --linker "${LINKER}" \
     --limit "${LIMIT}" \
     "${subset_args[@]}" \
+    "${filter_args[@]}" \
     "${relation_args[@]}" \
     "${model_args[@]}" \
     --num-samples "${NUM_SAMPLES}" \
@@ -136,6 +147,7 @@ if [[ "${RUN_QWEN}" == "1" ]]; then
     --linker "${LINKER}" \
     --limit "${LIMIT}" \
     "${subset_args[@]}" \
+    "${filter_args[@]}" \
     "${relation_args[@]}" \
     --qwen-model "${QWEN_MODEL}" \
     --qwen-mode "${QWEN_MODE}" \

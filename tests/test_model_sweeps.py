@@ -619,6 +619,137 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertEqual(rows[0]["q_to_a_path_edge_count"], 1)
         self.assertEqual(rows[0]["q_to_a_path_node_count"], 2)
 
+    def test_downstream_qwen_probe_can_skip_missing_exact_q_to_a_paths(self) -> None:
+        class CapturingClient:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def chat_completion(self, payload: dict) -> dict:
+                self.calls += 1
+                return {"choices": [{"message": {"content": r"\boxed{A}"}}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q1\tQuestion one\tT033\tFinding\t\t\n"
+                "C_A1\tAnswer one\tT047\tDisease or Syndrome\t\t\n"
+                "C_Q2\tQuestion two\tT033\tFinding\t\t\n"
+                "C_A2\tAnswer two\tT047\tDisease or Syndrome\t\t\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\nC_Q1,C_A1,RO,associated_with\n",
+            )
+            items = [
+                QAItem(
+                    item_id="has_path",
+                    dataset="medQA",
+                    split="test",
+                    linker="spacy",
+                    question="Which option is correct?",
+                    options={"A": "Answer one"},
+                    gold="A",
+                    answer_text="Answer one",
+                    question_cuis=["C_Q1"],
+                    option_cuis={"A": ["C_A1"]},
+                ),
+                QAItem(
+                    item_id="missing_path",
+                    dataset="medQA",
+                    split="test",
+                    linker="spacy",
+                    question="Which option is correct?",
+                    options={"A": "Answer two"},
+                    gold="A",
+                    answer_text="Answer two",
+                    question_cuis=["C_Q2"],
+                    option_cuis={"A": ["C_A2"]},
+                ),
+            ]
+            client = CapturingClient()
+
+            rows = run_qwen_probe(
+                items,
+                client,
+                model="Qwen/Qwen3.5-4B",
+                mode="non_thinking",
+                max_tokens=16,
+                conditions=("q_to_a_exact_depth_1_evidence",),
+                metadata=CuiMetadataIndex.from_zip(meta_path),
+                relations=RelationIndex.from_zip(rel_path, keep_cuis={"C_Q1", "C_A1", "C_Q2", "C_A2"}),
+                require_q_to_a_path=True,
+            )
+
+        self.assertEqual(client.calls, 1)
+        self.assertEqual([row["item_id"] for row in rows], ["has_path"])
+        self.assertTrue(rows[0]["q_to_a_path_found"])
+
+    def test_downstream_qwen_probe_caps_items_per_condition_after_filtering(self) -> None:
+        class CapturingClient:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def chat_completion(self, payload: dict) -> dict:
+                self.calls += 1
+                return {"choices": [{"message": {"content": r"\boxed{A}"}}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            metadata_lines = ["CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF"]
+            relation_lines = ["cui_1,cui_2,re,rel_type"]
+            items = []
+            keep_cuis = set()
+            for index in range(4):
+                q_cui = f"C_Q{index}"
+                a_cui = f"C_A{index}"
+                metadata_lines.extend([
+                    f"{q_cui}\tQuestion {index}\tT033\tFinding\t\t",
+                    f"{a_cui}\tAnswer {index}\tT047\tDisease or Syndrome\t\t",
+                ])
+                relation_lines.append(f"{q_cui},{a_cui},RO,associated_with")
+                keep_cuis.update({q_cui, a_cui})
+                items.append(QAItem(
+                    item_id=f"item_{index}",
+                    dataset="medQA",
+                    split="test",
+                    linker="spacy",
+                    question="Which option is correct?",
+                    options={"A": f"Answer {index}"},
+                    gold="A",
+                    answer_text=f"Answer {index}",
+                    question_cuis=[q_cui],
+                    option_cuis={"A": [a_cui]},
+                ))
+            write_zip_text(meta_path, "cui_detail.tsv", "\n".join(metadata_lines) + "\n")
+            write_zip_text(rel_path, "triplets.csv", "\n".join(relation_lines) + "\n")
+            client = CapturingClient()
+
+            rows = run_qwen_probe(
+                items,
+                client,
+                model="Qwen/Qwen3.5-4B",
+                mode="non_thinking",
+                max_tokens=16,
+                conditions=("q_to_a_exact_depth_1_evidence",),
+                metadata=CuiMetadataIndex.from_zip(meta_path),
+                relations=RelationIndex.from_zip(rel_path, keep_cuis=keep_cuis),
+                require_q_to_a_path=True,
+                max_items_per_condition=2,
+                selection_seed=42,
+            )
+
+        self.assertEqual(client.calls, 2)
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(all(row["q_to_a_path_found"] for row in rows))
+
     def test_downstream_qwen_probe_resumes_without_duplicate_item_condition_rows(self) -> None:
         class CapturingClient:
             def __init__(self) -> None:

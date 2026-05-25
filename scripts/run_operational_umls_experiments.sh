@@ -34,6 +34,8 @@ QWEN_TOP_K="${QWEN_TOP_K:-20}"
 QWEN_PRESENCE_PENALTY="${QWEN_PRESENCE_PENALTY:-0.0}"
 QWEN_SEED="${QWEN_SEED:-42}"
 QWEN_CONCURRENCY="${QWEN_CONCURRENCY:-1}"
+MAX_ITEMS_PER_CONDITION="${MAX_ITEMS_PER_CONDITION:-${MAX_EXPERIMENT_INSTANCES:-100}}"
+STEP3_REQUIRE_Q_TO_A_PATH="${STEP3_REQUIRE_Q_TO_A_PATH:-1}"
 QWEN_THINKING_TOKEN_BUDGET="${QWEN_THINKING_TOKEN_BUDGET:-}"
 if [[ "${QWEN_MODE}" == "thinking" ]]; then
   QWEN_THINKING_TOKEN_BUDGET="${QWEN_THINKING_TOKEN_BUDGET:-4096}"
@@ -84,6 +86,7 @@ run_probe() {
   local item_id_file="${6:-}"
   local relation_scope="${7:-item_cuis}"
   local triplets_zip="${8:-${TRIPLETS_ZIP}}"
+  local require_q_to_a_path="${9:-0}"
 
   log "Qwen probe: dataset=${dataset} linker=${linker} model=${model} step_dir=${output_dir}"
   RUN_MEDGEMMA=0 \
@@ -107,6 +110,8 @@ run_probe() {
   QWEN_SEED="${QWEN_SEED}" \
   QWEN_CONCURRENCY="${QWEN_CONCURRENCY}" \
   QWEN_THINKING_TOKEN_BUDGET="${QWEN_THINKING_TOKEN_BUDGET}" \
+  MAX_ITEMS_PER_CONDITION="${MAX_ITEMS_PER_CONDITION}" \
+  REQUIRE_Q_TO_A_PATH="${require_q_to_a_path}" \
   RESUME="${RESUME}" \
   DRY_RUN="${DRY_RUN}" \
   bash scripts/run_downstream_umls_probe.sh
@@ -163,6 +168,7 @@ run_filtered_step() {
   local relation_scope="$3"
   local triplets_zip="$4"
   local linkers="$5"
+  local require_q_to_a_path="${6:-0}"
   local step_dir="${OUTPUT_ROOT}/${step_name}_predictions"
 
   for dataset in ${DATASETS}; do
@@ -187,14 +193,14 @@ run_filtered_step() {
           echo "Run STEP=1 first." >&2
           exit 2
         fi
-        run_probe "${dataset}" "${linker}" "${model}" "${conditions}" "${step_dir}" "${manifest}" "${relation_scope}" "${triplets_zip}"
+        run_probe "${dataset}" "${linker}" "${model}" "${conditions}" "${step_dir}" "${manifest}" "${relation_scope}" "${triplets_zip}" "${require_q_to_a_path}"
       done
     done
   done
 }
 
 run_step2() {
-  run_filtered_step "step2" "${STEP2_CONDITIONS}" "item_cuis" "${TRIPLETS_ZIP}" "${STEP23_LINKERS}"
+  run_filtered_step "step2" "${STEP2_CONDITIONS}" "item_cuis" "${TRIPLETS_ZIP}" "${STEP23_LINKERS}" "0"
 }
 
 run_step3() {
@@ -202,7 +208,7 @@ run_step3() {
   if [[ -s "${EXTENDED_TRIPLETS_ZIP}" ]]; then
     graph_zip="${EXTENDED_TRIPLETS_ZIP}"
   fi
-  run_filtered_step "step3" "${Q2A_DEPTH_CONDITIONS}" "full" "${graph_zip}" "${STEP23_LINKERS}"
+  run_filtered_step "step3" "${Q2A_DEPTH_CONDITIONS}" "full" "${graph_zip}" "${STEP23_LINKERS}" "${STEP3_REQUIRE_Q_TO_A_PATH}"
 }
 
 collect_prediction_files_for_step23_linkers() {

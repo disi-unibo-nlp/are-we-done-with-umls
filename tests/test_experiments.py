@@ -209,6 +209,27 @@ class UMLSIndexTests(unittest.TestCase):
         self.assertEqual(len(index._shortest_path_nodes_cache), 1)
         self.assertEqual(len(index._shortest_path_length_cache), 1)
 
+    def test_relation_index_caches_clean_exact_hop_paths(self) -> None:
+        index = RelationIndex(
+            {
+                "C_Q": {"C_1", "C_NOISE"},
+                "C_1": {"C_Q", "C_2"},
+                "C_2": {"C_1", "C_3"},
+                "C_3": {"C_2", "C_4"},
+                "C_4": {"C_3", "C_A"},
+                "C_A": {"C_4"},
+                "C_NOISE": {"C_Q", "C_OTHER"},
+                "C_OTHER": {"C_NOISE"},
+            }
+        )
+
+        paths = index.clean_exact_paths(["C_Q"], "C_A", hops=5, max_paths=1)
+        repeated = index.clean_exact_paths(["C_Q"], "C_A", hops=5, max_paths=1)
+
+        self.assertEqual(paths, [["C_Q", "C_1", "C_2", "C_3", "C_4", "C_A"]])
+        self.assertEqual(repeated, paths)
+        self.assertEqual(len(index._clean_exact_paths_cache), 1)
+
 
 class DiagnosticTests(unittest.TestCase):
     def test_paper_config_loads_toml_without_yaml_dependency(self) -> None:

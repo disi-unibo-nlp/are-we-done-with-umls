@@ -104,6 +104,10 @@ class RelationIndex:
         self._shortest_path_length_cache: dict[tuple[tuple[str, ...], tuple[str, ...], int], int | None] = {}
         self._shortest_path_nodes_cache: dict[tuple[tuple[str, ...], tuple[str, ...], int], tuple[str, ...] | None] = {}
         self._exact_path_nodes_cache: dict[tuple[tuple[str, ...], tuple[str, ...], int], tuple[str, ...] | None] = {}
+        self._clean_exact_paths_cache: dict[
+            tuple[tuple[str, ...], str, int, tuple[str, ...], int],
+            tuple[tuple[str, ...], ...],
+        ] = {}
         self._all_nodes_sorted_cache: tuple[str, ...] | None = None
 
     @classmethod
@@ -362,10 +366,22 @@ class RelationIndex:
         source_set = {cui for cui in sources if cui}
         target = target.strip()
         forbidden = {cui for cui in forbidden_internal if cui}
+        cache_key = (
+            tuple(sorted(source_set)),
+            target,
+            hops,
+            tuple(sorted(forbidden)),
+            max_paths,
+        )
+        if cache_key in self._clean_exact_paths_cache:
+            return [list(path) for path in self._clean_exact_paths_cache[cache_key]]
         if not source_set or not target or hops < 0 or max_paths <= 0:
+            self._clean_exact_paths_cache[cache_key] = ()
             return []
         if hops == 0:
-            return [[target]] if target in source_set else []
+            paths = ((target,),) if target in source_set else ()
+            self._clean_exact_paths_cache[cache_key] = paths
+            return [list(path) for path in paths]
 
         # If an answer CUI is also linked in the question, do not let it become
         # the source for a path to another answer CUI.
@@ -375,7 +391,20 @@ class RelationIndex:
             if source == target or source not in forbidden
         }
         if not source_set:
+            self._clean_exact_paths_cache[cache_key] = ()
             return []
+
+        fast_paths = self._target_guided_clean_exact_paths(
+            source_set,
+            target,
+            hops,
+            forbidden_internal=forbidden,
+            max_paths=max_paths,
+        )
+        if fast_paths:
+            cached = tuple(tuple(path) for path in fast_paths)
+            self._clean_exact_paths_cache[cache_key] = cached
+            return [list(path) for path in cached]
 
         left_depth = hops // 2
         right_depth = hops - left_depth
@@ -410,8 +439,78 @@ class RelationIndex:
                     seen.add(key)
                     paths.append(path)
                     if len(paths) >= max_paths:
+                        self._clean_exact_paths_cache[cache_key] = tuple(tuple(item) for item in paths)
                         return paths
+        self._clean_exact_paths_cache[cache_key] = tuple(tuple(item) for item in paths)
         return paths
+
+    def _target_guided_clean_exact_paths(
+        self,
+        source_set: set[str],
+        target: str,
+        hops: int,
+        forbidden_internal: set[str],
+        max_paths: int,
+        max_expansions: int = 200_000,
+    ) -> list[list[str]]:
+        """Find clean exact-hop paths without materializing full path frontiers."""
+        target_layers = self._target_reachable_layers(
+            target,
+            hops,
+            forbidden_internal=forbidden_internal,
+        )
+        paths: list[list[str]] = []
+        expansions = 0
+
+        def dfs(node: str, path: tuple[str, ...], remaining: int) -> None:
+            nonlocal expansions
+            if len(paths) >= max_paths or expansions >= max_expansions:
+                return
+            if remaining == 0:
+                if node == target:
+                    paths.append(list(path))
+                return
+            for neighbor in self._sorted_adjacency.get(node, ()):
+                expansions += 1
+                if neighbor in path:
+                    continue
+                if neighbor == target and remaining != 1:
+                    continue
+                if neighbor != target and neighbor in forbidden_internal:
+                    continue
+                if neighbor not in target_layers[remaining - 1]:
+                    continue
+                dfs(neighbor, (*path, neighbor), remaining - 1)
+                if len(paths) >= max_paths or expansions >= max_expansions:
+                    return
+
+        for source in sorted(source_set):
+            dfs(source, (source,), hops)
+            if len(paths) >= max_paths or expansions >= max_expansions:
+                break
+        return paths
+
+    def _target_reachable_layers(
+        self,
+        target: str,
+        max_depth: int,
+        forbidden_internal: set[str],
+    ) -> list[set[str]]:
+        layers: list[set[str]] = [{target}]
+        for _ in range(max_depth):
+            previous = layers[-1]
+            current: set[str] = set()
+            for node in previous:
+                for neighbor in self._adjacency.get(node, set()):
+                    if neighbor != target and neighbor in forbidden_internal:
+                        continue
+                    current.add(neighbor)
+            layers.append(current)
+            if not current:
+                break
+        while len(layers) <= max_depth:
+            layers.append(set())
+        return layers
 
     def exact_path_nodes(
         self,

@@ -183,6 +183,10 @@ def run_qwen_probe(
     for condition in conditions:
         condition_tasks: list[tuple[str, QAItem, Any]] = []
         for item in source_items:
+            completed_key = (item.item_id, item.dataset, item.split, item.linker, model, mode, condition)
+            if completed_key in completed and not require_q_to_a_path:
+                condition_tasks.append((condition, item, None))
+                continue
             card = build_evidence_card_details(item, condition, metadata, relations)
             if (
                 require_q_to_a_path

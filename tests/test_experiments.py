@@ -230,6 +230,25 @@ class UMLSIndexTests(unittest.TestCase):
         self.assertEqual(repeated, paths)
         self.assertEqual(len(index._clean_exact_paths_cache), 1)
 
+    def test_relation_index_finds_clean_depth_four_path_with_target_fanout(self) -> None:
+        adjacency = {
+            "C_Q": {"C_1", "C_NOISE"},
+            "C_1": {"C_Q", "C_2"},
+            "C_2": {"C_1", "C_3"},
+            "C_3": {"C_2", "C_A"},
+            "C_A": {"C_3"},
+            "C_NOISE": {"C_Q"},
+        }
+        for index in range(80):
+            noise = f"C_A_NOISE_{index}"
+            adjacency["C_A"].add(noise)
+            adjacency[noise] = {"C_A"}
+        index = RelationIndex(adjacency)
+
+        paths = index.clean_exact_paths(["C_Q"], "C_A", hops=4, max_paths=1)
+
+        self.assertEqual(paths, [["C_Q", "C_1", "C_2", "C_3", "C_A"]])
+
 
 class DiagnosticTests(unittest.TestCase):
     def test_paper_config_loads_toml_without_yaml_dependency(self) -> None:

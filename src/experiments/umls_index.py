@@ -407,6 +407,19 @@ class RelationIndex:
                 self._clean_exact_paths_cache[cache_key] = cached
                 return [list(path) for path in cached]
 
+        if hops >= 3:
+            fast_paths = self._source_guided_clean_exact_paths(
+                source_set,
+                target,
+                hops,
+                forbidden_internal=forbidden,
+                max_paths=max_paths,
+            )
+            if fast_paths:
+                cached = tuple(tuple(path) for path in fast_paths)
+                self._clean_exact_paths_cache[cache_key] = cached
+                return [list(path) for path in cached]
+
         left_depth = hops // 2
         right_depth = hops - left_depth
         left_paths = self._paths_at_depth_multi(
@@ -443,6 +456,85 @@ class RelationIndex:
                         self._clean_exact_paths_cache[cache_key] = tuple(tuple(item) for item in paths)
                         return paths
         self._clean_exact_paths_cache[cache_key] = tuple(tuple(item) for item in paths)
+        return paths
+
+    def _source_guided_clean_exact_paths(
+        self,
+        source_set: set[str],
+        target: str,
+        hops: int,
+        forbidden_internal: set[str],
+        max_paths: int,
+    ) -> list[list[str]]:
+        left_depth = hops // 2
+        right_depth = hops - left_depth
+        left_paths = self._paths_at_depth_multi(
+            source_set,
+            left_depth,
+            forbidden_internal=forbidden_internal,
+            max_paths_per_node=max_paths,
+        )
+        paths: list[list[str]] = []
+        seen: set[tuple[str, ...]] = set()
+        for meet in sorted(left_paths):
+            for left_path in left_paths[meet]:
+                suffixes = self._suffix_paths_to_target(
+                    meet,
+                    target,
+                    right_depth,
+                    forbidden_internal=forbidden_internal,
+                    blocked=set(left_path[:-1]),
+                    max_paths=max_paths - len(paths),
+                )
+                for suffix in suffixes:
+                    path = [*left_path, *suffix[1:]]
+                    key = tuple(path)
+                    if key in seen:
+                        continue
+                    if len(path) != hops + 1 or len(path) != len(set(path)):
+                        continue
+                    if path[-1] != target or path[0] not in source_set:
+                        continue
+                    if set(path[1:-1]) & forbidden_internal:
+                        continue
+                    seen.add(key)
+                    paths.append(path)
+                    if len(paths) >= max_paths:
+                        return paths
+        return paths
+
+    def _suffix_paths_to_target(
+        self,
+        start: str,
+        target: str,
+        depth: int,
+        forbidden_internal: set[str],
+        blocked: set[str],
+        max_paths: int,
+    ) -> list[tuple[str, ...]]:
+        paths: list[tuple[str, ...]] = []
+
+        def dfs(node: str, path: tuple[str, ...], remaining: int) -> None:
+            if len(paths) >= max_paths:
+                return
+            if remaining == 0:
+                if node == target:
+                    paths.append(path)
+                return
+            for neighbor in self._sorted_adjacency.get(node, ()):
+                if neighbor in blocked or neighbor in path:
+                    continue
+                if neighbor == target and remaining != 1:
+                    continue
+                if neighbor != target and neighbor in forbidden_internal:
+                    continue
+                dfs(neighbor, (*path, neighbor), remaining - 1)
+                if len(paths) >= max_paths:
+                    return
+
+        if depth < 0 or max_paths <= 0:
+            return []
+        dfs(start, (start,), depth)
         return paths
 
     def _target_guided_clean_exact_paths(

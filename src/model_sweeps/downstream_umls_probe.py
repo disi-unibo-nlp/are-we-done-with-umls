@@ -10,6 +10,7 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 if __package__ in {None, ""}:
@@ -71,6 +72,88 @@ def _annotate_probe_row(row: dict, condition: str, card_details=None) -> dict:
     out["q_to_a_answer_cui_count"] = int(getattr(card_details, "q_to_a_answer_cui_count", 0))
     out["q_to_a_answer_cui_covered_count"] = int(getattr(card_details, "q_to_a_answer_cui_covered_count", 0))
     out["q_to_a_path_selection_policy"] = getattr(card_details, "q_to_a_path_selection_policy", "")
+    return out
+
+
+def _evidence_cache_key(
+    item_id: str,
+    dataset: str,
+    split: str,
+    linker: str,
+    condition: str,
+) -> tuple[str, str, str, str, str]:
+    return (item_id, dataset, split, linker, condition)
+
+
+def evidence_card_to_cache_row(item: QAItem, condition: str, card_details) -> dict:
+    return {
+        "item_id": item.item_id,
+        "dataset": item.dataset,
+        "split": item.split,
+        "linker": item.linker,
+        "condition": condition,
+        "text": card_details.text,
+        "oracle": bool(getattr(card_details, "oracle", False)),
+        "oracle_gold_cui_source": getattr(card_details, "oracle_gold_cui_source", ""),
+        "oracle_lookup_success": bool(getattr(card_details, "oracle_lookup_success", False)),
+        "oracle_num_candidate_cuis": int(getattr(card_details, "oracle_num_candidate_cuis", 0)),
+        "oracle_ambiguous": bool(getattr(card_details, "oracle_ambiguous", False)),
+        "oracle_selected_cui_source": getattr(card_details, "oracle_selected_cui_source", ""),
+        "option_evidence_symmetric": bool(getattr(card_details, "option_evidence_symmetric", False)),
+        "uses_gold_label_for_evidence": bool(getattr(card_details, "uses_gold_label_for_evidence", False)),
+        "q_to_a_depth_semantics": getattr(card_details, "q_to_a_depth_semantics", ""),
+        "q_to_a_depth": int(getattr(card_details, "q_to_a_depth", 0)),
+        "q_to_a_path_found": bool(getattr(card_details, "q_to_a_path_found", False)),
+        "q_to_a_path_node_count": int(getattr(card_details, "q_to_a_path_node_count", 0)),
+        "q_to_a_path_edge_count": int(getattr(card_details, "q_to_a_path_edge_count", 0)),
+        "q_to_a_answer_cui_count": int(getattr(card_details, "q_to_a_answer_cui_count", 0)),
+        "q_to_a_answer_cui_covered_count": int(getattr(card_details, "q_to_a_answer_cui_covered_count", 0)),
+        "q_to_a_path_selection_policy": getattr(card_details, "q_to_a_path_selection_policy", ""),
+    }
+
+
+def cache_row_to_evidence_card(row: dict):
+    return SimpleNamespace(
+        text=row.get("text"),
+        oracle=bool(row.get("oracle", False)),
+        oracle_gold_cui_source=row.get("oracle_gold_cui_source", ""),
+        oracle_lookup_success=bool(row.get("oracle_lookup_success", False)),
+        oracle_num_candidate_cuis=int(row.get("oracle_num_candidate_cuis") or 0),
+        oracle_ambiguous=bool(row.get("oracle_ambiguous", False)),
+        oracle_selected_cui_source=row.get("oracle_selected_cui_source", ""),
+        option_evidence_symmetric=bool(row.get("option_evidence_symmetric", False)),
+        uses_gold_label_for_evidence=bool(row.get("uses_gold_label_for_evidence", False)),
+        q_to_a_depth_semantics=row.get("q_to_a_depth_semantics", ""),
+        q_to_a_depth=int(row.get("q_to_a_depth") or 0),
+        q_to_a_path_found=bool(row.get("q_to_a_path_found", False)),
+        q_to_a_path_node_count=int(row.get("q_to_a_path_node_count") or 0),
+        q_to_a_path_edge_count=int(row.get("q_to_a_path_edge_count") or 0),
+        q_to_a_answer_cui_count=int(row.get("q_to_a_answer_cui_count") or 0),
+        q_to_a_answer_cui_covered_count=int(row.get("q_to_a_answer_cui_covered_count") or 0),
+        q_to_a_path_selection_policy=row.get("q_to_a_path_selection_policy", ""),
+    )
+
+
+def load_evidence_cache(path: Path | None) -> dict[tuple[str, str, str, str, str], Any]:
+    if path is None or not path.exists():
+        return {}
+    out: dict[tuple[str, str, str, str, str], Any] = {}
+    with path.open("r", encoding="utf-8") as fh:
+        for line_no, raw in enumerate(fh, 1):
+            line = raw.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            key = _evidence_cache_key(
+                str(row.get("item_id", "")),
+                str(row.get("dataset", "")),
+                str(row.get("split", "")),
+                str(row.get("linker", "")),
+                str(row.get("condition", "")),
+            )
+            if not all(key):
+                raise ValueError(f"Bad evidence cache key at {path}:{line_no}")
+            out[key] = cache_row_to_evidence_card(row)
     return out
 
 
@@ -158,6 +241,8 @@ def run_qwen_probe(
     require_q_to_a_path: bool = False,
     max_items_per_condition: int | None = None,
     selection_seed: int = 42,
+    evidence_cache: dict[tuple[str, str, str, str, str], Any] | None = None,
+    require_evidence_cache: bool = False,
 ) -> list[dict]:
     rows: list[dict] = list(existing_rows or [])
     completed = {
@@ -180,6 +265,7 @@ def run_qwen_probe(
     )
 
     pending: list[tuple[str, QAItem, Any]] = []
+    evidence_cache = evidence_cache or {}
     for condition in conditions:
         condition_tasks: list[tuple[str, QAItem, Any]] = []
         for item in source_items:
@@ -187,7 +273,12 @@ def run_qwen_probe(
             if completed_key in completed and not require_q_to_a_path:
                 condition_tasks.append((condition, item, None))
                 continue
-            card = build_evidence_card_details(item, condition, metadata, relations)
+            cache_key = _evidence_cache_key(item.item_id, item.dataset, item.split, item.linker, condition)
+            card = evidence_cache.get(cache_key)
+            if card is None:
+                if require_evidence_cache:
+                    continue
+                card = build_evidence_card_details(item, condition, metadata, relations)
             if (
                 require_q_to_a_path
                 and card.q_to_a_depth_semantics
@@ -381,6 +472,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-items-per-condition", type=int, default=0,
                         help="Deterministically cap generated items per evidence condition after filtering.")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--evidence-cache-jsonl", type=Path, default=None,
+                        help="Optional precomputed evidence-card JSONL keyed by item and condition.")
+    parser.add_argument("--require-evidence-cache", action="store_true",
+                        help="Skip item/condition pairs absent from the evidence cache instead of constructing evidence.")
     parser.add_argument("--output-jsonl", type=Path, required=True)
     parser.add_argument("--summary-csv", type=Path, required=True)
     parser.add_argument("--dry-run", action="store_true")
@@ -427,6 +522,8 @@ def main() -> None:
             "enable_thinking": args.qwen_mode == "thinking",
             "output_jsonl": str(args.output_jsonl),
             "summary_csv": str(args.summary_csv),
+            "evidence_cache_jsonl": str(args.evidence_cache_jsonl) if args.evidence_cache_jsonl else "",
+            "require_evidence_cache": args.require_evidence_cache,
         }, indent=2))
         return
 
@@ -459,6 +556,8 @@ def main() -> None:
             require_q_to_a_path=args.require_q_to_a_path,
             max_items_per_condition=normalize_limit(args.max_items_per_condition),
             selection_seed=args.seed,
+            evidence_cache=load_evidence_cache(args.evidence_cache_jsonl),
+            require_evidence_cache=args.require_evidence_cache,
         )
     elif args.mock_model:
         rows = run_medgemma_probe(

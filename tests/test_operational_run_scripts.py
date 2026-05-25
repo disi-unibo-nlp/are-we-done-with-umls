@@ -162,6 +162,10 @@ class OperationalRunScriptTests(unittest.TestCase):
         self.assertIn("--max-items-per-condition", text)
         self.assertIn("REQUIRE_Q_TO_A_PATH", text)
         self.assertIn("--require-q-to-a-path", text)
+        self.assertIn("EVIDENCE_CACHE_JSONL", text)
+        self.assertIn("--evidence-cache-jsonl", text)
+        self.assertIn("REQUIRE_EVIDENCE_CACHE", text)
+        self.assertIn("--require-evidence-cache", text)
 
     def test_operational_step3_defaults_to_path_present_sampling(self) -> None:
         operational = self.script_text("scripts/run_operational_umls_experiments.sh")

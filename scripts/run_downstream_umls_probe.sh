@@ -35,6 +35,8 @@ DRY_RUN="${DRY_RUN:-0}"
 CONDITIONS="${CONDITIONS:-no_umls relation_only_evidence q_to_a_path_evidence metadata_rich_evidence}"
 MAX_ITEMS_PER_CONDITION="${MAX_ITEMS_PER_CONDITION:-${MAX_EXPERIMENT_INSTANCES:-0}}"
 REQUIRE_Q_TO_A_PATH="${REQUIRE_Q_TO_A_PATH:-0}"
+EVIDENCE_CACHE_JSONL="${EVIDENCE_CACHE_JSONL:-}"
+REQUIRE_EVIDENCE_CACHE="${REQUIRE_EVIDENCE_CACHE:-0}"
 
 MEDGEMMA_MODEL_KEY="${MEDGEMMA_MODEL_KEY:-MedGemma-1.5-4B-it}"
 MEDGEMMA_MODEL_ID="${MEDGEMMA_MODEL_ID:-google/medgemma-1.5-4b-it}"
@@ -90,6 +92,12 @@ if [[ "${REQUIRE_Q_TO_A_PATH}" == "1" ]]; then
 fi
 if [[ -n "${MAX_ITEMS_PER_CONDITION}" && "${MAX_ITEMS_PER_CONDITION}" != "0" ]]; then
   filter_args+=(--max-items-per-condition "${MAX_ITEMS_PER_CONDITION}")
+fi
+if [[ -n "${EVIDENCE_CACHE_JSONL}" ]]; then
+  filter_args+=(--evidence-cache-jsonl "${EVIDENCE_CACHE_JSONL}")
+fi
+if [[ "${REQUIRE_EVIDENCE_CACHE}" == "1" ]]; then
+  filter_args+=(--require-evidence-cache)
 fi
 
 relation_args=(--triplets-zip "${TRIPLETS_ZIP}" --relation-scope "${RELATION_SCOPE}")

@@ -4,6 +4,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from src.experiments.loaders import load_metamap_records
 from src.model_sweeps.qwen_vllm_sweep import (
@@ -692,6 +693,85 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertEqual(client.calls, 1)
         self.assertEqual([row["item_id"] for row in rows], ["has_path"])
         self.assertTrue(rows[0]["q_to_a_path_found"])
+
+    def test_downstream_qwen_probe_can_require_precomputed_evidence_cache(self) -> None:
+        class CapturingClient:
+            def __init__(self) -> None:
+                self.prompts = []
+
+            def chat_completion(self, payload: dict) -> dict:
+                self.prompts.append("\n".join(message["content"] for message in payload["messages"]))
+                return {"choices": [{"message": {"content": r"\boxed{A}"}}]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\n",
+            )
+            items = [
+                QAItem(
+                    item_id="cached",
+                    dataset="medQA",
+                    split="test",
+                    linker="spacy",
+                    question="Which option is correct?",
+                    options={"A": "Answer one"},
+                    gold="A",
+                    answer_text="Answer one",
+                ),
+                QAItem(
+                    item_id="uncached",
+                    dataset="medQA",
+                    split="test",
+                    linker="spacy",
+                    question="Which option is correct?",
+                    options={"A": "Answer two"},
+                    gold="A",
+                    answer_text="Answer two",
+                ),
+            ]
+            condition = "q_to_a_exact_depth_1_evidence"
+            cache = {
+                ("cached", "medQA", "test", "spacy", condition): SimpleNamespace(
+                    text="UMLS evidence:\nQuestion concept -- associated with --> Answer one",
+                    q_to_a_depth_semantics="exact_hops",
+                    q_to_a_depth=1,
+                    q_to_a_path_found=True,
+                    q_to_a_path_node_count=2,
+                    q_to_a_path_edge_count=1,
+                    q_to_a_answer_cui_count=1,
+                    q_to_a_answer_cui_covered_count=1,
+                    q_to_a_path_selection_policy="cached",
+                )
+            }
+            client = CapturingClient()
+
+            rows = run_qwen_probe(
+                items,
+                client,
+                model="Qwen/Qwen3.5-4B",
+                mode="non_thinking",
+                max_tokens=16,
+                conditions=(condition,),
+                metadata=CuiMetadataIndex.from_zip(meta_path),
+                relations=RelationIndex.from_zip(rel_path, keep_cuis=set()),
+                evidence_cache=cache,
+                require_evidence_cache=True,
+            )
+
+        self.assertEqual([row["item_id"] for row in rows], ["cached"])
+        self.assertEqual(len(client.prompts), 1)
+        self.assertIn("Question concept -- associated with --> Answer one", client.prompts[0])
+        self.assertEqual(rows[0]["q_to_a_path_selection_policy"], "cached")
 
     def test_downstream_qwen_probe_caps_items_per_condition_after_filtering(self) -> None:
         class CapturingClient:

@@ -25,6 +25,8 @@ export SOURCE_MANIFEST SHORTCUT_MANIFEST EVIDENCE_CACHE_JSONL LOG_DIR
 
 VLLM_BIN="${VLLM_BIN:-/mnt/nvme/llms/venvs/spiral-benchmark-env/bin/vllm}"
 VLLM_PORT="${VLLM_PORT:-8000}"
+VLLM_MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-65536}"
+VLLM_GPU_MEMORY_UTILIZATION="${VLLM_GPU_MEMORY_UTILIZATION:-0.90}"
 VLLM_READY_TIMEOUT_S="${VLLM_READY_TIMEOUT_S:-7200}"
 VLLM_STOP_TIMEOUT_S="${VLLM_STOP_TIMEOUT_S:-180}"
 QWEN_MODEL_LIST="${QWEN_MODEL_LIST:-Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-2B Qwen/Qwen3.5-4B Qwen/Qwen3.5-9B Qwen/Qwen3.5-27B Qwen/Qwen3.5-35B-A3B}"
@@ -208,8 +210,8 @@ start_vllm() {
   log "Starting vLLM for ${model}"
   HF_HOME="${HF_HOME}" "${VLLM_BIN}" serve "${model}" \
     --port "${VLLM_PORT}" \
-    --max-model-len 65536 \
-    --gpu-memory-utilization 0.85 \
+    --max-model-len "${VLLM_MAX_MODEL_LEN}" \
+    --gpu-memory-utilization "${VLLM_GPU_MEMORY_UTILIZATION}" \
     --max-num-seqs 64 \
     --max-num-batched-tokens 65536 \
     --reasoning-parser qwen3 \
@@ -225,6 +227,11 @@ start_vllm() {
 
   local waited=0
   while ! curl -sf "http://localhost:${VLLM_PORT}/v1/models" >/dev/null 2>&1; do
+    if ! kill -0 "${VLLM_PID}" 2>/dev/null; then
+      wait "${VLLM_PID}" 2>/dev/null || true
+      log "ERROR: vLLM exited before becoming ready for ${model}; see ${vllm_log}"
+      exit 1
+    fi
     if (( waited >= VLLM_READY_TIMEOUT_S )); then
       log "ERROR: vLLM did not become ready for ${model} after ${waited}s; see ${vllm_log}"
       exit 1

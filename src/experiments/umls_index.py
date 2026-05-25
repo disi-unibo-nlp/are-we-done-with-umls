@@ -394,17 +394,18 @@ class RelationIndex:
             self._clean_exact_paths_cache[cache_key] = ()
             return []
 
-        fast_paths = self._target_guided_clean_exact_paths(
-            source_set,
-            target,
-            hops,
-            forbidden_internal=forbidden,
-            max_paths=max_paths,
-        )
-        if fast_paths:
-            cached = tuple(tuple(path) for path in fast_paths)
-            self._clean_exact_paths_cache[cache_key] = cached
-            return [list(path) for path in cached]
+        if hops >= 5:
+            fast_paths = self._target_guided_clean_exact_paths(
+                source_set,
+                target,
+                hops,
+                forbidden_internal=forbidden,
+                max_paths=max_paths,
+            )
+            if fast_paths:
+                cached = tuple(tuple(path) for path in fast_paths)
+                self._clean_exact_paths_cache[cache_key] = cached
+                return [list(path) for path in cached]
 
         left_depth = hops // 2
         right_depth = hops - left_depth

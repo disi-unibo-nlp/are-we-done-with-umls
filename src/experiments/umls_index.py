@@ -105,9 +105,10 @@ class RelationIndex:
         self._shortest_path_nodes_cache: dict[tuple[tuple[str, ...], tuple[str, ...], int], tuple[str, ...] | None] = {}
         self._exact_path_nodes_cache: dict[tuple[tuple[str, ...], tuple[str, ...], int], tuple[str, ...] | None] = {}
         self._clean_exact_paths_cache: dict[
-            tuple[tuple[str, ...], str, int, tuple[str, ...], int],
+            tuple[tuple[str, ...], str, int, tuple[str, ...], int, int],
             tuple[tuple[str, ...], ...],
         ] = {}
+        self._degree_sorted_adjacency_cache: dict[str, tuple[str, ...]] = {}
         self._all_nodes_sorted_cache: tuple[str, ...] | None = None
 
     @classmethod
@@ -332,6 +333,7 @@ class RelationIndex:
         hops: int,
         forbidden_internal: Iterable[str] = (),
         max_paths_per_target: int = 2,
+        max_expansions_per_target: int = 5_000_000,
     ) -> dict[str, list[list[str]]]:
         """Return deterministic clean exact-hop paths for each target.
 
@@ -350,6 +352,7 @@ class RelationIndex:
                 hops,
                 forbidden_internal=forbidden,
                 max_paths=max_paths_per_target,
+                max_expansions=max_expansions_per_target,
             )
             if paths:
                 out[target] = paths
@@ -362,6 +365,7 @@ class RelationIndex:
         hops: int,
         forbidden_internal: Iterable[str] = (),
         max_paths: int = 2,
+        max_expansions: int = 5_000_000,
     ) -> list[list[str]]:
         source_set = {cui for cui in sources if cui}
         target = target.strip()
@@ -372,6 +376,7 @@ class RelationIndex:
             hops,
             tuple(sorted(forbidden)),
             max_paths,
+            max_expansions,
         )
         if cache_key in self._clean_exact_paths_cache:
             return [list(path) for path in self._clean_exact_paths_cache[cache_key]]
@@ -393,6 +398,18 @@ class RelationIndex:
         if not source_set:
             self._clean_exact_paths_cache[cache_key] = ()
             return []
+
+        if 1 <= hops <= 4:
+            paths = self._degree_ordered_clean_exact_paths(
+                source_set,
+                target,
+                hops,
+                forbidden_internal=forbidden,
+                max_paths=max_paths,
+                max_expansions=max_expansions,
+            )
+            self._clean_exact_paths_cache[cache_key] = tuple(tuple(item) for item in paths)
+            return paths
 
         if hops >= 5:
             fast_paths = self._target_guided_clean_exact_paths(
@@ -456,6 +473,116 @@ class RelationIndex:
                         self._clean_exact_paths_cache[cache_key] = tuple(tuple(item) for item in paths)
                         return paths
         self._clean_exact_paths_cache[cache_key] = tuple(tuple(item) for item in paths)
+        return paths
+
+    def _degree_ordered_nodes(self, nodes: Iterable[str]) -> list[str]:
+        return sorted(nodes, key=lambda node: (self.degree(node), node))
+
+    def _degree_ordered_neighbors(self, node: str) -> tuple[str, ...]:
+        cached = self._degree_sorted_adjacency_cache.get(node)
+        if cached is not None:
+            return cached
+        ordered = tuple(self._degree_ordered_nodes(self._adjacency.get(node, set())))
+        self._degree_sorted_adjacency_cache[node] = ordered
+        return ordered
+
+    def _degree_ordered_clean_exact_paths(
+        self,
+        source_set: set[str],
+        target: str,
+        hops: int,
+        forbidden_internal: set[str],
+        max_paths: int,
+        max_expansions: int,
+    ) -> list[list[str]]:
+        paths: list[list[str]] = []
+        seen: set[tuple[str, ...]] = set()
+        expansions = 0
+        target_neighbors = self._adjacency.get(target, set())
+
+        def budget_exhausted() -> bool:
+            return expansions >= max_expansions
+
+        def add_path(path: list[str]) -> bool:
+            key = tuple(path)
+            if key in seen:
+                return False
+            if len(path) != hops + 1 or len(path) != len(set(path)):
+                return False
+            if path[0] not in source_set or path[-1] != target:
+                return False
+            if set(path[1:-1]) & forbidden_internal:
+                return False
+            seen.add(key)
+            paths.append(path)
+            return len(paths) >= max_paths
+
+        if hops == 1:
+            for source in self._degree_ordered_nodes(source_set):
+                expansions += 1
+                if target in self._adjacency.get(source, set()) and add_path([source, target]):
+                    break
+                if budget_exhausted():
+                    break
+            return paths
+
+        if hops == 2:
+            for source in self._degree_ordered_nodes(source_set):
+                common = self._adjacency.get(source, set()) & target_neighbors
+                for mid in self._degree_ordered_nodes(common):
+                    expansions += 1
+                    if mid in forbidden_internal or mid in {source, target}:
+                        continue
+                    if add_path([source, mid, target]):
+                        return paths
+                    if budget_exhausted():
+                        return paths
+            return paths
+
+        if hops == 3:
+            for source in self._degree_ordered_nodes(source_set):
+                for first in self._degree_ordered_neighbors(source):
+                    expansions += 1
+                    if first in forbidden_internal or first in {source, target}:
+                        continue
+                    common = self._adjacency.get(first, set()) & target_neighbors
+                    for second in self._degree_ordered_nodes(common):
+                        expansions += 1
+                        if second in forbidden_internal or second in {source, first, target}:
+                            continue
+                        if add_path([source, first, second, target]):
+                            return paths
+                        if budget_exhausted():
+                            return paths
+                    if budget_exhausted():
+                        return paths
+            return paths
+
+        if hops == 4:
+            for source in self._degree_ordered_nodes(source_set):
+                for first in self._degree_ordered_neighbors(source):
+                    expansions += 1
+                    if first in forbidden_internal or first in {source, target}:
+                        continue
+                    for second in self._degree_ordered_neighbors(first):
+                        expansions += 1
+                        if second in forbidden_internal or second in {source, first, target}:
+                            continue
+                        common = self._adjacency.get(second, set()) & target_neighbors
+                        for third in self._degree_ordered_nodes(common):
+                            expansions += 1
+                            if third in forbidden_internal or third in {source, first, second, target}:
+                                continue
+                            if add_path([source, first, second, third, target]):
+                                return paths
+                            if budget_exhausted():
+                                return paths
+                        if budget_exhausted():
+                            return paths
+                    if budget_exhausted():
+                        return paths
+            return paths
+
         return paths
 
     def _source_guided_clean_exact_paths(

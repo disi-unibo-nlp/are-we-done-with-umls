@@ -36,7 +36,12 @@ class EvidenceCardDetails:
 
 Q_TO_A_DEPTHS = (1, 2, 3, 4, 5)
 Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI = 2
-Q_TO_A_EXACT_PATH_SELECTION_POLICY = "clean_exact_hops_all_answer_cuis_max_2_paths_per_cui"
+Q_TO_A_EXACT_PATH_EXPANSION_BUDGET = 5_000_000
+Q_TO_A_EXACT_PATH_SELECTION_POLICY = (
+    "degree_ordered_clean_exact_hops_all_answer_cuis_"
+    f"max_{Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI}_paths_per_cui_"
+    f"budget_{Q_TO_A_EXACT_PATH_EXPANSION_BUDGET}"
+)
 Q_TO_A_EXACT_DEPTH_CONDITION_SPECS = {
     f"q_to_a_exact_depth_{depth}_evidence": EvidenceConditionSpec(
         "full_committed_card",
@@ -384,6 +389,7 @@ def _q_to_a_exact_depth_lines(
         hops=depth,
         forbidden_internal=set(answer_cuis),
         max_paths_per_target=Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI,
+        max_expansions_per_target=Q_TO_A_EXACT_PATH_EXPANSION_BUDGET,
     )
     covered_count = len(paths_by_target)
     if not linked_options_complete or covered_count != answer_count:

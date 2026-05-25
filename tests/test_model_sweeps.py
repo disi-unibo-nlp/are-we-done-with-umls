@@ -510,6 +510,7 @@ class QwenVLLMSweepTests(unittest.TestCase):
         self.assertEqual(condition_type_for_condition("shuffled_answer_evidence"), "negative_control")
         self.assertEqual(condition_type_for_condition("gold_only_evidence"), "diagnostic")
         self.assertEqual(condition_type_for_condition("oracle_gold_evidence"), "oracle")
+        self.assertEqual(condition_type_for_condition("q_to_a_d4_shortcut_1_evidence"), "synthetic_control")
 
     def test_downstream_qwen_probe_passes_evidence_to_generation_client(self) -> None:
         class CapturingClient:

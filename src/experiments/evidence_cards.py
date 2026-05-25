@@ -49,6 +49,20 @@ Q_TO_A_EXACT_DEPTH_CONDITION_SPECS = {
     )
     for depth in Q_TO_A_DEPTHS
 }
+Q_TO_A_D4_SHORTCUT_VISIBLE_DEPTHS = (1, 2, 3, 4)
+Q_TO_A_D4_SHORTCUT_REAL_HOPS = 4
+Q_TO_A_D4_SHORTCUT_SELECTION_POLICY = (
+    "synthetic_shortcuts_from_degree_ordered_clean_exact_d4_all_answer_cuis_"
+    f"max_{Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI}_paths_per_cui_"
+    f"budget_{Q_TO_A_EXACT_PATH_EXPANSION_BUDGET}"
+)
+Q_TO_A_D4_SHORTCUT_CONDITION_SPECS = {
+    f"q_to_a_d4_shortcut_{depth}_evidence": EvidenceConditionSpec(
+        "full_committed_card",
+        f"q_to_a_d4_shortcut_{depth}",
+    )
+    for depth in Q_TO_A_D4_SHORTCUT_VISIBLE_DEPTHS
+}
 
 RELATION_LABELS = {
     "AQ": "has allowed qualifier",
@@ -75,6 +89,7 @@ CONDITION_SPECS = {
     "distractor_contrast_evidence": EvidenceConditionSpec("full_committed_card", None),
     "oracle_gold_evidence": EvidenceConditionSpec("full_committed_card", None, oracle=True),
     **Q_TO_A_EXACT_DEPTH_CONDITION_SPECS,
+    **Q_TO_A_D4_SHORTCUT_CONDITION_SPECS,
 }
 
 
@@ -89,6 +104,7 @@ CONDITION_TYPES = {
     "gold_only_evidence": "diagnostic",
     "oracle_gold_evidence": "oracle",
     **{condition: "realistic" for condition in Q_TO_A_EXACT_DEPTH_CONDITION_SPECS},
+    **{condition: "synthetic_control" for condition in Q_TO_A_D4_SHORTCUT_CONDITION_SPECS},
 }
 
 
@@ -420,6 +436,77 @@ def _q_to_a_exact_depth_lines(
     return lines, len(nodes), edge_count, answer_count, covered_count, Q_TO_A_EXACT_PATH_SELECTION_POLICY, True
 
 
+def _q_to_a_d4_shortcut_lines(
+    item: QAItem,
+    relations: RelationIndex,
+    metadata: CuiMetadataIndex,
+    visible_depth: int,
+) -> tuple[list[str], int, int, int, int, str, bool]:
+    answer_cuis = _all_answer_cuis(item)
+    answer_count = len(answer_cuis)
+    if not answer_cuis:
+        return [
+            "No complete UMLS path set found."
+        ], 0, 0, 0, 0, Q_TO_A_D4_SHORTCUT_SELECTION_POLICY, False
+
+    linked_options_complete = all(
+        bool(item.option_cuis.get(label))
+        for label, option_text in item.options.items()
+        if option_text
+    )
+
+    paths_by_target = relations.clean_exact_paths_between(
+        item.question_cuis,
+        answer_cuis,
+        hops=Q_TO_A_D4_SHORTCUT_REAL_HOPS,
+        forbidden_internal=set(answer_cuis),
+        max_paths_per_target=Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI,
+        max_expansions_per_target=Q_TO_A_EXACT_PATH_EXPANSION_BUDGET,
+    )
+    covered_count = len(paths_by_target)
+    if not linked_options_complete or covered_count != answer_count:
+        return [
+            "No complete UMLS path set found."
+        ], 0, 0, answer_count, covered_count, Q_TO_A_D4_SHORTCUT_SELECTION_POLICY, linked_options_complete
+
+    boundary_by_visible_depth = {
+        1: (0, 4),
+        2: (0, 2, 4),
+        3: (0, 1, 3, 4),
+        4: (0, 1, 2, 3, 4),
+    }
+    boundaries = boundary_by_visible_depth[visible_depth]
+
+    lines: list[str] = []
+    nodes: set[str] = set()
+    edge_keys: set[tuple[str, str, str]] = set()
+    edge_count = 0
+    for target in answer_cuis:
+        for path in paths_by_target[target]:
+            for left_index, right_index in zip(boundaries, boundaries[1:]):
+                left = path[left_index]
+                right = path[right_index]
+                left_name = _concept_name(left, metadata)
+                right_name = _concept_name(right, metadata)
+                if not left_name or not right_name:
+                    continue
+                segment_hops = right_index - left_index
+                if segment_hops == 1:
+                    label = _plain_relation_label(relations.relation_label(left, right))
+                else:
+                    label = f"is connected through a {segment_hops}-hop UMLS path to"
+                key = (left, right, label)
+                if key in edge_keys:
+                    continue
+                edge_keys.add(key)
+                nodes.update((left, right))
+                lines.append(f"- {left_name} -- {label} --> {right_name}")
+                edge_count += 1
+    if not lines:
+        lines.append("No readable UMLS graph edges available.")
+    return lines, len(nodes), edge_count, answer_count, covered_count, Q_TO_A_D4_SHORTCUT_SELECTION_POLICY, True
+
+
 def _random_nodes(item: QAItem, relations: RelationIndex) -> set[str]:
     answer_cuis = _all_answer_cuis(item)
     path_nodes = relations.path_nodes_between(item.question_cuis, answer_cuis, max_hops=2)
@@ -437,6 +524,21 @@ def _parse_q_to_a_exact_depth_condition(condition: str) -> int | None:
     except ValueError:
         return None
     if depth not in Q_TO_A_DEPTHS:
+        return None
+    return depth
+
+
+def _parse_q_to_a_d4_shortcut_condition(condition: str) -> int | None:
+    prefix = "q_to_a_d4_shortcut_"
+    suffix = "_evidence"
+    if not condition.startswith(prefix) or not condition.endswith(suffix):
+        return None
+    depth_text = condition[len(prefix):-len(suffix)]
+    try:
+        depth = int(depth_text)
+    except ValueError:
+        return None
+    if depth not in Q_TO_A_D4_SHORTCUT_VISIBLE_DEPTHS:
         return None
     return depth
 
@@ -535,6 +637,35 @@ def build_evidence_card_details(
             "\n".join(lines),
             q_to_a_depth_semantics="exact_hops",
             q_to_a_depth=exact_depth,
+            q_to_a_path_found=linked_options_complete and answer_count > 0 and covered_count == answer_count,
+            q_to_a_path_node_count=node_count,
+            q_to_a_path_edge_count=edge_count,
+            q_to_a_answer_cui_count=answer_count,
+            q_to_a_answer_cui_covered_count=covered_count,
+            q_to_a_path_selection_policy=selection_policy,
+        )
+
+    shortcut_depth = _parse_q_to_a_d4_shortcut_condition(condition)
+    if shortcut_depth is not None:
+        (
+            graph_lines,
+            node_count,
+            edge_count,
+            answer_count,
+            covered_count,
+            selection_policy,
+            linked_options_complete,
+        ) = _q_to_a_d4_shortcut_lines(
+            item,
+            relations,
+            metadata,
+            shortcut_depth,
+        )
+        lines.extend(graph_lines)
+        return EvidenceCardDetails(
+            "\n".join(lines),
+            q_to_a_depth_semantics="synthetic_d4_shortcut_visible_hops",
+            q_to_a_depth=shortcut_depth,
             q_to_a_path_found=linked_options_complete and answer_count > 0 and covered_count == answer_count,
             q_to_a_path_node_count=node_count,
             q_to_a_path_edge_count=edge_count,

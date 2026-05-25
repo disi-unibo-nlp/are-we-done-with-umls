@@ -14,9 +14,9 @@ General scope:
 - linkers: STEP 1 builds baseline-wrong manifests for `metamap` and `spacy`;
   STEP 2 and STEP 3 use `spacy` only
 - downstream model sweep: Qwen3.5 `0.8B`, `2B`, `4B`, `9B`, `27B`,
-  `35B`
+  `35B-A3B`
 - fixed subset policy: STEP 2 and STEP 3 use existing STEP 1
-  baseline-wrong manifests; if a `27B` or `35B` STEP 1 manifest is absent,
+  baseline-wrong manifests; if a `27B` or `35B-A3B` STEP 1 manifest is absent,
   use the corresponding `9B` manifest rather than regenerating STEP 1
 - decoding: non-thinking mode, deterministic settings
 - output root: `outputs/operational_umls/`
@@ -165,7 +165,6 @@ conditions:
 - exact Q-to-answer path depth 2
 - exact Q-to-answer path depth 3
 - exact Q-to-answer path depth 4
-- exact Q-to-answer path depth 5
 
 The condition names are:
 
@@ -174,12 +173,37 @@ q_to_a_exact_depth_1_evidence
 q_to_a_exact_depth_2_evidence
 q_to_a_exact_depth_3_evidence
 q_to_a_exact_depth_4_evidence
-q_to_a_exact_depth_5_evidence
+```
+
+The depth-5 condition was considered during exploratory runs but is not part
+of the final medQA priority queue.
+
+synthetic shortcut control:
+
+Because naturally occurring depth-specific item sets can differ across depths,
+we also run a separate synthetic-control sweep on the fixed 100 medQA/scispaCy
+items that have faithful depth-4 paths from question CUIs to every answer
+option CUI. In this control, the underlying item set and real UMLS D4 evidence
+are held fixed, while the visible graph is rendered as 1, 2, 3, or 4 hops by
+collapsing parts of the real D4 path into readable shortcut edges. These rows
+are synthetic controls, not realistic UMLS evidence, because the shortcut edges
+do not necessarily exist as direct MRREL facts.
+
+The condition names are:
+
+```text
+q_to_a_d4_shortcut_1_evidence
+q_to_a_d4_shortcut_2_evidence
+q_to_a_d4_shortcut_3_evidence
+q_to_a_d4_shortcut_4_evidence
 ```
 
 output:
 
-- prediction files under `outputs/operational_umls/step3_predictions/`
+- faithful exact-depth prediction files under
+  `outputs/operational_umls/step3_predictions/`
+- synthetic D4 shortcut-control prediction files under
+  `outputs/operational_umls/step3_shortcut_predictions/`
 - Q-to-answer depth tables under
   `outputs/operational_umls/tables/q_to_a_depth_accuracy.{csv,md}`
 

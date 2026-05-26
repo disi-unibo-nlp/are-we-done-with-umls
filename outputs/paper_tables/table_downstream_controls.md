@@ -1,0 +1,4 @@
+| dataset | split | linker | model_key | model | mode | condition | condition_type | n | accuracy | delta_vs_no_umls | malformed_rate | wrong_to_right | right_to_wrong | net_correction | mean_confidence | mean_margin | mean_entropy | accuracy_gap_vs_random | accuracy_gap_vs_shuffled | net_correction_gap_vs_random | net_correction_gap_vs_shuffled |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| medQA | test | metamap | MockLogits | mock-local-logits |  | random_same_size_evidence | negative_control | 1 | 0.000000 | 0.000000 | 0.000000 | 0 | 0 | 0 | 0.643914 | 0.407031 | 0.947537 | NA | NA | NA | NA |
+| medQA | test | metamap | MockLogits | mock-local-logits |  | shuffled_answer_evidence | negative_control | 1 | 0.000000 | 0.000000 | 0.000000 | 0 | 0 | 0 | 0.643914 | 0.407031 | 0.947537 | NA | NA | NA | NA |

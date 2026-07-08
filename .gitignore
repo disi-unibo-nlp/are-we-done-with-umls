@@ -1,3 +1,33 @@
 reference/
 manuscript/
 *.claude/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS cruft
+.DS_Store
+
+# Secrets / local machine state
+.env
+.codex/
+.openclaw/
+
+# Unrelated local reference material and scratch notes
+dcq_ref/
+theory/REWRITING_PLAN.md
+
+# Generated experiment run outputs (logs/predictions, not source)
+outputs/claims/
+outputs/diagnostics/
+outputs/local_audits/
+outputs/model_sweeps/
+outputs/unknown_subset/
+outputs/preflight_analysis*/
+outputs/new_conditions_sweep*/
+outputs/new_conditions_analysis*/
+outputs/final_new_conditions_sweep*/
+outputs/operational_umls*/
+outputs/paper_tables/*.csv
+outputs/paper_tables/*/

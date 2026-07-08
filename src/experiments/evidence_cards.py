@@ -35,6 +35,7 @@ class EvidenceCardDetails:
 
 
 Q_TO_A_DEPTHS = (1, 2, 3, 4, 5)
+Q_TO_A_CURATED_DEPTHS = (1, 2, 3, 4)
 Q_TO_A_EXACT_PATHS_PER_ANSWER_CUI = 2
 Q_TO_A_EXACT_PATH_EXPANSION_BUDGET = 5_000_000
 Q_TO_A_EXACT_PATH_SELECTION_POLICY = (
@@ -49,6 +50,13 @@ Q_TO_A_EXACT_DEPTH_CONDITION_SPECS = {
     )
     for depth in Q_TO_A_DEPTHS
 }
+Q_TO_A_CURATED_DEPTH_CONDITION_SPECS = {
+    f"q_to_a_curated_depth_{depth}_evidence": EvidenceConditionSpec(
+        "full_committed_card",
+        f"q_to_a_curated_depth_{depth}",
+    )
+    for depth in Q_TO_A_CURATED_DEPTHS
+}
 Q_TO_A_D4_SHORTCUT_VISIBLE_DEPTHS = (1, 2, 3, 4)
 Q_TO_A_D4_SHORTCUT_REAL_HOPS = 4
 Q_TO_A_D4_SHORTCUT_SELECTION_POLICY = (
@@ -62,6 +70,22 @@ Q_TO_A_D4_SHORTCUT_CONDITION_SPECS = {
         f"q_to_a_d4_shortcut_{depth}",
     )
     for depth in Q_TO_A_D4_SHORTCUT_VISIBLE_DEPTHS
+}
+Q_TO_A_SHORTEST_MAX_HOPS = 4
+Q_TO_A_SHORTEST_PATH_SELECTION_POLICY = f"shortest_paths_to_each_answer_option_max_hops_{Q_TO_A_SHORTEST_MAX_HOPS}"
+Q_TO_A_GRAPH_DISTANCE_CONDITION_SPECS = {
+    "q_to_a_raw_shortest_path_evidence": EvidenceConditionSpec(
+        "full_committed_card",
+        "q_to_a_raw_shortest_path",
+    ),
+    "q_to_a_semantic_shortest_path_evidence": EvidenceConditionSpec(
+        "full_committed_card",
+        "q_to_a_semantic_shortest_path",
+    ),
+    "q_to_a_topology_only_path_evidence": EvidenceConditionSpec(
+        "full_committed_card",
+        "q_to_a_topology_only_path",
+    ),
 }
 
 RELATION_LABELS = {
@@ -83,12 +107,15 @@ CONDITION_SPECS = {
     "relation_only_evidence": EvidenceConditionSpec("MRCONSO_MRREL", "pooled_1hop"),
     "metadata_rich_evidence": EvidenceConditionSpec("full_committed_card", None),
     "q_to_a_path_evidence": EvidenceConditionSpec("full_committed_card", "q_to_a_2hop"),
+    "q_to_a_semantic_path_evidence": EvidenceConditionSpec("full_committed_card", "q_to_a_semantic_2hop"),
     "random_same_size_evidence": EvidenceConditionSpec("MRCONSO_MRREL", "random_same_size"),
     "shuffled_answer_evidence": EvidenceConditionSpec("full_committed_card", None),
     "gold_only_evidence": EvidenceConditionSpec("full_committed_card", None),
     "distractor_contrast_evidence": EvidenceConditionSpec("full_committed_card", None),
     "oracle_gold_evidence": EvidenceConditionSpec("full_committed_card", None, oracle=True),
+    **Q_TO_A_GRAPH_DISTANCE_CONDITION_SPECS,
     **Q_TO_A_EXACT_DEPTH_CONDITION_SPECS,
+    **Q_TO_A_CURATED_DEPTH_CONDITION_SPECS,
     **Q_TO_A_D4_SHORTCUT_CONDITION_SPECS,
 }
 
@@ -98,12 +125,17 @@ CONDITION_TYPES = {
     "relation_only_evidence": "realistic",
     "metadata_rich_evidence": "realistic",
     "q_to_a_path_evidence": "realistic",
+    "q_to_a_semantic_path_evidence": "realistic",
     "distractor_contrast_evidence": "realistic_or_contrastive",
     "random_same_size_evidence": "negative_control",
     "shuffled_answer_evidence": "negative_control",
     "gold_only_evidence": "diagnostic",
     "oracle_gold_evidence": "oracle",
+    "q_to_a_raw_shortest_path_evidence": "realistic",
+    "q_to_a_semantic_shortest_path_evidence": "realistic",
+    "q_to_a_topology_only_path_evidence": "synthetic_control",
     **{condition: "realistic" for condition in Q_TO_A_EXACT_DEPTH_CONDITION_SPECS},
+    **{condition: "realistic" for condition in Q_TO_A_CURATED_DEPTH_CONDITION_SPECS},
     **{condition: "synthetic_control" for condition in Q_TO_A_D4_SHORTCUT_CONDITION_SPECS},
 }
 
@@ -140,6 +172,24 @@ def _plain_relation_label(label: str) -> str:
     if cleaned in RELATION_LABELS:
         return RELATION_LABELS[cleaned]
     return cleaned.replace("_", " ").replace("-", " ")
+
+
+ADMINISTRATIVE_RELATION_LABELS = {
+    "can be qualified by",
+    "concept in subset",
+    "has allowed qualifier",
+    "mapped from",
+    "mapped to",
+    "subset includes concept",
+}
+
+
+def _normalized_plain_relation_label(label: str) -> str:
+    return " ".join(_plain_relation_label(label).casefold().split())
+
+
+def _is_administrative_relation_label(label: str) -> bool:
+    return _normalized_plain_relation_label(label) in ADMINISTRATIVE_RELATION_LABELS
 
 
 def _format_plain_concept(cui: str, metadata: CuiMetadataIndex, view: str) -> list[str]:
@@ -380,6 +430,92 @@ def _q_to_a_graph_lines(
     return lines, len(path_nodes), edge_count
 
 
+def _semantic_q_to_a_graph_lines(
+    item: QAItem,
+    relations: RelationIndex,
+    metadata: CuiMetadataIndex,
+) -> tuple[list[str], int, int]:
+    semantic_relations = relations.filter_edges(_is_administrative_relation_label)
+    return _q_to_a_graph_lines(item, semantic_relations, metadata)
+
+
+def _shortest_path_display_name(
+    cui: str,
+    metadata: CuiMetadataIndex,
+    topology_only: bool,
+    endpoint_cuis: set[str],
+    alias_by_cui: dict[str, str],
+) -> str | None:
+    if not topology_only or cui in endpoint_cuis:
+        return _concept_name(cui, metadata)
+    if cui not in alias_by_cui:
+        alias_by_cui[cui] = f"UMLS concept {len(alias_by_cui) + 1}"
+    return alias_by_cui[cui]
+
+
+def _q_to_a_shortest_path_lines(
+    item: QAItem,
+    relations: RelationIndex,
+    metadata: CuiMetadataIndex,
+    *,
+    topology_only: bool = False,
+) -> tuple[list[str], int, int, int, int, str, bool, int]:
+    answer_count = sum(1 for label, option_text in item.options.items() if option_text and item.option_cuis.get(label))
+    linked_options_complete = all(
+        bool(item.option_cuis.get(label))
+        for label, option_text in item.options.items()
+        if option_text
+    )
+    paths: list[list[str]] = []
+    for label, option_text in item.options.items():
+        if not option_text:
+            continue
+        option_cuis = item.option_cuis.get(label, [])
+        if not option_cuis:
+            continue
+        path = relations.shortest_path_nodes(
+            item.question_cuis,
+            option_cuis,
+            max_hops=Q_TO_A_SHORTEST_MAX_HOPS,
+        )
+        if path and len(path) >= 2:
+            paths.append(path)
+
+    covered_count = len(paths)
+    endpoint_cuis = set(item.question_cuis + _all_answer_cuis(item))
+    alias_by_cui: dict[str, str] = {}
+    lines: list[str] = []
+    nodes: set[str] = set()
+    seen_edges: set[tuple[str, str, str]] = set()
+    max_depth = 0
+    for path in paths:
+        max_depth = max(max_depth, len(path) - 1)
+        nodes.update(path)
+        for left, right in zip(path, path[1:]):
+            left_name = _shortest_path_display_name(left, metadata, topology_only, endpoint_cuis, alias_by_cui)
+            right_name = _shortest_path_display_name(right, metadata, topology_only, endpoint_cuis, alias_by_cui)
+            if not left_name or not right_name:
+                continue
+            label = "linked to" if topology_only else _plain_relation_label(relations.relation_label(left, right))
+            key = (left, right, label)
+            if key in seen_edges:
+                continue
+            seen_edges.add(key)
+            lines.append(f"- {left_name} -- {label} --> {right_name}")
+    if not lines:
+        lines.append("No readable UMLS shortest-path edges available.")
+    return (
+        lines,
+        len(nodes),
+        len(seen_edges),
+        answer_count,
+        covered_count,
+        Q_TO_A_SHORTEST_PATH_SELECTION_POLICY,
+        linked_options_complete,
+        max_depth,
+    )
+
+
 def _q_to_a_exact_depth_lines(
     item: QAItem,
     relations: RelationIndex,
@@ -528,6 +664,21 @@ def _parse_q_to_a_exact_depth_condition(condition: str) -> int | None:
     return depth
 
 
+def _parse_q_to_a_curated_depth_condition(condition: str) -> int | None:
+    prefix = "q_to_a_curated_depth_"
+    suffix = "_evidence"
+    if not condition.startswith(prefix) or not condition.endswith(suffix):
+        return None
+    depth_text = condition[len(prefix):-len(suffix)]
+    try:
+        depth = int(depth_text)
+    except ValueError:
+        return None
+    if depth not in Q_TO_A_CURATED_DEPTHS:
+        return None
+    return depth
+
+
 def _parse_q_to_a_d4_shortcut_condition(condition: str) -> int | None:
     prefix = "q_to_a_d4_shortcut_"
     suffix = "_evidence"
@@ -616,6 +767,56 @@ def build_evidence_card_details(
             q_to_a_path_edge_count=edge_count,
         )
 
+    if condition == "q_to_a_semantic_path_evidence":
+        graph_lines, node_count, edge_count = _semantic_q_to_a_graph_lines(item, relations, metadata)
+        lines.extend(graph_lines)
+        return EvidenceCardDetails(
+            "\n".join(lines),
+            q_to_a_depth_semantics="semantic_max_hops",
+            q_to_a_depth=2,
+            q_to_a_path_found=edge_count > 0,
+            q_to_a_path_node_count=node_count,
+            q_to_a_path_edge_count=edge_count,
+        )
+
+    if condition in Q_TO_A_GRAPH_DISTANCE_CONDITION_SPECS:
+        path_relations = relations
+        topology_only = condition == "q_to_a_topology_only_path_evidence"
+        if condition == "q_to_a_semantic_shortest_path_evidence":
+            path_relations = relations.filter_edges(_is_administrative_relation_label)
+        (
+            graph_lines,
+            node_count,
+            edge_count,
+            answer_count,
+            covered_count,
+            selection_policy,
+            linked_options_complete,
+            max_depth,
+        ) = _q_to_a_shortest_path_lines(
+            item,
+            path_relations,
+            metadata,
+            topology_only=topology_only,
+        )
+        lines.extend(graph_lines)
+        semantics = {
+            "q_to_a_raw_shortest_path_evidence": "shortest_paths",
+            "q_to_a_semantic_shortest_path_evidence": "semantic_shortest_paths",
+            "q_to_a_topology_only_path_evidence": "topology_only_shortest_paths",
+        }[condition]
+        return EvidenceCardDetails(
+            "\n".join(lines),
+            q_to_a_depth_semantics=semantics,
+            q_to_a_depth=max_depth,
+            q_to_a_path_found=linked_options_complete and answer_count > 0 and covered_count == answer_count,
+            q_to_a_path_node_count=node_count,
+            q_to_a_path_edge_count=edge_count,
+            q_to_a_answer_cui_count=answer_count,
+            q_to_a_answer_cui_covered_count=covered_count,
+            q_to_a_path_selection_policy=selection_policy,
+        )
+
     exact_depth = _parse_q_to_a_exact_depth_condition(condition)
     if exact_depth is not None:
         (
@@ -643,6 +844,19 @@ def build_evidence_card_details(
             q_to_a_answer_cui_count=answer_count,
             q_to_a_answer_cui_covered_count=covered_count,
             q_to_a_path_selection_policy=selection_policy,
+        )
+
+    curated_depth = _parse_q_to_a_curated_depth_condition(condition)
+    if curated_depth is not None:
+        lines.append("No curated UMLS path set found.")
+        return EvidenceCardDetails(
+            "\n".join(lines),
+            option_evidence_symmetric=True,
+            uses_gold_label_for_evidence=False,
+            q_to_a_depth_semantics="human_curated_exact_hops",
+            q_to_a_depth=curated_depth,
+            q_to_a_path_found=False,
+            q_to_a_path_selection_policy="human_curated_umls_only_requires_evidence_cache",
         )
 
     shortcut_depth = _parse_q_to_a_d4_shortcut_condition(condition)

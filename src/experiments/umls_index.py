@@ -4,7 +4,7 @@ import csv
 import zipfile
 from collections import defaultdict, deque
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from .schemas import CuiMetadata
 
@@ -158,6 +158,28 @@ class RelationIndex:
     def relation_label(self, left: str, right: str) -> str:
         re_value, rel_type = self._edge_labels.get(tuple(sorted((left, right))), ("", ""))
         return rel_type or re_value or "related_to"
+
+    def filter_edges(self, exclude_label: Callable[[str], bool]) -> "RelationIndex":
+        adjacency: dict[str, set[str]] = defaultdict(set)
+        edge_labels: dict[tuple[str, str], tuple[str, str]] = {}
+        seen: set[tuple[str, str]] = set()
+
+        for left, neighbors in self._adjacency.items():
+            for right in neighbors:
+                key = tuple(sorted((left, right)))
+                if key in seen:
+                    continue
+                seen.add(key)
+                re_value, rel_type = self._edge_labels.get(key, ("", ""))
+                labels = [label for label in (re_value, rel_type, rel_type or re_value or "related_to") if label]
+                if any(exclude_label(label) for label in labels):
+                    continue
+                adjacency[left].add(right)
+                adjacency[right].add(left)
+                if key in self._edge_labels:
+                    edge_labels[key] = (re_value, rel_type)
+
+        return RelationIndex(dict(adjacency), edge_labels=edge_labels)
 
     def _shortest_path_nodes_max2(self, source_set: set[str], target_set: set[str], max_hops: int) -> list[str] | None:
         shared = sorted(source_set & target_set)

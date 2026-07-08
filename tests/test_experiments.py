@@ -191,6 +191,27 @@ class UMLSIndexTests(unittest.TestCase):
             self.assertEqual(index.shortest_path_length(["C_Q"], ["C_B"], max_hops=2), 2)
             self.assertIsNone(index.shortest_path_length(["C_A"], ["C_B"], max_hops=1))
 
+    def test_relation_index_filters_edges_by_relation_label(self) -> None:
+        index = RelationIndex(
+            {
+                "C_Q": {"C_ADMIN", "C_SEM"},
+                "C_ADMIN": {"C_Q", "C_A"},
+                "C_SEM": {"C_Q", "C_A"},
+                "C_A": {"C_ADMIN", "C_SEM"},
+            },
+            edge_labels={
+                ("C_ADMIN", "C_Q"): ("AQ", ""),
+                ("C_A", "C_ADMIN"): ("AQ", ""),
+                ("C_Q", "C_SEM"): ("RO", "clinically_associated_with"),
+                ("C_A", "C_SEM"): ("RO", "may_treat"),
+            },
+        )
+
+        filtered = index.filter_edges(lambda label: label == "AQ")
+
+        self.assertEqual(filtered.shortest_path_nodes(["C_Q"], ["C_A"], max_hops=2), ["C_Q", "C_SEM", "C_A"])
+        self.assertNotIn("C_ADMIN", filtered.all_nodes())
+
     def test_relation_index_caches_repeated_shortest_path_lookups(self) -> None:
         index = RelationIndex(
             {
@@ -490,6 +511,129 @@ class DiagnosticTests(unittest.TestCase):
         self.assertIn("Question concept -- associated with --> unnamed UMLS concept", path_card)
         self.assertIn("unnamed UMLS concept -- monitored by --> Beta", path_card)
         self.assertNotIn("C_MID --monitored_by-- C_B", path_card)
+
+    def test_semantic_q_to_a_evidence_filters_administrative_edges(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_path = root / "test.jsonl"
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_jsonl(data_path, [{
+                "question": "Question",
+                "options": {"A": "Alpha", "B": "Beta"},
+                "answer_idx": "A",
+                "answer": "Alpha",
+                "concept": ["C_Q"],
+                "option0": ["C_A"],
+                "option1": ["C_B"],
+            }])
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_A\tAlpha\tT047\tDisease or Syndrome\t\t\n"
+                "C_B\tBeta\tT047\tDisease or Syndrome\t\t\n"
+                "C_ADMIN\tAdministrative bridge\tT033\tFinding\t\t\n"
+                "C_A_SEM\tAlpha semantic bridge\tT033\tFinding\t\t\n"
+                "C_B_SEM\tBeta semantic bridge\tT033\tFinding\t\t\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\n"
+                "C_Q,C_ADMIN,AQ,\n"
+                "C_ADMIN,C_A,QB,\n"
+                "C_Q,C_A_SEM,RO,clinically_associated_with\n"
+                "C_A_SEM,C_A,RO,may_treat\n"
+                "C_Q,C_B_SEM,RO,clinically_associated_with\n"
+                "C_B_SEM,C_B,RO,may_treat\n",
+            )
+            item = load_metamap_records(data_path, dataset="medqa", split="test")[0]
+            metadata = CuiMetadataIndex.from_zip(meta_path)
+            relations = RelationIndex.from_zip(
+                rel_path,
+                keep_cuis={"C_Q", "C_A", "C_B", "C_ADMIN", "C_A_SEM", "C_B_SEM"},
+            )
+
+            details = build_evidence_card_details(
+                item,
+                "q_to_a_semantic_path_evidence",
+                metadata,
+                relations,
+            )
+
+        self.assertTrue(details.q_to_a_path_found)
+        self.assertEqual(details.q_to_a_depth_semantics, "semantic_max_hops")
+        self.assertEqual(details.q_to_a_depth, 2)
+        self.assertIn("Question concept -- clinically associated with --> Alpha semantic bridge", details.text or "")
+        self.assertIn("Alpha semantic bridge -- may treat --> Alpha", details.text or "")
+        self.assertIn("Question concept -- clinically associated with --> Beta semantic bridge", details.text or "")
+        self.assertIn("Beta semantic bridge -- may treat --> Beta", details.text or "")
+        self.assertNotIn("has allowed qualifier", details.text or "")
+        self.assertNotIn("can be qualified by", details.text or "")
+        self.assertNotIn("Administrative bridge", details.text or "")
+
+    def test_graph_distance_conditions_render_raw_semantic_and_topology_views(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data_path = root / "test.jsonl"
+            meta_path = root / "cui_detail.tsv.zip"
+            rel_path = root / "triplets.csv.zip"
+            write_jsonl(data_path, [{
+                "question": "Question",
+                "options": {"A": "Alpha", "B": "Beta"},
+                "answer_idx": "A",
+                "answer": "Alpha",
+                "concept": ["C_Q"],
+                "option0": ["C_A"],
+                "option1": ["C_B"],
+            }])
+            write_zip_text(
+                meta_path,
+                "cui_detail.tsv",
+                "CUI\tSTR\tTUI\tSTY\tDEF_SAB\tDEF\n"
+                "C_Q\tQuestion concept\tT033\tFinding\t\t\n"
+                "C_ADMIN\tAdministrative bridge\tT033\tFinding\t\t\n"
+                "C_A\tAlpha\tT047\tDisease or Syndrome\t\t\n"
+                "C_B_MID\tBeta semantic bridge\tT033\tFinding\t\t\n"
+                "C_B\tBeta\tT047\tDisease or Syndrome\t\t\n",
+            )
+            write_zip_text(
+                rel_path,
+                "triplets.csv",
+                "cui_1,cui_2,re,rel_type\n"
+                "C_Q,C_ADMIN,AQ,\n"
+                "C_ADMIN,C_A,QB,\n"
+                "C_Q,C_B_MID,RO,clinically_associated_with\n"
+                "C_B_MID,C_B,RO,may_treat\n",
+            )
+            item = load_metamap_records(data_path, dataset="medqa", split="test")[0]
+            metadata = CuiMetadataIndex.from_zip(meta_path)
+            relations = RelationIndex.from_zip(
+                rel_path,
+                keep_cuis={"C_Q", "C_ADMIN", "C_A", "C_B_MID", "C_B"},
+            )
+
+            raw = build_evidence_card_details(item, "q_to_a_raw_shortest_path_evidence", metadata, relations)
+            semantic = build_evidence_card_details(item, "q_to_a_semantic_shortest_path_evidence", metadata, relations)
+            topology = build_evidence_card_details(item, "q_to_a_topology_only_path_evidence", metadata, relations)
+
+        self.assertIn("Question concept -- has allowed qualifier --> Administrative bridge", raw.text or "")
+        self.assertIn("Administrative bridge -- can be qualified by --> Alpha", raw.text or "")
+        self.assertIn("Question concept -- clinically associated with --> Beta semantic bridge", semantic.text or "")
+        self.assertNotIn("Administrative bridge", semantic.text or "")
+        self.assertNotIn("has allowed qualifier", semantic.text or "")
+        self.assertIn("Question concept -- linked to --> UMLS concept 1", topology.text or "")
+        self.assertIn("UMLS concept 1 -- linked to --> Alpha", topology.text or "")
+        self.assertIn("Question concept -- linked to --> UMLS concept 2", topology.text or "")
+        self.assertIn("UMLS concept 2 -- linked to --> Beta", topology.text or "")
+        self.assertNotIn("Administrative bridge", topology.text or "")
+        self.assertNotIn("Beta semantic bridge", topology.text or "")
+        self.assertNotIn("has allowed qualifier", topology.text or "")
+        self.assertEqual(raw.q_to_a_depth_semantics, "shortest_paths")
+        self.assertEqual(semantic.q_to_a_depth_semantics, "semantic_shortest_paths")
+        self.assertEqual(topology.q_to_a_depth_semantics, "topology_only_shortest_paths")
 
     def test_relation_only_evidence_uses_plain_language_graph_edges(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

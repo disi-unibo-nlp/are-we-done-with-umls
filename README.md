@@ -42,6 +42,11 @@ We systematically review 25 papers that integrate UMLS into language models for 
 
 - **`src/`** — Scripts for reproducing the linker comparison (scispaCy vs. MetaMap), $K$-hop subgraph scale measurements, and pruning audit on DRAGON preprocessing artifacts.
 - **`outputs/`** — Linker coverage statistics on MedQA, $K$-hop scale measurements on PubMedQA, and pre/post-pruning statistics on MedQA.
+- **`README.md`** — The per-paper annotation of all 25 reviewed systems ([The List](#list)), recording the UMLS tables, subset filter, entity linker, $K$-hop budget, and injection mechanism of each.
+
+### Data
+
+No UMLS data, subsets, or derived artifacts are redistributed here: the NLM licence does not permit it. To reproduce our experiments, obtain the releases you need from the [UTS](https://uts.nlm.nih.gov/uts/) under your own licence, and download the QA benchmarks from their original sources ([MedQA](https://github.com/jind11/MedQA), [MedMCQA](https://medmcqa.github.io/), [PubMedQA](https://pubmedqa.github.io/)). The scripts in `src/` then regenerate the linked and grounded files locally; `data/readme.md` documents their schema.
 
 <a id="method"></a>
 ## 🧪 Review Methodology

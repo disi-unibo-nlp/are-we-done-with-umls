@@ -18,7 +18,6 @@ class OperationalRunScriptTests(unittest.TestCase):
             "scripts/run_operational_umls_experiments.sh",
             "scripts/run_overnight_umls_all_models.sh",
             "scripts/umls_experiment_monitor.sh",
-            "scripts/openclaw.sh",
         ]
         result = subprocess.run(
             ["bash", "-n", *scripts],

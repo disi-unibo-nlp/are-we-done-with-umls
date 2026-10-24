@@ -1,6 +1,5 @@
 reference/
 manuscript/
-*.claude/
 
 # Python
 __pycache__/
@@ -31,3 +30,25 @@ outputs/final_new_conditions_sweep*/
 outputs/operational_umls*/
 outputs/paper_tables/*.csv
 outputs/paper_tables/*/
+
+# Agent / assistant scaffolding (not part of the artifact)
+.claude/
+.openclaw/
+skills/
+AGENTS.md
+CLAUDE.md
+OPENCLAW_TASKS.md
+theory/
+scripts/openclaw*
+tests/test_openclaw_integration.py
+
+# UMLS-derived artifacts: NLM licence forbids redistribution
+data/UMLS/
+**/metamap_mapped/
+**/spacy_grounded/
+data/medQA/yearversion/
+data/medQA/sourceversion/
+data/medMCQA/
+2023AA/
+QA-GNN/
+*_副本

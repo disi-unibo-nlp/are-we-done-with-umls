@@ -226,7 +226,7 @@
 <main id="main" tabindex="-1">
   <section class="opening" id="study" aria-labelledby="opening-title">
     <h2 class="answer" id="opening-title">Maybe not!</h2>
-    <p class="lead">The UMLS evidence reaching a language model is constructed through a sequence of choices. <strong>Its release, source filters, entity linker, retrieval rule and injection format decide what knowledge the model can use.</strong> We review how these choices are made and test their effects in isolation.</p>
+    <p class="lead">We examine how UMLS construction changes the biomedical evidence available for medical question answering. <strong>Systems select a release and source vocabularies, link input text to concepts, then retrieve and expose part of the resource to a language model.</strong> We vary these choices while holding the remaining pipeline fixed.</p>
     <ul class="stage-key" aria-label="Three stages of UMLS use">
       <li><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
 <svg class="stage-icon stage-nel" aria-hidden="true" focusable="false" data-paper-icon="nel" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1060 846" fill="currentColor"><path transform="scale(1,-1)" d="M250 607C250 567 219 536 179 536C139 536 107 567 107 607C107 647 139 679 179 679C219 679 250 647 250 607ZM845 286C845 305 838 323 825 336L426 735C398 763 344 786 304 786H71C32 786 0 753 0 714V482C0 442 23 388 51 360L450 -39C463 -52 481 -60 500 -60C519 -60 538 -52 551 -39L825 235C838 248 845 267 845 286ZM1060 286C1060 305 1052 323 1039 336L640 735C612 763 558 786 518 786H393C433 786 487 763 515 735L914 336C927 323 935 305 935 286C935 267 927 248 914 235L652 -27C671 -47 685 -60 714 -60C733 -60 752 -52 765 -39L1039 235C1052 248 1060 267 1060 286Z"/></svg> NEL · named entity linking</li>
@@ -237,98 +237,98 @@
     </ul>
     <figure data-figure="4">
       <a class="figure-link" href="assets/umls-pipeline.png" aria-label="Open the full-resolution rendering"><img src="assets/umls-pipeline.png" width="1248" height="600" loading="lazy" alt="A medical question passes through entity linking, subgraph retrieval and knowledge injection before an answer is selected."></a>
-      <figcaption><strong>From a question to constructed evidence.</strong> <span class="mark nel">Named entity linking</span> grounds text to concepts; <span class="mark ksr">subgraph retrieval</span> selects their connections; <span class="mark ki">knowledge injection</span> exposes the resulting evidence to the model. The same UMLS label can describe different choices at every stage.</figcaption>
+      <figcaption><strong>From a question to model input.</strong> <span class="mark nel">Named entity linking</span> supplies concepts, <span class="mark ksr">subgraph retrieval</span> selects their connections, and <span class="mark ki">knowledge injection</span> exposes the evidence through text, learned representations or parameter updates.</figcaption>
     </figure>
     <div class="study-note">
-      <p><strong>The study.</strong> A review of <strong>25 studies published between 2020 and 2025</strong>, complemented by controlled linking, retrieval and reader experiments. Two researchers independently annotated the literature, reaching 90.2% agreement. Only <strong>6 of 25 studies</strong> report enough pipeline information for the paper’s operational reproducibility criterion.</p>
+      <p>A review of <strong>25 studies published between 2020 and 2025</strong>, complemented by controlled linking, retrieval and reader experiments. Two researchers independently annotated the methods, reaching 90.2% agreement before adjudication. <strong>11 studies released code (44%)</strong>, and <strong>6 of 25 (24%)</strong> were operationally reproducible under the review protocol.</p>
     </div>
   </section>
 
   <section id="findings" aria-labelledby="resource-title">
-    <div class="section-head"><span class="label">The resource</span><h2 id="resource-title">A rich resource becomes a narrow evidence view</h2></div>
-    <p>The Metathesaurus links concept names across source vocabularies and records relations, definitions, semantic types, hierarchies and attributes. Yet <strong>88% of reviewed studies convert UMLS into a knowledge graph</strong>, and use is concentrated on names and relations. The cross-source and metadata choices that define the evidence are part of the intervention.</p>
+    <div class="section-head"><span class="label">The resource</span><h2 id="resource-title">Most systems use names and relations</h2></div>
+    <p>The Metathesaurus integrates biomedical vocabularies through shared concept identifiers. Its records carry names, relations, definitions, semantic types, hierarchies and attributes. <strong>88% of the reviewed studies convert UMLS into a knowledge graph</strong>, with use concentrated on names and relations.</p>
     <figure data-figure="3">
       <a class="figure-link" href="assets/umls-coverage.png" aria-label="Open the full-resolution rendering"><img src="assets/umls-coverage.png" width="1831" height="889" loading="lazy" alt="A UMLS concept is shown through names, relations, semantic types, definitions, hierarchy and attributes. Seven rings show literature usage of the corresponding tables."></a>
-      <figcaption><strong>Available information and observed use.</strong> The original paper’s concept-centered example shows six Metathesaurus tables. Rings report their use across the 25 reviewed studies: names in all studies, relations in 84%, semantic types in 20%, and definitions in 8%.</figcaption>
+      <figcaption><strong>Concept information available in UMLS and used by reviewed systems.</strong> The concept-centered example illustrates six Metathesaurus tables. Names appear in all 25 studies, relations in 84%, semantic types in 20%, and definitions in 8%. Hierarchies and attributes remain unused across the reviewed systems.</figcaption>
     </figure>
-    <h3 class="subsection">“UMLS” does not identify a stable snapshot</h3>
-    <p><strong>84% of reviewed publications do not report a release identifier.</strong> The four that do use four different releases. Release changes, source restrictions and relation filters can therefore change the available knowledge before any model is evaluated.</p>
+    <h3 class="subsection">Release and source selection change the available knowledge</h3>
+    <p><strong>84% of reviewed publications omit the UMLS release identifier.</strong> The four reporting papers use four different releases. Source consolidation and concept retirement change the concepts and vocabularies available across the seven selected snapshots.</p>
     <figure data-figure="2">
       <a class="figure-link" href="assets/release-history.png" aria-label="Open the full-resolution rendering"><img src="assets/release-history.png" width="1831" height="600" loading="lazy" alt="The left panel contrasts four reported UMLS releases with 84 percent unreported; the right panel tracks concept and vocabulary counts across seven releases."></a>
-      <figcaption><strong>Release reporting and resource evolution.</strong> The original two-panel figure places reported filtering choices alongside changes in concept and vocabulary counts. Its sharp drops reflect NLM resource restructuring, not a change in model capability.</figcaption>
+      <figcaption><strong>Release reporting and resource evolution.</strong> Reported filtering choices appear alongside concept and vocabulary counts. The decreases reflect NLM's consolidation of source vocabularies and retirement of concepts.</figcaption>
     </figure>
   </section>
 
   <section class="nel-section" id="linking" aria-labelledby="linking-title">
     <div class="section-head"><span class="label"><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
-<svg class="stage-icon stage-nel" aria-hidden="true" focusable="false" data-paper-icon="nel" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1060 846" fill="currentColor"><path transform="scale(1,-1)" d="M250 607C250 567 219 536 179 536C139 536 107 567 107 607C107 647 139 679 179 679C219 679 250 647 250 607ZM845 286C845 305 838 323 825 336L426 735C398 763 344 786 304 786H71C32 786 0 753 0 714V482C0 442 23 388 51 360L450 -39C463 -52 481 -60 500 -60C519 -60 538 -52 551 -39L825 235C838 248 845 267 845 286ZM1060 286C1060 305 1052 323 1039 336L640 735C612 763 558 786 518 786H393C433 786 487 763 515 735L914 336C927 323 935 305 935 286C935 267 927 248 914 235L652 -27C671 -47 685 -60 714 -60C733 -60 752 -52 765 -39L1039 235C1052 248 1060 267 1060 286Z"/></svg> 01 · Named entity linking</span><h2 id="linking-title">Grounding the question can still leave the answers unreachable</h2></div>
-    <p>On the MedQA test split, both MetaMap and scispaCy ground every question stem. Their answer-side coverage is different: <strong>MetaMap reaches the correct answer in 98.2% of items and the full option set in 96.4%</strong>, compared with 86.1% and 65.0% for scispaCy. Question-only coverage hides the missing evidence on the discriminating side of a multiple-choice item.</p>
+<svg class="stage-icon stage-nel" aria-hidden="true" focusable="false" data-paper-icon="nel" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1060 846" fill="currentColor"><path transform="scale(1,-1)" d="M250 607C250 567 219 536 179 536C139 536 107 567 107 607C107 647 139 679 179 679C219 679 250 647 250 607ZM845 286C845 305 838 323 825 336L426 735C398 763 344 786 304 786H71C32 786 0 753 0 714V482C0 442 23 388 51 360L450 -39C463 -52 481 -60 500 -60C519 -60 538 -52 551 -39L825 235C838 248 845 267 845 286ZM1060 286C1060 305 1052 323 1039 336L640 735C612 763 558 786 518 786H393C433 786 487 763 515 735L914 336C927 323 935 305 935 286C935 267 927 248 914 235L652 -27C671 -47 685 -60 714 -60C733 -60 752 -52 765 -39L1039 235C1052 248 1060 267 1060 286Z"/></svg> 01 · Named entity linking</span><h2 id="linking-title">Linker choice changes answer coverage</h2></div>
+    <p>Both MetaMap and scispaCy ground every MedQA test question stem. MetaMap reaches a concept from the <strong>correct answer in 98.2% of items and from every option in 96.4%</strong>, compared with 86.1% and 65.0% for scispaCy. Answer grounding determines which candidates can participate in question-to-answer paths.</p>
     <figure data-figure="5">
       <a class="figure-link" href="assets/linker-coverage.png" aria-label="Open the full-resolution rendering"><img src="assets/linker-coverage.png" width="890" height="517" loading="lazy" alt="Five question and answer groups compare mean, minimum and maximum linked concepts for MetaMap and scispaCy on MedQA, PubMedQA and MedMCQA."></a>
-      <figcaption><strong>Linker choice changes reachable UMLS concepts.</strong> MetaMap and scispaCy use UMLS 2020AA on three benchmark test sets. Dots show means and bars span minimum to maximum; these bars are <strong>not confidence intervals</strong>. Question stems and answer options are measured separately.</figcaption>
+      <figcaption><strong>Linked concepts with MetaMap and scispaCy.</strong> Both tools use UMLS 2020AA on three benchmark test sets. Dots show means and bars span the observed minimum and maximum. Question stems and answer options are measured separately.</figcaption>
     </figure>
-    <p><strong>Higher yield is not higher precision.</strong> In a manual UMLS 2023AA audit of 40 MedQA answer options, 35.6% of MetaMap’s links were correct, versus 46.7% of scispaCy’s. MetaMap nevertheless grounded a correct concept in all 40 options, compared with 36 for scispaCy. Reachability and mapping quality answer different questions.</p>
-    <h3 class="subsection">The knowledge base changes coverage even when the linker is fixed</h3>
-    <p>Holding scispaCy’s mention detector fixed and swapping only its concept knowledge base raises the mean question concepts from <strong>57.67 to 71.76</strong> on MedQA dev when moving from 2020AA to 2021AA. Restricting to DrugBank and the Disease Database leaves fewer than one linked question concept on average on both evaluated datasets.</p>
+    <p>In a manual UMLS 2023AA audit of 40 MedQA answer options, <strong>35.6% of MetaMap's links were correct, compared with 46.7% of scispaCy's</strong>. MetaMap grounded a correct concept in all 40 options, compared with 36 for scispaCy. Its additional mappings extend option coverage while also introducing more generic or incorrect concepts.</p>
+    <h3 class="subsection">Changing the resource with the linker held fixed</h3>
+    <p>Keeping scispaCy's mention detector fixed and switching its concept knowledge base from 2020AA to 2021AA raises mean question-side concepts from <strong>57.67 to 71.76 on MedQA development questions</strong> and from <strong>68.46 to 78.77 on PubMedQA</strong>. Under 2023AA, restricting UMLS to DrugBank and the Disease Database reduces these means from <strong>67.53 to 0.99</strong> and from <strong>76.46 to 0.96</strong>, respectively.</p>
     <figure id="release-comparison" data-table="2">
       <a class="figure-link" href="assets/release-table.png" aria-label="Open the full-resolution rendering"><img src="assets/release-table.png" width="890" height="493" loading="lazy" alt="Original paper table. Rows retain four UMLS releases and three source configurations. Grouped columns report mean and distinct concepts for MedQA questions, MedQA options and PubMedQA questions."></a>
-      <figcaption><strong>Linked UMLS concepts across releases and source subsets.</strong> The mention detector stays fixed. MedQA development split (1,272 items); PubMedQA full dataset. Means count linked concepts per instance, with answer-side counts taken as the union across four options. Distinct counts are unique concepts over the evaluated set. † scispaCy’s shipped default.</figcaption>
+      <figcaption><strong>Linked concepts across releases and source subsets.</strong> The mention detector stays fixed. Measurements cover 1,272 MedQA development items and the full PubMedQA dataset. Answer-side counts give the number of distinct concepts linked across the four options. Distinct counts give unique concepts over the evaluated set. The dagger marks scispaCy's shipped default.</figcaption>
     </figure>
-    <h3 class="subsection">Coverage across released preprocessing pipelines</h3>
-    <p>The released QA-GNN, GREASELM and DRAGON artifacts expose where linking fails before inference. The counts retain the original question–option record structure: four option records correspond to one MedQA question. The <strong>5,092 test records are not 5,092 independent questions</strong>.</p>
+    <h3 class="subsection">Answer-side coverage in released pipelines</h3>
+    <p>The released QA-GNN, GREASELM and DRAGON artifacts record question-side and answer-side linking outcomes before inference. Each of the <strong>1,273 MedQA test questions contributes four option records, for 5,092 records</strong>. These records identify which question-option pairs retain seeds for retrieval.</p>
     <figure id="linking-records" data-table="10">
       <a class="figure-link" href="assets/linking-records.png" aria-label="Open the full-resolution rendering"><img src="assets/linking-records.png" width="890" height="484" loading="lazy" alt="Original paper table of present, empty and jointly empty question-side and answer-side links for QA-GNN, GREASELM, DRAGON and MetaMap over development, test and training splits."></a>
-      <figcaption><strong>Linking coverage across systems and splits.</strong> Present means at least one linked concept; empty means none. The native table retains development, test and training counts, including cases with both sides empty.</figcaption>
+      <figcaption><strong>Linking outcomes across systems and splits.</strong> Present denotes at least one linked concept and empty denotes zero. The table gives development, test and training counts for the question-side and answer-side outcomes.</figcaption>
     </figure>
   </section>
 
   <section class="ksr-section" id="retrieval" aria-labelledby="retrieval-title">
     <div class="section-head"><span class="label"><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
-<svg class="stage-icon stage-ksr" aria-hidden="true" focusable="false" data-paper-icon="ksr" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1000 857" fill="currentColor"><path transform="scale(1,-1)" d="M1000 161C1000 191 976 214 946 214H893V321C893 360 860 393 821 393H536V500H589C619 500 643 524 643 554V732C643 762 619 786 589 786H411C381 786 357 762 357 732V554C357 524 381 500 411 500H464V393H179C140 393 107 360 107 321V214H54C24 214 0 191 0 161V-18C0 -48 24 -71 54 -71H232C262 -71 286 -48 286 -18V161C286 191 262 214 232 214H179V321H464V214H411C381 214 357 191 357 161V-18C357 -48 381 -71 411 -71H589C619 -71 643 -48 643 -18V161C643 191 619 214 589 214H536V321H821V214H768C738 214 714 191 714 161V-18C714 -48 738 -71 768 -71H946C976 -71 1000 -48 1000 -18Z"/></svg> 02 · Knowledge subgraph retrieval</span><h2 id="retrieval-title">Connectivity and pruning decide which evidence survives</h2></div>
-    <p>Expanding the full UMLS neighborhood on PubMedQA grows the mean subgraph from <strong>3,755 nodes at two hops to more than 1.3 million at five hops</strong>. The DRAGON-filtered subset grows from 193 to 46,719 nodes. The resource is smaller, but expansion remains substantial.</p>
+<svg class="stage-icon stage-ksr" aria-hidden="true" focusable="false" data-paper-icon="ksr" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1000 857" fill="currentColor"><path transform="scale(1,-1)" d="M1000 161C1000 191 976 214 946 214H893V321C893 360 860 393 821 393H536V500H589C619 500 643 524 643 554V732C643 762 619 786 589 786H411C381 786 357 762 357 732V554C357 524 381 500 411 500H464V393H179C140 393 107 360 107 321V214H54C24 214 0 191 0 161V-18C0 -48 24 -71 54 -71H232C262 -71 286 -48 286 -18V161C286 191 262 214 232 214H179V321H464V214H411C381 214 357 191 357 161V-18C357 -48 381 -71 411 -71H589C619 -71 643 -48 643 -18V161C643 191 619 214 589 214H536V321H821V214H768C738 214 714 191 714 161V-18C714 -48 738 -71 768 -71H946C976 -71 1000 -48 1000 -18Z"/></svg> 02 · Knowledge subgraph retrieval</span><h2 id="retrieval-title">Connectivity and pruning shape the retrieved graph</h2></div>
+    <p>On PubMedQA, the mean full-UMLS neighborhood grows from <strong>3,755 nodes at two hops to 1,336,309 at five hops</strong>. Over the same depths, the DRAGON-filtered graph grows from 193 to 46,719 nodes.</p>
     <figure data-figure="6">
       <a class="figure-link" href="assets/retrieval-growth.png" aria-label="Open the full-resolution rendering"><img src="assets/retrieval-growth.png" width="890" height="495" loading="lazy" alt="Log-scale line plot of nodes and edges from two to five hops, comparing full UMLS with a DRAGON-filtered subset."></a>
-      <figcaption><strong>Neighborhood growth under hop expansion.</strong> The original log-scale plot reports node and edge counts for full UMLS 2025AB and the DRAGON-filtered subset. Seeds come from scispaCy on PubMedQA test instances; error bars denote mean ± one standard deviation.</figcaption>
+      <figcaption><strong>Subgraph growth with retrieval depth.</strong> Node and edge counts on a log scale for full UMLS 2025AB and the DRAGON-filtered graph. Seeds come from scispaCy on PubMedQA test items, and error bars show one standard deviation around the mean.</figcaption>
     </figure>
-    <p>Depth is only one choice. On MedQA at two hops, pooling all linked concepts yields <strong>87 times more nodes</strong> than retaining question-to-answer connections on full UMLS, and 60 times more on the DRAGON-filtered subset.</p>
-    <p>QA-GNN, GREASELM and DRAGON then impose a 200-node budget. It is exceeded in <strong>70–73% of evaluation instances</strong>; only about 1.5 answer-side concepts survive per question–option pair after pruning. Missing answer concepts can therefore be lost first in linking and again in truncation.</p>
-    <p>Fallbacks matter too. Released systems insert fixed concepts such as <em>Serine</em> and <em>Ethanol</em> when linking produces no seed. In three-seed QA-GNN comparisons, replacing these placeholders with a random CUI or skipping retrieval yields similar mean accuracy. The fallback is part of what the reported score evaluates.</p>
+    <p>Connectivity also changes the retrieved graph. On MedQA at two hops, pooling all linked concepts yields <strong>87 times more nodes</strong> than keeping question-to-answer paths under full UMLS, and 60 times more under the DRAGON-filtered graph. Pooled expansion admits connections within either side of the question-answer pair.</p>
+    <p>QA-GNN, GREASELM and DRAGON cap the graph at 200 nodes. Their pre-pruning graphs exceed that budget in <strong>70 to 73% of evaluation instances</strong>, with about 1.5 answer-side concepts surviving per question-option pair. Pruning compounds the answer-side losses introduced during linking.</p>
+    <p>When linking yields zero seeds, released systems insert fixed concepts such as <em>Serine</em> and <em>Ethanol</em>. In three-seed QA-GNN comparisons, using a random CUI or skipping retrieval produces similar mean accuracy to these placeholders.</p>
   </section>
 
   <section class="ki-section" id="injection" aria-labelledby="injection-title">
     <div class="section-head"><span class="label"><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
-<svg class="stage-icon stage-ki" aria-hidden="true" focusable="false" data-paper-icon="ki" xmlns="http://www.w3.org/2000/svg" viewBox="0 -856.25 999.25 999.25" fill="currentColor"><path transform="scale(1,-1)" d="M979 604C951 632 906 632 878 604L655 381L524 512L747 735C775 762 775 808 747 836C719 863 674 863 646 836L423 613L339 696L250 607C128 485 110 298 202 160L0 -42V-143H101L303 59C441 -33 628 -15 750 107L839 196L756 280L979 503C1006 531 1006 576 979 604Z"/></svg> 03 · Knowledge injection</span><h2 id="injection-title">A benchmark score can conceal very different evidence</h2></div>
-    <p>UMLS reaches the model through three different routes: <strong>textual linearization</strong> exposes serialized facts, <strong>structural injection</strong> provides a graph at inference, and <strong>parameter encoding</strong> uses the resource as training-time supervision. The review classifies systems by their primary route.</p>
+<svg class="stage-icon stage-ki" aria-hidden="true" focusable="false" data-paper-icon="ki" xmlns="http://www.w3.org/2000/svg" viewBox="0 -856.25 999.25 999.25" fill="currentColor"><path transform="scale(1,-1)" d="M979 604C951 632 906 632 878 604L655 381L524 512L747 735C775 762 775 808 747 836C719 863 674 863 646 836L423 613L339 696L250 607C128 485 110 298 202 160L0 -42V-143H101L303 59C441 -33 628 -15 750 107L839 196L756 280L979 503C1006 531 1006 576 979 604Z"/></svg> 03 · Knowledge injection</span><h2 id="injection-title">Construction choices affect systems differently</h2></div>
+    <p>We group the reviewed injection mechanisms into <strong>textual linearization</strong> through serialized facts, <strong>structural injection</strong> through graph representations at inference, and <strong>parameter encoding</strong> through training supervision. Systems are classified by their primary route.</p>
     <figure id="injection-mechanisms" data-table="12">
       <a class="figure-link" href="assets/injection-mechanisms.png" aria-label="Open the full-resolution rendering"><img src="assets/injection-mechanisms.png" width="890" height="250" loading="lazy" alt="Original paper taxonomy table: five textual-linearization systems, nine structural-injection systems and seven parameter-encoding systems, for 21 explicitly classified systems."></a>
-      <figcaption><strong>Three routes for UMLS injection.</strong> Counts cover the 21 reviewed systems with an explicit injection mechanism; they do not represent all 25 studies.</figcaption>
+      <figcaption><strong>UMLS injection mechanisms.</strong> The taxonomy covers the 21 reviewed systems with an explicit injection mechanism.</figcaption>
     </figure>
-    <h3 class="subsection">Retraining systems under seven UMLS constructions</h3>
-    <p>We retrain QA-GNN and GREASELM on MedQA under seven UMLS constructions, keeping architecture, hyperparameters and training schedule at published values. Each linker is paired with a graph from the same release, and each construction is evaluated over three random seeds.</p>
-    <p><strong>QA-GNN test accuracy spans 37.5–38.7% across the six graph configurations</strong>; its placeholder-only control reaches 37.4%. GREASELM spans 37.7–39.3%, while its control reaches 36.7%. Whether a graph helps at all is system-dependent, even when the construction comparisons appear similar.</p>
+    <h3 class="subsection">Graph variants produce similar mean accuracy</h3>
+    <p>We retrain QA-GNN and GREASELM on MedQA under seven UMLS constructions, keeping their published architectures, hyperparameters and training schedules. Each linker is paired with a graph from the same release, and each construction is evaluated over three random seeds.</p>
+    <p><strong>QA-GNN test accuracy spans 37.5 to 38.7% across six graph configurations</strong>, compared with 37.4% for its placeholder-only control. GREASELM spans 37.7 to 39.3%, compared with 36.7% for its control. QA-GNN's graph and placeholder-only means remain close, while GREASELM's graph configurations have higher mean accuracy than its control.</p>
     <figure id="endtoend-comparison" data-table="4">
       <a class="figure-link" href="assets/endtoend-table.png" aria-label="Open the full-resolution rendering"><img src="assets/endtoend-table.png" width="890" height="209" loading="lazy" alt="Original paper table. QA-GNN development and test rows and the GREASELM test row are compared across four releases, Level-0, DrugBank plus DDB and the empty-graph control. Every mean and seed standard deviation retains the original layout."></a>
-      <figcaption><strong>End-to-end accuracy across UMLS constructions.</strong> MedQA accuracy (%), mean ± standard deviation over three random seeds. † Published configuration. The empty-graph control retains the fixed placeholder concepts used on linking failure; it does not provide question-specific UMLS evidence.</figcaption>
+      <figcaption><strong>End-to-end MedQA accuracy across UMLS constructions.</strong> Values are means with standard deviations over three random seeds. The dagger marks the published configuration. The empty-graph control retains the fixed placeholder concepts used when linking fails.</figcaption>
     </figure>
-    <h3 class="subsection">The useful evidence view changes with the task and reader</h3>
-    <p>For LLM readers, we compare relation neighborhoods, question-to-answer paths and metadata-enriched evidence. <strong class="mark ki">No evidence view wins uniformly.</strong> Metadata-enriched paths are strongest on most MedQA and MedMCQA readers, whereas relation neighborhoods lead on nine of ten readers on PubMedQA.</p>
+    <h3 class="subsection">Preferred evidence views differ across benchmarks</h3>
+    <p><strong class="mark ki">Metadata-enriched paths recover the most baseline errors for most MedQA and MedMCQA readers.</strong> Relation neighborhoods lead on nine of ten PubMedQA readers. MedQA and MedMCQA each have three evidence views, while the PubMedQA panel compares relation neighborhoods with metadata-enriched evidence.</p>
     <figure data-figure="7">
       <a class="figure-link" href="assets/evidence-views.png" aria-label="Open the full-resolution rendering"><img src="assets/evidence-views.png" width="890" height="671" loading="lazy" alt="Three stacked bar-chart panels compare evidence conditions for ten readers on MedQA, MedMCQA and PubMedQA. Slanted model labels include their family logos."></a>
-      <figcaption><strong>Evidence constructions across ten readers and three benchmarks.</strong> Answer-only reader comparison, with 95% confidence intervals. Every reader is evaluated on its own baseline-wrong subset. Panels show MedQA, MedMCQA and PubMedQA.</figcaption>
+      <figcaption><strong>Evidence views across ten readers from five families.</strong> Answer-only prompting on MedQA, MedMCQA and PubMedQA, with 95% confidence intervals.</figcaption>
     </figure>
-    <div class="method-note"><p><strong>Read these results as error recovery.</strong> The reader experiments evaluate items answered incorrectly without UMLS. Their percentages describe recovery within that subset; they do not measure the change in overall benchmark accuracy, including any previously correct answers that evidence might disrupt.</p></div>
-    <p>The ordering also changes with the reading procedure. A chain-of-thought pilot on a MedQA subsample changes the winning view relative to answer-only prompting. Evidence format and prompting regime should be evaluated together.</p>
-    <h3 class="subsection">The shortest path is not always the most useful</h3>
-    <p>Within the Qwen3.5 scale ladder, path depth changes recovery under matched evidence conditions. <strong>The 9B reader performs best at three hops; the 35B reader performs best at four.</strong> Choosing the smallest graph distance alone misses how the reader uses intermediate biomedical concepts.</p>
+    <p>Recovery is the percentage of a reader's zero-shot errors corrected after adding evidence. Each reader is evaluated on its own baseline-wrong subset.</p>
+    <p>A chain-of-thought pilot on a MedQA subsample changes the winning evidence view relative to answer-only prompting.</p>
+    <h3 class="subsection">Preferred path depth varies with the reader</h3>
+    <p>Within the Qwen3.5 scale ladder, <strong>the 9B reader peaks at three hops and the 35B reader at four</strong>. The comparison varies path depth on MedQA items where all three lengths are available and every candidate answer is reachable at each depth.</p>
     <figure data-figure="8">
       <a class="figure-link" href="assets/path-depth.png" aria-label="Open the full-resolution rendering"><img src="assets/path-depth.png" width="890" height="465" loading="lazy" alt="Grouped bars compare recovery at two, three and four hops for Qwen3.5 model scales from 0.8B to 35B."></a>
-      <figcaption><strong>Question-to-answer depth on the Qwen3.5 ladder.</strong> MedQA recovery and 95% confidence intervals at two, three and four hops. The comparison uses items with paths of all three lengths simultaneously available; at each depth, every answer option must be reachable by an exact path of that length.</figcaption>
+      <figcaption><strong>Question-to-answer depth on the Qwen3.5 ladder.</strong> Recovery and 95% confidence intervals at two, three and four hops. Each candidate answer has an exact path of the evaluated length on the matched items.</figcaption>
     </figure>
   </section>
 
   <section class="checklist" id="checklist" aria-labelledby="checklist-title">
-    <h2 id="checklist-title">Make the UMLS construction reportable</h2>
-    <p>The paper’s minimum reporting checklist makes the evidence construction explicit, from resource selection to missing-seed behavior.</p>
+    <h2 id="checklist-title">Reporting UMLS construction</h2>
+    <p>For each result, record the selected resource, linked concepts, retrieved evidence and model input.</p>
     <div class="check-group"><h3>UMLS snapshot</h3><ul>
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="release"><path d="M4 5h16v15H4zM8 5V3M16 5V3M4 9h16M8 13h3M8 16h7"/></svg><strong>Release version.</strong> Identify the source snapshot.</li>
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="subset"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg><strong>Subset.</strong> Name source vocabularies and concept/relation filters.</li>
@@ -350,13 +350,13 @@
 
   <section class="literature-panel" id="literature" aria-labelledby="literature-title">
 <h2 id="literature-title">Reviewed literature</h2>
-<p>Compare the 25 system annotations by how UMLS reaches the model. Each entry retains its source tables, linking and retrieval choices, method notes and available paper/code links.</p>
+
 <div class="review-browser">
 <nav class="review-index" aria-label="Literature analysis">
 <a id="tab-textual" href="#review-textual">Textual <span>(5)</span></a>
 <a id="tab-structural" href="#review-structural">Structural <span>(9)</span></a>
 <a id="tab-parameter" href="#review-parameter">Parameter <span>(7)</span></a>
-<a id="tab-unreported" href="#review-unreported">Not specified <span>(4)</span></a>
+<a id="tab-unreported" href="#review-unreported">Unreported <span>(4)</span></a>
 <a id="tab-protocol" href="#review-protocol">Protocol</a><a id="tab-exclusions" href="#review-exclusions">Screening</a></nav>
 <div class="review-pane literature-group" id="review-textual"><header class="literature-heading"><h3>Textual linearization</h3><p>Serialized factual context · 5 systems</p></header><ol class="paper-list" role="list">
 <li value="3" class="paper-entry" data-paper-number="3"><div class="paper-top"><div class="paper-identity"><h4>KnowledgeDA</h4><p class="paper-attribution">Ding et al. (Findings of ACL 2023)</p></div>
@@ -368,7 +368,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>neural embedding</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">Mention-to-entity similarity matching; 2-hop relation-consistent replacements; data augmentation around UMLS-grounded entities. UMLS 2021AA; 1.15M CUIs, 4.88M triples after filtering to medicine-related semantic types and 502 relation types.</p></li>
+</dl><p class="paper-note">KnowledgeDA augments training data through relation-consistent replacements around UMLS-linked entities. Its UMLS 2021AA graph contains 1.15 million CUIs and 4.88 million triples after filtering for medicine-related semantic types and 502 relation types.</p></li>
 <li value="4" class="paper-entry" data-paper-number="4"><div class="paper-top"><div class="paper-identity"><h4>KG-Infused LLM for Virtual Health Assistant</h4><p class="paper-attribution">Katta et al. (ICMLA 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://doi.org/10.1109/ICMLA61862.2024.00099" title="KG-Infused LLM for Virtual Health Assistant: Accelerated Inference and Enhanced Performance">Paper<span aria-hidden="true"> ↗</span></a>
@@ -378,7 +378,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRDEF · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: 20 rel.</dd></div>
-</dl><p class="paper-note">Builds large Neo4j KG from UMLS subsets (MSH + NCI), 622K nodes / 4.94M edges; RAG-style pipeline with semantic matching + learning-to-rank; not question-specific subgraph construction.</p></li>
+</dl><p class="paper-note">The assistant retrieves from a Neo4j graph built from the MSH and NCI portions of UMLS, with 622,000 nodes and 4.94 million edges. Semantic matching and learning-to-rank select evidence from this shared graph.</p></li>
 <li value="12" class="paper-entry" data-paper-number="12"><div class="paper-top"><div class="paper-identity"><h4>KG-Rank</h4><p class="paper-attribution">Yang et al. (BioNLP 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2024.bionlp-1.13" title="KG-Rank: Enhancing Large Language Models for Medical QA with Knowledge Graphs and Ranking Techniques">Paper<span aria-hidden="true"> ↗</span></a>
@@ -388,7 +388,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>LLM prompt</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">UMLS as primary medical KG; one-hop triples retrieved and re-ranked before LLM generation. Similarity ranking + MMR + cross-encoder re-ranking. Evaluated on LiveQA, ExpertQA-Med/Bio, MedicationQA.</p></li>
+</dl><p class="paper-note">KG-Rank retrieves one-hop triples from UMLS before answer generation. Similarity ranking, maximal marginal relevance and a cross-encoder rerank the triples. Evaluation covers LiveQA, ExpertQA-Med/Bio and MedicationQA.</p></li>
 <li value="15" class="paper-entry" data-paper-number="15"><div class="paper-top"><div class="paper-identity"><h4>Heterogeneous Knowledge Grounding</h4><p class="paper-attribution">Zhao et al. (WWW 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://doi.org/10.1145/3589335.3651941" title="Heterogeneous Knowledge Grounding for Medical Question Answering with Retrieval Augmented Large Language Model">Paper<span aria-hidden="true"> ↗</span></a>
@@ -397,7 +397,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>neural embedding</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">DDB subset (50K triples); UMLS mentioned mainly as future direction — method uses unspecified structured medical KB + textbook corpus. Medical RAG; UMLS not operational in method as reported.</p></li>
+</dl><p class="paper-note">The method combines a structured medical knowledge base with a textbook corpus for retrieval-augmented generation. The review records a 50,000-triple Disease Database subset; UMLS is discussed as a future direction.</p></li>
 <li value="21" class="paper-entry" data-paper-number="21"><div class="paper-top"><div class="paper-identity"><h4>GLaM: Graph-Aligned Language Models</h4><p class="paper-attribution">Dernbach et al. (AAAI-SSS 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://doi.org/10.1609/aaaiss.v3i1.31186" title="GLaM: Fine-Tuning Large Language Models for Domain Knowledge Graph Alignment via Neighborhood Partitioning and Generative Subgraph Encoding">Paper<span aria-hidden="true"> ↗</span></a>
@@ -406,7 +406,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
-</dl><p class="paper-note">UMLS as training graph for graph-aligned LLM fine-tuning; 4 relation types, 126K triples. QA pairs synthesized from UMLS graph neighborhoods + subgraph encodings; evaluated on fact recall and multi-hop reasoning over UMLS.</p></li>
+</dl><p class="paper-note">GLaM fine-tunes language models with a UMLS graph containing four relation types and 126,000 triples. It synthesizes QA pairs from graph neighborhoods and combines them with subgraph encodings for fact recall and multi-hop reasoning evaluation.</p></li>
 </ol></div>
 <div class="review-pane literature-group" id="review-structural"><header class="literature-heading"><h3>Structural injection</h3><p>An explicit graph at inference · 9 systems</p></header><ol class="paper-list" role="list">
 <li value="1" class="paper-entry" data-paper-number="1"><div class="paper-top"><div class="paper-identity"><h4>DRAGON: Deep Bidirectional Language-Knowledge Graph Pretraining</h4><p class="paper-attribution">Yasunaga et al. (NeurIPS 2022)</p></div>
@@ -418,7 +418,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
-</dl><p class="paper-note">Deeply bidirectional text-KG pretraining; 2-hop expansion + entity linking; masked LM + KG link prediction joint objectives. Strong fit.</p></li>
+</dl><p class="paper-note">DRAGON jointly pretrains a language model and knowledge graph through masked language modeling and link prediction. Entity linking supplies seeds for two-hop graph expansion.</p></li>
 <li value="5" class="paper-entry" data-paper-number="5"><div class="paper-top"><div class="paper-identity"><h4>QAVSA</h4><p class="paper-attribution">Laube &amp; Eliasmith (RepL4NLP 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2024.repl4nlp-1.14/" title="QAVSA: Question Answering using Vector Symbolic Algebras">Paper<span aria-hidden="true"> ↗</span></a>
@@ -427,7 +427,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">Follows QA-GNN-style graph setup (300K nodes / 1M edges); replaces GNN with vector symbolic algebra + MLP reasoning on MedQA-USMLE.</p></li>
+</dl><p class="paper-note">QAVSA uses the QA-GNN graph setup, with 300,000 nodes and one million edges. Vector symbolic algebra and an MLP perform reasoning on MedQA-USMLE in place of the GNN.</p></li>
 <li value="6" class="paper-entry" data-paper-number="6"><div class="paper-top"><div class="paper-identity"><h4>QAT: Relation-Aware Language-Graph Transformer</h4><p class="paper-attribution">Park et al. (AAAI 2023)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://doi.org/10.1609/aaai.v37i11.26578" title="Relation-Aware Language-Graph Transformer for Question Answering">Paper<span aria-hidden="true"> ↗</span></a>
@@ -436,7 +436,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
-</dl><p class="paper-note">Per-QA subgraph retrieval (9K nodes / 44K edges); meta-path relation encoding. Q→A connectivity.</p></li>
+</dl><p class="paper-note">QAT retrieves question-answer subgraphs from a graph with 9,000 nodes and 44,000 edges. Meta-path encodings preserve relations along question-to-answer connections.</p></li>
 <li value="7" class="paper-entry" data-paper-number="7"><div class="paper-top"><div class="paper-identity"><h4>QA-GNN: Reasoning with Language Models and Knowledge Graphs for Question Answering</h4><p class="paper-attribution">Yasunaga et al. (NAACL 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2021.naacl-main.45/" title="QA-GNN: Reasoning with Language Models and Knowledge Graphs for Question Answering">Paper<span aria-hidden="true"> ↗</span></a>
@@ -446,7 +446,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
-</dl><p class="paper-note">Self-constructed biomedical KG (DDB portion of UMLS + DrugBank; 9K nodes / 44K edges). Question–choice-specific subgraph + LM-based relevance scoring + joint LM+KG reasoning. Canonical benchmark paper.</p></li>
+</dl><p class="paper-note">QA-GNN builds its biomedical graph from the Disease Database portion of UMLS and DrugBank, yielding 9,000 nodes and 44,000 edges. It constructs question-choice subgraphs, scores node relevance with a language model and jointly reasons over the text and graph.</p></li>
 <li value="8" class="paper-entry" data-paper-number="8"><div class="paper-top"><div class="paper-identity"><h4>Towards Efficient Methods using KG Embeddings</h4><p class="paper-attribution">Sengupta et al. (BIBM 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://arxiv.org/abs/2401.07977" title="Towards Efficient Methods in Medical Question Answering using Knowledge Graph Embeddings">Paper<span aria-hidden="true"> ↗</span></a>
@@ -456,7 +456,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRDEF</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>MetaMap</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">UMLS definitions + pre-trained UMLS KGE fused into BERT/RoBERTa for COVID-QA / PubMedQA. Embedding/definition infusion; not subgraph construction.</p></li>
+</dl><p class="paper-note">The method fuses UMLS definitions and pretrained UMLS knowledge-graph embeddings into BERT and RoBERTa. Evaluation covers COVID-QA and PubMedQA.</p></li>
 <li value="9" class="paper-entry" data-paper-number="9"><div class="paper-top"><div class="paper-identity"><h4>Graph Neural Prompting (GNP)</h4><p class="paper-attribution">Tian et al. (AAAI 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://doi.org/10.1609/aaai.v38i17.29875" title="Graph Neural Prompting with Large Language Models">Paper<span aria-hidden="true"> ↗</span></a>
@@ -465,7 +465,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">NEL → 2-hop subgraph → GNN + cross-modality pooling + domain projector. UMLS as biomedical-domain KG encoded into graph neural prompts for LLM prompting.</p></li>
+</dl><p class="paper-note">GNP links entities, retrieves a two-hop subgraph and encodes it with a GNN. Cross-modality pooling and a domain projector convert the UMLS-derived graph into prompts for the language model.</p></li>
 <li value="11" class="paper-entry" data-paper-number="11"><div class="paper-top"><div class="paper-identity"><h4>Medical Knowledge-Enriched Textual Entailment</h4><p class="paper-attribution">Yadav et al. (COLING 2020)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2020.coling-main.161/" title="Medical Knowledge-enriched Textual Entailment Framework">Paper<span aria-hidden="true"> ↗</span></a>
@@ -475,7 +475,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">UMLS + SNOMED-CT + ICD10 to enrich vocabulary graph for MEDIQA-RQE entailment. Knowledge-enriched graph + BERT via GCN + attention fusion.</p></li>
+</dl><p class="paper-note">The method enriches a vocabulary graph with UMLS, SNOMED CT and ICD10 for MEDIQA-RQE textual entailment. A GCN and attention mechanism fuse its knowledge representation with BERT.</p></li>
 <li value="13" class="paper-entry" data-paper-number="13"><div class="paper-top"><div class="paper-identity"><h4>DRLK</h4><p class="paper-attribution">Zhang et al. (EMNLP 2022)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2022.emnlp-main.342/" title="DRLK: Dynamic Hierarchical Reasoning with Language Model and Knowledge Graph for Question Answering">Paper<span aria-hidden="true"> ↗</span></a>
@@ -485,7 +485,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
-</dl><p class="paper-note">Pre-computed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). QA-GNN/GREASELM-style preprocessing; dynamic hierarchical LM-KG interaction.</p></li>
+</dl><p class="paper-note">DRLK uses a precomputed graph from the Disease Database portion of UMLS and DrugBank, with 9,000 nodes and 44,000 edges. QA-GNN/GREASELM-style preprocessing supplies the graph for dynamic hierarchical interaction between the language model and knowledge graph.</p></li>
 <li value="14" class="paper-entry" data-paper-number="14"><div class="paper-top"><div class="paper-identity"><h4>GREASELM</h4><p class="paper-attribution">Zhang et al. (ICLR 2022)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://arxiv.org/abs/2201.08860" title="GreaseLM: Graph REASoning Enhanced Language Models">Paper<span aria-hidden="true"> ↗</span></a>
@@ -495,7 +495,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
-</dl><p class="paper-note">Self-constructed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). NEL + 2-hop bridge entities + top-200 node retrieval; LM-KG cross-modal fusion across layers.</p></li>
+</dl><p class="paper-note">GREASELM builds a graph from the Disease Database portion of UMLS and DrugBank, with 9,000 nodes and 44,000 edges. Entity linking, two-hop bridge entities and top-200 node retrieval feed graph-language fusion across model layers.</p></li>
 </ol></div>
 <div class="review-pane literature-group" id="review-parameter"><header class="literature-heading"><h3>Parameter encoding</h3><p>Training-time supervision · 7 systems</p></header><ol class="paper-list" role="list">
 <li value="10" class="paper-entry" data-paper-number="10"><div class="paper-top"><div class="paper-identity"><h4>Adapter Modules for Knowledge Enhancement</h4><p class="paper-attribution">Vladika et al. (ICAART 2024)</p></div>
@@ -506,7 +506,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
-</dl><p class="paper-note">UMLS 2023AA; SNOMED CT US subset (1.75M triplets). Top-20 UMLS relations + METIS partitioning; entity-prediction adapter training; evaluated on BioASQ-7b / PubMedQA / MedNLI / HoC.</p></li>
+</dl><p class="paper-note">The adapter uses 1.75 million triplets from the SNOMED CT US subset of UMLS 2023AA. It selects the 20 most frequent UMLS relations, partitions the graph with METIS and trains adapters through entity prediction. Evaluation covers BioASQ-7b, PubMedQA, MedNLI and HoC.</p></li>
 <li value="16" class="paper-entry" data-paper-number="16"><div class="paper-top"><div class="paper-identity"><h4>InfuserKI</h4><p class="paper-attribution">Tian et al. (EMNLP 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2024.findings-emnlp.209" title="InfuserKI: Enhancing Large Language Models with Knowledge Graphs via Infuser-Guided Knowledge Integration">Paper<span aria-hidden="true"> ↗</span></a>
@@ -515,7 +515,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
-</dl><p class="paper-note">UMLS triplets (2.5K &amp; 25K) as domain KG for infuser-guided knowledge integration via adapters. Parameter-level integration; question-style supervision from UMLS triplets.</p></li>
+</dl><p class="paper-note">InfuserKI trains adapters with 2,500- and 25,000-triplet UMLS graphs. An infuser guides parameter-level integration using question-style supervision generated from the triplets.</p></li>
 <li value="18" class="paper-entry" data-paper-number="18"><div class="paper-top"><div class="paper-identity"><h4>UMLS-KGI-BERT</h4><p class="paper-attribution">Mannion et al. (ClinicalNLP 2023)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2023.clinicalnlp-1.35/" title="UMLS-KGI-BERT: Data-Centric Knowledge Integration in Transformers for Biomedical Entity Recognition">Paper<span aria-hidden="true"> ↗</span></a>
@@ -524,7 +524,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>string match</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">UMLS 2022AB; restricted to human-biology/medicine semantic types (2.53M CUIs). Pretraining via entity prediction, link prediction, triple classification; downstream clinical NER. Cited in §5.1 as the sole reviewed system that evaluates linker performance directly.</p></li>
+</dl><p class="paper-note">UMLS-KGI-BERT uses 2.53 million CUIs from UMLS 2022AB after filtering to human-biology and medicine semantic types. Entity prediction, link prediction and triple classification provide pretraining objectives before clinical NER evaluation. It is the sole reviewed system that directly evaluates linker performance.</p></li>
 <li value="22" class="paper-entry" data-paper-number="22"><div class="paper-top"><div class="paper-identity"><h4>Selective UMLS Knowledge Infusion</h4><p class="paper-attribution">Park et al. (Scientific Reports, 2023)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://www.nature.com/articles/s41598-023-41423-8" title="Selective UMLS knowledge infusion for biomedical question answering">Paper<span aria-hidden="true"> ↗</span></a>
@@ -533,7 +533,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY · SRDEF</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
-</dl><p class="paper-note">Extends MoP by comparing METIS partitions vs. semantic-group partitioning of UMLS for adapter pretraining; evaluated on BioASQ7b / PubMedQA / MedQA. (SRDEF is part of the UMLS Semantic Network, not the Metathesaurus.)</p></li>
+</dl><p class="paper-note">The method extends Mixture-of-Partitions by comparing METIS partitions with UMLS semantic-group partitions for adapter pretraining. SRDEF belongs to the UMLS Semantic Network. Evaluation covers BioASQ7b, PubMedQA and MedQA.</p></li>
 <li value="23" class="paper-entry" data-paper-number="23"><div class="paper-top"><div class="paper-identity"><h4>Mixture-of-Partitions (MoP)</h4><p class="paper-attribution">Meng et al. (EMNLP 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2021.emnlp-main.383/" title="Mixture-of-Partitions: Infusing Large Biomedical Knowledge Graphs into BERT">Paper<span aria-hidden="true"> ↗</span></a>
@@ -543,7 +543,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
-</dl><p class="paper-note">SNOMED CT US subset. UMLS partitioned via METIS into smaller subgraphs; adapter pretraining per partition. Global KG partitions, not per-question retrieval. Evaluated on PubMedQA / BioASQ7b / BioASQ8b / MedQA / MedNLI.</p></li>
+</dl><p class="paper-note">Mixture-of-Partitions divides the SNOMED CT US subset into global graph partitions with METIS, then pretrains an adapter for each partition. Evaluation covers PubMedQA, BioASQ7b, BioASQ8b, MedQA and MedNLI.</p></li>
 <li value="24" class="paper-entry" data-paper-number="24"><div class="paper-top"><div class="paper-identity"><h4>UmlsBERT</h4><p class="paper-attribution">Michalopoulos et al. (NAACL 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2021.naacl-main.139/" title="UmlsBERT: Clinical Domain Knowledge Augmentation of Contextual Embeddings Using the Unified Medical Language System Metathesaurus">Paper<span aria-hidden="true"> ↗</span></a>
@@ -553,7 +553,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRSTY</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>cTAKES</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
-</dl><p class="paper-note">UMLS 2020AA. Pretraining with UMLS Metathesaurus: CUI-shared term linking + semantic type embeddings. Evaluated on MedNLI + clinical NER.</p></li>
+</dl><p class="paper-note">UmlsBERT pretrains with UMLS 2020AA, linking terms that share a CUI and adding semantic-type embeddings. Evaluation covers MedNLI and clinical named entity recognition.</p></li>
 <li value="25" class="paper-entry" data-paper-number="25"><div class="paper-top"><div class="paper-identity"><h4>DAKI</h4><p class="paper-attribution">Lu et al. (Findings of EMNLP 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2021.findings-emnlp.325/" title="Parameter-Efficient Domain Knowledge Integration from Multiple Sources for Biomedical Pre-trained Language Models">Paper<span aria-hidden="true"> ↗</span></a>
@@ -562,9 +562,9 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">UMLS Metathesaurus graph (1.77M triples) as one of three knowledge sources, encoded through a dedicated knowledge adapter and combined via an attention-based controller. UMLS adapter pretrained on graph triples; evaluated on MEDIQA-2019, TRECQA-2017, MedNLI + NER.</p></li>
+</dl><p class="paper-note">DAKI encodes a 1.77-million-triple UMLS Metathesaurus graph through a dedicated knowledge adapter. An attention-based controller combines it with two other knowledge sources. Evaluation covers MEDIQA-2019, TRECQA-2017, MedNLI and named entity recognition.</p></li>
 </ol></div>
-<div class="review-pane literature-group" id="review-unreported"><header class="literature-heading"><h3>Mechanism not specified</h3><p>No primary mechanism reported · 4 systems</p></header><ol class="paper-list" role="list">
+<div class="review-pane literature-group" id="review-unreported"><header class="literature-heading"><h3>Unreported mechanism</h3><p>Primary injection mechanism unreported · 4 systems</p></header><ol class="paper-list" role="list">
 <li value="2" class="paper-entry" data-paper-number="2"><div class="paper-top"><div class="paper-identity"><h4>MediSage</h4><p class="paper-attribution">Choudhury et al. (WWW 2023)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://doi.org/10.1145/3543873.3587361" title="MediSage: An AI Assistant for Healthcare via Composition of Neural-Symbolic Reasoning Operators">Paper<span aria-hidden="true"> ↗</span></a>
@@ -573,7 +573,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>string match</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=3 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">Conversational clinical decision-support over EHR + clinical KG; BioLinkBERT NEL fallback. Not centered on UMLS as core source.</p></li>
+</dl><p class="paper-note">MediSage combines electronic health records with a clinical knowledge graph for conversational decision support. BioLinkBERT provides an entity-linking fallback.</p></li>
 <li value="17" class="paper-entry" data-paper-number="17"><div class="paper-top"><div class="paper-identity"><h4>HiPrompt</h4><p class="paper-attribution">Lu et al. (SIGIR 2023)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://arxiv.org/abs/2304.05973" title="HiPrompt: Few-Shot Biomedical Knowledge Fusion via Hierarchy-Oriented Prompting">Paper<span aria-hidden="true"> ↗</span></a>
@@ -582,7 +582,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
-</dl><p class="paper-note">Biomedical KG–to-hierarchy alignment via hierarchy-oriented few-shot prompting; retrieval + re-ranking for entity–term alignment. <em>Borderline case retained for §5 discussion of adjacent settings.</em></p></li>
+</dl><p class="paper-note">HiPrompt aligns biomedical graph entities with hierarchical terms through few-shot prompting, retrieval and reranking. The review retains it for discussion of adjacent tasks.</p></li>
 <li value="19" class="paper-entry" data-paper-number="19"><div class="paper-top"><div class="paper-identity"><h4>Healthcare QA Assistant</h4><p class="paper-attribution">Sukhwal et al. (ICIS 2022)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aisel.aisnet.org/icis2022/is_health/is_health/1" title="Designing a Healthcare QA Assistant: A Knowledge Based Approach">Paper<span aria-hidden="true"> ↗</span></a>
@@ -591,7 +591,7 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
-</dl><p class="paper-note">Disease-specific KG (7.17K CUIs) from PubMed abstracts + OpenIE; CUIs + synonym merging; KG-only vs. LM-only vs. joint reasoning comparison on a skin-eczema QA assistant.</p></li>
+</dl><p class="paper-note">The healthcare assistant builds a disease-specific graph of 7,170 CUIs from PubMed abstracts and OpenIE, merging synonyms through concept identifiers. Its skin-eczema QA evaluation compares graph-only, language-model-only and joint reasoning.</p></li>
 <li value="20" class="paper-entry" data-paper-number="20"><div class="paper-top"><div class="paper-identity"><h4>Chest ImaGenome</h4><p class="paper-attribution">Wu et al. (NeurIPS 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://datasets-benchmarks-proceedings.neurips.cc/paper/2021/hash/17e62166fc8586dfa4d1bc0e1742c08b-Abstract-round2.html" title="Chest ImaGenome Dataset for Clinical Reasoning">Paper<span aria-hidden="true"> ↗</span></a>
@@ -600,12 +600,12 @@
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO</dd></div>
 <div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
-</dl><p class="paper-note">Anatomy-centered scene graphs from radiology reports; UMLS as indexing/normalization layer only (scene-graph nodes → CUIs). <em>Retained for adjacent-settings discussion.</em></p></li>
+</dl><p class="paper-note">Chest ImaGenome constructs anatomy-centered scene graphs from radiology reports and maps their nodes to UMLS CUIs for indexing and normalization. The review retains it for discussion of adjacent tasks.</p></li>
 </ol></div>
 <div class="review-pane review-method" id="review-protocol"><h3>Review protocol</h3>
-<p>The Scopus search was run on <strong>January 15, 2026</strong>, targeting English-language conference and journal work published during 2020–2025. Two researchers annotated the screened literature independently; disagreements were resolved through discussion.</p>
+<p>The Scopus search ran on <strong>January 15, 2026</strong> and covered English-language conference and journal work published from 2020 to 2025. Two researchers independently annotated the screened literature and resolved disagreements through discussion.</p>
 <ul><li>UMLS must play a substantive technical role.</li><li>The task must be medical question answering or a related reasoning setting.</li><li>The method must support comparison across knowledge grounding, retrieval and injection.</li></ul>
-<p>Fields are recovered from the paper and supplement, then released code, then code from cited systems. Unavailable fields remain explicitly unreported.</p>
+<p>Annotations draw first on the paper and supplement, then released code, then code from cited systems. The records label missing fields as unreported.</p>
 <h4>Search query</h4><pre><code>ABS (
     (&quot;*knowledge graph*&quot;)
     OR (&quot;knowledge base*&quot;)
@@ -641,29 +641,29 @@ AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
 <p><strong>Closed-form:</strong> PubMedQA, BioASQ, MedQA (USMLE) and MedMCQA.<br><strong>Open-form:</strong> MedicationQA, COVID-QA and ExpertQA.</p>
 </div>
 <div class="review-pane review-method" id="review-exclusions"><h3>Screening record</h3><p>The repository records 20 screened papers outside the analytical corpus, grouped by their exclusion rationale.</p>
-<h4>UMLS Not Methodologically Used</h4><ul class="excluded-list">
-<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10702112/">Gupta et al. (2024) — Cancer CPG QA using LLMs <span aria-hidden="true">↗</span></a><p>Method centers on NCCN guideline KG, not UMLS. UMLS appears only as background.</p></li>
-<li><a class="excluded-paper-link" href="https://ceur-ws.org/Vol-3828/paper49.pdf">Aasman (2024) — Neuro-Symbolic Document Matching <span aria-hidden="true">↗</span></a><p>UMLS mentioned as example healthcare taxonomy; task is document matching.</p></li>
-<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10105090/">Chen et al. (2023) — RoBERT-Agr <span aria-hidden="true">↗</span></a><p>No UMLS involvement; agricultural domain.</p></li>
-<li><a class="excluded-paper-link" href="https://ceur-ws.org/Vol-3853/paper1.pdf">Crum et al. (2024) — Enriching Ontologies with Disjointness Axioms <span aria-hidden="true">↗</span></a><p>Ontology enrichment on DBpedia; no UMLS-based method.</p></li>
-<li><a class="excluded-paper-link" href="https://proceedings.mlr.press/v235/liu24au.html">Liu et al. (2024) — KNOWFORMER <span aria-hidden="true">↗</span></a><p>Generic KG reasoning; no UMLS.</p></li>
-<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10776440/">Patel (2024) — Optimizing KGE for QA Performance <span aria-hidden="true">↗</span></a><p>Generic KGQA; not UMLS-based, not medical.</p></li>
-<li><a class="excluded-paper-link" href="https://ceur-ws.org/Vol-3603/Paper4.pdf">Schulz — Ontology-Based Annotation of Clinical Narratives <span aria-hidden="true">↗</span></a><p>Annotation principles; not a QA/reasoning system.</p></li>
-<li><a class="excluded-paper-link" href="https://doi.org/10.1016/j.procs.2022.11.204">Tian et al. (2022) — Evaluation System Framework for Medical AI <span aria-hidden="true">↗</span></a><p>Evaluation framework; UMLS not methodologically involved.</p></li>
-<li><a class="excluded-paper-link" href="https://proceedings.mlr.press/v235/wang24a.html">Wang et al. (2024) — Understanding Reasoning Ability of LMs <span aria-hidden="true">↗</span></a><p>Analyzes LM reasoning over generic KGs; not UMLS.</p></li>
-<li><a class="excluded-paper-link" href="https://aclanthology.org/2023.starsem-1.20/">Youn &amp; Tagkopoulos (2023) — KGLM <span aria-hidden="true">↗</span></a><p>Generic KG link prediction; no medical/UMLS scope.</p></li>
-<li><a class="excluded-paper-link" href="https://aclanthology.org/2021.emnlp-main.276/">Zhang et al. (2021) — GMH <span aria-hidden="true">↗</span></a><p>KG completion; no UMLS, not QA.</p></li>
-<li><a class="excluded-paper-link" href="https://arxiv.org/abs/2310.06671">Zhang et al. (2024) — Making LLMs Perform Better in KG Completion <span aria-hidden="true">↗</span></a><p>Generic KGC; no UMLS, not medical QA.</p></li>
-<li><a class="excluded-paper-link" href="https://aclanthology.org/2024.naacl-long.219/">Agrawal et al. (2024) — Can KGs Reduce Hallucinations in LLMs (Survey) <span aria-hidden="true">↗</span></a><p>Survey of KG-augmented LLM methods; not a primary methodology paper.</p></li>
-<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10973434/">Cai et al. (2024) — Bringing Two Worlds Together (Survey) <span aria-hidden="true">↗</span></a><p>Broad survey of LLM-KG integration.</p></li>
+<h4>Knowledge source and study type</h4><ul class="excluded-list">
+<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10702112/">Gupta et al. (2024) — Cancer CPG QA using LLMs <span aria-hidden="true">↗</span></a><p>Cancer QA over an NCCN guideline graph, with UMLS mentioned in the background.</p></li>
+<li><a class="excluded-paper-link" href="https://ceur-ws.org/Vol-3828/paper49.pdf">Aasman (2024) — Neuro-Symbolic Document Matching <span aria-hidden="true">↗</span></a><p>Document matching, with UMLS mentioned as an example healthcare taxonomy.</p></li>
+<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10105090/">Chen et al. (2023) — RoBERT-Agr <span aria-hidden="true">↗</span></a><p>Agricultural-domain modeling.</p></li>
+<li><a class="excluded-paper-link" href="https://ceur-ws.org/Vol-3853/paper1.pdf">Crum et al. (2024) — Enriching Ontologies with Disjointness Axioms <span aria-hidden="true">↗</span></a><p>Ontology enrichment on DBpedia through disjointness axioms.</p></li>
+<li><a class="excluded-paper-link" href="https://proceedings.mlr.press/v235/liu24au.html">Liu et al. (2024) — KNOWFORMER <span aria-hidden="true">↗</span></a><p>General knowledge-graph reasoning.</p></li>
+<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10776440/">Patel (2024) — Optimizing KGE for QA Performance <span aria-hidden="true">↗</span></a><p>General-domain knowledge-graph question answering.</p></li>
+<li><a class="excluded-paper-link" href="https://ceur-ws.org/Vol-3603/Paper4.pdf">Schulz — Ontology-Based Annotation of Clinical Narratives <span aria-hidden="true">↗</span></a><p>Annotation principles for clinical narratives.</p></li>
+<li><a class="excluded-paper-link" href="https://doi.org/10.1016/j.procs.2022.11.204">Tian et al. (2022) — Evaluation System Framework for Medical AI <span aria-hidden="true">↗</span></a><p>An evaluation framework for medical AI.</p></li>
+<li><a class="excluded-paper-link" href="https://proceedings.mlr.press/v235/wang24a.html">Wang et al. (2024) — Understanding Reasoning Ability of LMs <span aria-hidden="true">↗</span></a><p>Language-model reasoning over general knowledge graphs.</p></li>
+<li><a class="excluded-paper-link" href="https://aclanthology.org/2023.starsem-1.20/">Youn &amp; Tagkopoulos (2023) — KGLM <span aria-hidden="true">↗</span></a><p>Knowledge-graph link prediction.</p></li>
+<li><a class="excluded-paper-link" href="https://aclanthology.org/2021.emnlp-main.276/">Zhang et al. (2021) — GMH <span aria-hidden="true">↗</span></a><p>Knowledge-graph completion.</p></li>
+<li><a class="excluded-paper-link" href="https://arxiv.org/abs/2310.06671">Zhang et al. (2024) — Making LLMs Perform Better in KG Completion <span aria-hidden="true">↗</span></a><p>Knowledge-graph completion.</p></li>
+<li><a class="excluded-paper-link" href="https://aclanthology.org/2024.naacl-long.219/">Agrawal et al. (2024) — Can KGs Reduce Hallucinations in LLMs (Survey) <span aria-hidden="true">↗</span></a><p>A survey of knowledge-graph-augmented language models.</p></li>
+<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10973434/">Cai et al. (2024) — Bringing Two Worlds Together (Survey) <span aria-hidden="true">↗</span></a><p>A survey of language-model and knowledge-graph integration.</p></li>
 </ul>
-<h4>Task Outside Scope (UMLS Used, but Not for MQA/Reasoning)</h4><ul class="excluded-list">
-<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10849428/">Adjei-Frempah et al. (2024) — KB2Bench <span aria-hidden="true">↗</span></a><p>UMLS used to generate benchmark QA pairs, not to answer questions. Benchmark construction is outside our scope.</p></li>
-<li><a class="excluded-paper-link" href="https://aclanthology.org/2023.findings-emnlp.885/">Luo et al. (2023) — Systematic Assessment of Factual Knowledge in LLMs <span aria-hidden="true">↗</span></a><p>Generates factual questions from KGs to test LLMs; benchmark-style evaluation, not UMLS-based MQA methodology.</p></li>
-<li><a class="excluded-paper-link" href="https://aclanthology.org/2023.ijcnlp-srw.11/">Sakhovskiy et al. (2023) — Graph-Enriched Biomedical LMs (Research Proposal) <span aria-hidden="true">↗</span></a><p>Research proposal without concrete implementation.</p></li>
-<li><a class="excluded-paper-link" href="https://ceur-ws.org/Vol-3874/paper9.pdf">Wallace et al. (2024) — Pruning Cycles in UMLS Metathesaurus <span aria-hidden="true">↗</span></a><p>Task is graph cleanup / cycle pruning; not MQA.</p></li>
-<li><a class="excluded-paper-link" href="https://aclanthology.org/2023.findings-acl.709/">Jiang et al. (2023) — Text-Augmented Open KGC <span aria-hidden="true">↗</span></a><p>Uses UMLS-PubMed as KGC benchmark; task is KG completion, not QA.</p></li>
-<li><a class="excluded-paper-link" href="https://aclanthology.org/2020.findings-emnlp.207/">He et al. (2020) — BERT-MK <span aria-hidden="true">↗</span></a><p>UMLS-central but downstream tasks are entity typing and relation classification, not MQA/reasoning.</p></li>
+<h4>Other evaluation tasks</h4><ul class="excluded-list">
+<li><a class="excluded-paper-link" href="https://ieeexplore.ieee.org/document/10849428/">Adjei-Frempah et al. (2024) — KB2Bench <span aria-hidden="true">↗</span></a><p>UMLS used to generate benchmark question-answer pairs.</p></li>
+<li><a class="excluded-paper-link" href="https://aclanthology.org/2023.findings-emnlp.885/">Luo et al. (2023) — Systematic Assessment of Factual Knowledge in LLMs <span aria-hidden="true">↗</span></a><p>Factual questions generated from knowledge graphs to evaluate language models.</p></li>
+<li><a class="excluded-paper-link" href="https://aclanthology.org/2023.ijcnlp-srw.11/">Sakhovskiy et al. (2023) — Graph-Enriched Biomedical LMs (Research Proposal) <span aria-hidden="true">↗</span></a><p>A research proposal.</p></li>
+<li><a class="excluded-paper-link" href="https://ceur-ws.org/Vol-3874/paper9.pdf">Wallace et al. (2024) — Pruning Cycles in UMLS Metathesaurus <span aria-hidden="true">↗</span></a><p>Cycle pruning in the UMLS graph.</p></li>
+<li><a class="excluded-paper-link" href="https://aclanthology.org/2023.findings-acl.709/">Jiang et al. (2023) — Text-Augmented Open KGC <span aria-hidden="true">↗</span></a><p>Knowledge-graph completion evaluated on UMLS-PubMed.</p></li>
+<li><a class="excluded-paper-link" href="https://aclanthology.org/2020.findings-emnlp.207/">He et al. (2020) — BERT-MK <span aria-hidden="true">↗</span></a><p>Entity typing and relation classification with UMLS.</p></li>
 </ul>
 </div></div>
 </section>
@@ -671,7 +671,7 @@ AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
 
   <section id="resources" aria-labelledby="resources-title">
     <div class="resource-intro"><h2 id="resources-title">Code and literature annotations</h2>
-    <p>The repository accompanies the review with per-paper annotations, linker comparisons, retrieval diagnostics and reader-experiment code. Full UMLS releases remain licensed local inputs and are not bundled with this page.</p></div>
+    <p>The repository contains per-paper annotations, linker comparisons, retrieval diagnostics and reader-experiment code. Experiments use licensed UMLS releases supplied as local inputs.</p></div>
     <ul class="link-list">
       <li><a href="https://github.com/disi-unibo-nlp/are-we-done-with-umls"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5"/></svg><span>Research repository</span></a></li>
       <li><a href="https://github.com/disi-unibo-nlp/are-we-done-with-umls#papers"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 5h6a3 3 0 0 1 3 3v13a4 4 0 0 0-4-3H3V5Zm18 0h-6a3 3 0 0 0-3 3v13a4 4 0 0 1 4-3h5V5Z"/></svg><span>Annotated literature and review methodology</span></a></li>

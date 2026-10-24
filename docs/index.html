@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A systematic review and controlled experiments on how UMLS evidence reaches language models for medical question answering.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" type="image/png" href="assets/author-u.png">
+  <meta name="citation_title" content="Are We Done with UMLS Injection into Language Models for Medical Question Answering?">
+  <meta name="citation_author" content="Yiran Zeng">
+  <meta name="citation_author" content="Giacomo Frisoni">
+  <meta name="citation_author" content="Lorenzo Molfetta">
+  <meta name="citation_author" content="Gianluca Moro">
+  <title>Are We Done with UMLS Injection? · Medical Question Answering</title>
+  <style>
+    @font-face { font-family: "Fraunces"; src: url("assets/fraunces.woff2") format("woff2"); font-style: normal; font-weight: 100 900; font-display: swap; }
+    :root {
+      color-scheme: light;
+      --ink: #24292e; --muted: #555e67; --line: #dce1e5; --paper: #ffffff;
+      /* Semantic colors from the camera-ready manuscript. */
+      --nel: #0077ff; --nel-wash: #edf5ff; --nel-ink: #0759b5;
+      --ksr: #e67e22; --ksr-wash: #fff3e7; --ksr-ink: #914708;
+      --ki: #d81b60; --ki-wash: #fce9f0; --ki-ink: #a8164b;
+      --umls: #b79482; --umls-wash: #f5efeb;
+      --reading: 780px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-padding-top: 24px; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.75 "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-text-size-adjust: 100%; }
+    a { color: var(--nel-ink); text-underline-offset: .2em; }
+    a:hover { text-decoration-thickness: 2px; }
+    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--nel-ink); outline-offset: 5px; }
+    .skip { position: absolute; top: -100px; left: 16px; min-height: 44px; padding: 8px 16px; background: white; z-index: 2; }
+    .skip:focus { top: 12px; }
+    .masthead { width: min(1040px, calc(100% - 64px)); margin: auto; padding-top: 60px; text-align: center; }
+    .intro { max-width: 920px; margin: auto; padding: 0 0 42px; }
+    h1 { margin: 0; font: 550 clamp(2.2rem, 4.35vw, 3.55rem)/1.15 "Fraunces", Georgia, serif; font-variation-settings: "SOFT" 35, "WONK" 1; letter-spacing: -.035em; text-wrap: balance; }
+    .title-accent { background: var(--ki-wash); padding: 0 .08em; box-decoration-break: clone; -webkit-box-decoration-break: clone; font-variation-settings: "SOFT" 100, "WONK" 1; }
+    .authors { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 25px; margin: 26px 0 0; padding: 0; list-style: none; font-size: .96rem; }
+    .authors li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .authors img { width: 18px; height: 18px; }
+
+    .affiliation { display: flex; justify-content: center; gap: 9px; align-items: center; margin: 16px 0 0; font-size: .85rem; color: var(--muted); }
+    .affiliation span { text-align: left; }
+    .affiliation img { width: 29px; height: auto; }
+    .resources { display: flex; justify-content: center; flex-wrap: wrap; gap: 15px; margin-top: 28px; padding-bottom: 4px; }
+    .resource-pair { display: inline-flex; gap: 15px; }
+    .resources a, .resources button { --button-ink: #5b463c; --button-wash: var(--umls-wash); display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; border: 1.5px solid var(--button-ink); border-radius: 13px 3px 13px 3px; padding: 9px 17px; background: var(--button-wash); color: var(--button-ink); box-shadow: 3px 3px 0 var(--button-ink); font: 650 .85rem/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif; text-decoration: none; }
+    .resources .resource-pdf { --button-ink: var(--ki-ink); --button-wash: var(--ki-wash); }
+    .resources .resource-code { --button-ink: var(--nel-ink); --button-wash: var(--nel-wash); }
+    .resources .resource-citation { --button-ink: var(--ksr-ink); --button-wash: var(--ksr-wash); }
+    .resources .resource-checklist { --button-ink: var(--nel-ink); --button-wash: #f3f7fc; }
+    .resources a:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--button-ink); }
+    .resources button:disabled { opacity: 1; -webkit-text-fill-color: currentColor; cursor: not-allowed; }
+    .pending-label { font-size: .68rem; font-weight: 500; }
+    .resources svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+    main { max-width: var(--reading); width: calc(100% - 48px); margin: auto; }
+    section { margin-top: 70px; }
+    h2 { margin: 0 0 22px; font: 500 2rem/1.25 "Fraunces", Georgia, serif; letter-spacing: -.025em; text-wrap: balance; }
+    h3 { margin: 0 0 18px; font-size: 1.25rem; line-height: 1.4; letter-spacing: -.015em; }
+    p { margin: 0 0 20px; }
+    strong { font-weight: 650; }
+    .opening { margin-top: 30px; }
+    .answer { display: table; margin: 0 0 26px; padding: 12px 22px; border: 1.5px solid var(--ki-ink); border-radius: 3px 18px 3px 18px; background: var(--ki-wash); box-shadow: 4px 4px 0 #f2c2d5; color: var(--ki-ink); font: 550 2.5rem/1.2 "Fraunces", Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1; }
+    .lead { font-size: 1.14rem; line-height: 1.75; }
+    .mark { padding: .05em .16em; font-family: "Fraunces", Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+    .mark.nel { background: #ddecff; }
+    .mark.ksr { background: #ffe5cd; }
+    .mark.ki { background: #f9dce7; }
+    .stage-key { display: flex; gap: 18px; flex-wrap: wrap; padding: 0; list-style: none; font-size: .79rem; color: var(--muted); }
+    .stage-key li { display: flex; align-items: center; gap: 7px; }
+    .stage-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--color); }
+    #findings, .nel-section, .ksr-section, .ki-section, .checklist, .literature-panel, #resources, .citation { border: 1px solid #dce3e8; border-radius: 18px; padding: 28px; }
+    .section-head { border: 0; background: var(--section-wash, var(--umls-wash)); padding: 24px 28px; margin: -28px -28px 26px; border-radius: 18px 18px 0 0; }
+    .section-head h2 { margin-bottom: 0; }
+    .section-head .label { display: block; margin-bottom: 10px; color: var(--label-ink, var(--muted)); font-size: .74rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 650; }
+    .nel-section { --section-wash: var(--nel-wash); --label-ink: var(--nel-ink); }
+    .ksr-section { --section-wash: var(--ksr-wash); --label-ink: var(--ksr-ink); }
+    .ki-section { --section-wash: var(--ki-wash); --label-ink: var(--ki-ink); }
+    figure { width: 100%; margin: 30px 0; }
+    .figure-link { display: block; min-height: 44px; }
+    figure img { display: block; width: 100%; height: auto; }
+    figcaption { margin-top: 15px; color: var(--muted); font-size: .83rem; line-height: 1.65; }
+    figcaption strong { color: var(--ink); }
+    .study-note { margin: 30px 0; background: var(--umls-wash); padding: 24px 26px 6px; }
+    .method-note { padding: 20px 22px 1px; background: var(--ki-wash); margin: 28px 0; }
+    .method-note p, .study-note p { font-size: .94rem; }
+    .subsection { margin-top: 44px; }
+
+    .table-note { margin-top: 13px; color: var(--muted); font-size: .79rem; }
+    .checklist { background: #f6f7f8; }
+    .check-group + .check-group { border-top: 1px solid var(--line); margin-top: 26px; padding-top: 24px; }
+    .check-group h3 { font-size: 1rem; margin-bottom: 10px; }
+    .check-group ul { margin: 0; padding: 0; list-style: none; }
+    .check-group li { position: relative; padding: 7px 0 7px 33px; font-size: .92rem; }
+    .check-icon { position: absolute; left: 0; top: 11px; width: 21px; height: 21px; color: var(--check-ink, #5b463c); fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .check-nel { --check-ink: var(--nel-ink); }
+    .check-ksr { --check-ink: var(--ksr-ink); }
+    .link-list { margin: 12px 0 0; padding: 0; list-style: none; }
+    .link-list a { display: inline-flex; align-items: center; min-height: 44px; }
+    #resources { background: var(--nel-wash); }
+    .citation { background: #f6f7f8; }
+    .literature-panel { background: #f1f5f6; }
+    .reference-code { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 18px; font-size: .84rem; }
+    .reference-code > span { color: var(--muted); }
+    .reference-code a, .paper-links a, .literature-panel > .table-note a { display: inline-flex; align-items: center; min-height: 44px; }
+    .review-detail { margin-top: 18px; background: #fff; border: 1px solid #d5dfe4; border-radius: 11px; }
+    .review-detail > summary { padding: 17px 18px; min-height: 66px; font-size: .94rem; font-weight: 650; cursor: pointer; }
+    .review-detail > summary > span { display: block; margin-left: 17px; color: var(--muted); font-size: .77rem; font-weight: 400; }
+    .review-detail[open] > summary { background: #e9f0f3; border-radius: 11px 11px 0 0; }
+    .paper-list { margin: 0; padding: 2px 18px 18px; list-style: none; counter-reset: paper; }
+    .paper-list > .paper-entry { counter-increment: paper; margin-top: 18px; padding: 18px; background: #f8fafb; border: 1px solid #e0e7eb; border-radius: 9px; }
+    .paper-entry h3 { font-size: 1rem; margin-bottom: 8px; }
+    .paper-entry h3::before { content: counter(paper, decimal-leading-zero) ". "; color: var(--muted); font-size: .86em; }
+    .paper-attribution { font-size: .79rem; color: var(--muted); margin-bottom: 4px; }
+    .paper-links { display: flex; gap: 18px; font-size: .8rem; }
+    .paper-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 0; margin: 8px 0 12px; list-style: none; }
+    .paper-tags li { padding: 3px 7px; background: #eaf0f3; border-radius: 3px; font-size: .66rem; line-height: 1.5; color: #43515d; }
+    .paper-note { font-size: .84rem; line-height: 1.7; margin-bottom: 0; }
+    .unavailable-link { display: inline-flex; align-items: center; min-height: 44px; font-size: .75rem; color: var(--muted); }
+    .detail-content { padding: 20px; font-size: .88rem; }
+    .detail-content h3 { font-size: 1.05rem; }
+    .excluded-list { padding-left: 18px; }
+    .excluded-list li { padding: 8px 0; font-size: .83rem; }
+    .excluded-list p { margin-bottom: 3px; }
+    pre { margin: 0; padding: 22px; background: #f5f7f8; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .76rem; line-height: 1.8; }
+    code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .table-note code, figcaption code { font-size: .95em; }
+    footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 22px 0 34px; color: var(--muted); font-size: .78rem; }
+    footer p { margin: 0; }
+    @media (max-width: 680px) {
+      .masthead { width: calc(100% - 36px); padding-top: 34px; }
+      .intro { padding: 0 0 24px; }
+      h1 { font-size: clamp(2rem, 7.9vw, 3rem); }
+      .authors { gap: 9px 18px; font-size: .88rem; }
+      .affiliation { font-size: .79rem; }
+      main { width: calc(100% - 36px); }
+      body { font-size: 16px; }
+      .lead { font-size: 1.04rem; }
+      section { margin-top: 48px; }
+      h2 { font-size: 1.7rem; }
+      .stage-key { gap: 8px 14px; }
+      .study-note, .method-note { padding: 20px 18px 1px; }
+      #findings, .nel-section, .ksr-section, .ki-section, .checklist, .literature-panel, #resources, .citation { padding: 22px 17px; border-radius: 14px; }
+      .section-head { padding: 21px 17px; margin: -22px -17px 24px; border-radius: 14px 14px 0 0; }
+      .paper-list { padding: 0 10px 12px; }
+      .paper-list > .paper-entry { padding: 14px; }
+      .detail-content { padding: 16px; }
+      figcaption { font-size: .79rem; }
+
+      pre { padding: 18px; font-size: .72rem; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+    @media print { .skip, .resources { display: none; } .masthead, main { width: 100%; } .intro { padding-top: 20px; } figure { break-inside: avoid; } a { color: inherit; } }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead">
+  <div class="intro">
+    <h1>Are We Done with <span class="title-accent">UMLS Injection</span> into Language Models for Medical Question Answering?</h1>
+    <ul class="authors" aria-label="Authors">
+      <li>Yiran Zeng <img src="assets/author-u.png" width="106" height="106" alt=""></li>
+      <li>Giacomo Frisoni <img src="assets/author-m.png" width="106" height="106" alt=""></li>
+      <li>Lorenzo Molfetta <img src="assets/author-l.png" width="106" height="106" alt=""></li>
+      <li>Gianluca Moro <img src="assets/author-s.png" width="106" height="106" alt=""></li>
+    </ul>
+
+    <p class="affiliation"><img src="assets/unibo.png" width="350" height="254" alt=""><span>Department of Computer Science and Engineering<br>University of Bologna, Italy</span></p>
+    <!-- Resource icons adapted from Tabler Icons (MIT), copyright (c) 2020-2026 Paweł Kuna.
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
+    <nav class="resources" aria-label="Study resources">
+      <button class="resource-pdf" type="button" disabled title="Awaiting the arXiv upload"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="pdf"><path d="M14 3v4a1 1 0 0 0 1 1h4M5 12V5a2 2 0 0 1 2-2h7l5 5v4M5 18h1.5a1.5 1.5 0 0 0 0-3H5v6M17 18h2M20 15h-3v6M11 15v6h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-1"/></svg><span>PDF <span class="pending-label">· soon</span></span></button>
+      <a class="resource-code" href="https://github.com/disi-unibo-nlp/are-we-done-with-umls"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="code"><path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5"/></svg><span>Code &amp; annotations</span></a>
+      <a class="resource-citation" href="#citation"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="citation"><path d="M4 5h6v7H5c0 4-1 6-3 7M14 5h6v7h-5c0 4-1 6-3 7"/></svg><span>Citation</span></a>
+      <span class="resource-pair"><a class="resource-findings" href="#findings"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="findings"><path d="M4 4v16h17M8 16v-4M13 16V7M18 16v-7"/></svg><span>Findings</span></a>
+      <a class="resource-checklist" href="#checklist"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="checklist"><path d="m4 6 1 1 2-2M10 6h10m-16 6 1 1 2-2m3 1h10m-16 6 1 1 2-2m3 1h10"/></svg><span>Checklist</span></a></span>
+    </nav>
+
+  </div>
+</header>
+<main id="main" tabindex="-1">
+  <section class="opening" id="study" aria-labelledby="opening-title">
+    <h2 class="answer" id="opening-title">Maybe not.</h2>
+    <p class="lead">The UMLS evidence reaching a language model is constructed through a sequence of choices. <strong>Its release, source filters, entity linker, retrieval rule and injection format decide what knowledge the model can use.</strong> We review how these choices are made and test their effects in isolation.</p>
+    <ul class="stage-key" aria-label="Three stages of UMLS use">
+      <li><span class="stage-dot" style="--color:var(--nel)"></span>NEL · named entity linking</li>
+      <li><span class="stage-dot" style="--color:var(--ksr)"></span>KSR · knowledge subgraph retrieval</li>
+      <li><span class="stage-dot" style="--color:var(--ki)"></span>KI · knowledge injection</li>
+    </ul>
+    <figure data-figure="4">
+      <a class="figure-link" href="assets/umls-pipeline.png" aria-label="Open the full-resolution rendering"><img src="assets/umls-pipeline.png" width="1248" height="600" loading="lazy" alt="A medical question passes through entity linking, subgraph retrieval and knowledge injection before an answer is selected."></a>
+      <figcaption><strong>From a question to constructed evidence.</strong> <span class="mark nel">Named entity linking</span> grounds text to concepts; <span class="mark ksr">subgraph retrieval</span> selects their connections; <span class="mark ki">knowledge injection</span> exposes the resulting evidence to the model. The same UMLS label can describe different choices at every stage.</figcaption>
+    </figure>
+    <div class="study-note">
+      <p><strong>The study.</strong> A PRISMA-style review of <strong>25 studies published between 2020 and 2025</strong>, complemented by controlled linking, retrieval and reader experiments. Two researchers independently annotated the literature, reaching 90.2% agreement. Only <strong>6 of 25 studies</strong> report enough pipeline information for the paper’s operational reproducibility criterion.</p>
+    </div>
+  </section>
+
+  <section id="findings" aria-labelledby="resource-title">
+    <div class="section-head"><span class="label">The resource</span><h2 id="resource-title">A rich resource becomes a narrow evidence view</h2></div>
+    <p>The Metathesaurus links concept names across source vocabularies and records relations, definitions, semantic types, hierarchies and attributes. Yet <strong>88% of reviewed studies convert UMLS into a knowledge graph</strong>, and use is concentrated on names and relations. The cross-source and metadata choices that define the evidence are part of the intervention.</p>
+    <figure data-figure="3">
+      <a class="figure-link" href="assets/umls-coverage.png" aria-label="Open the full-resolution rendering"><img src="assets/umls-coverage.png" width="1831" height="889" loading="lazy" alt="A UMLS concept is shown through names, relations, semantic types, definitions, hierarchy and attributes. Seven rings show literature usage of the corresponding tables."></a>
+      <figcaption><strong>Available information and observed use.</strong> The original paper’s concept-centered example shows six Metathesaurus tables. Rings report their use across the 25 reviewed studies: names in all studies, relations in 84%, semantic types in 20%, and definitions in 8%.</figcaption>
+    </figure>
+    <h3 class="subsection">“UMLS” does not identify a stable snapshot</h3>
+    <p><strong>84% of reviewed publications do not report a release identifier.</strong> The four that do use four different releases. Release changes, source restrictions and relation filters can therefore change the available knowledge before any model is evaluated.</p>
+    <figure data-figure="2">
+      <a class="figure-link" href="assets/release-history.png" aria-label="Open the full-resolution rendering"><img src="assets/release-history.png" width="1831" height="600" loading="lazy" alt="The left panel contrasts four reported UMLS releases with 84 percent unreported; the right panel tracks concept and vocabulary counts across seven releases."></a>
+      <figcaption><strong>Release reporting and resource evolution.</strong> The original two-panel figure places reported filtering choices alongside changes in concept and vocabulary counts. Its sharp drops reflect NLM resource restructuring, not a change in model capability.</figcaption>
+    </figure>
+  </section>
+
+  <section class="nel-section" id="linking" aria-labelledby="linking-title">
+    <div class="section-head"><span class="label">01 · Named entity linking</span><h2 id="linking-title">Grounding the question can still leave the answers unreachable</h2></div>
+    <p>On the MedQA test split, both MetaMap and scispaCy ground every question stem. Their answer-side coverage is different: <strong>MetaMap reaches the correct answer in 98.2% of items and the full option set in 96.4%</strong>, compared with 86.1% and 65.0% for scispaCy. Question-only coverage hides the missing evidence on the discriminating side of a multiple-choice item.</p>
+    <figure data-figure="5">
+      <a class="figure-link" href="assets/linker-coverage.png" aria-label="Open the full-resolution rendering"><img src="assets/linker-coverage.png" width="890" height="517" loading="lazy" alt="Five question and answer groups compare mean, minimum and maximum linked concepts for MetaMap and scispaCy on MedQA, PubMedQA and MedMCQA."></a>
+      <figcaption><strong>Linker choice changes reachable UMLS concepts.</strong> MetaMap and scispaCy use UMLS 2020AA on three benchmark test sets. Dots show means and bars span minimum to maximum; these bars are <strong>not confidence intervals</strong>. Question stems and answer options are measured separately.</figcaption>
+    </figure>
+    <p><strong>Higher yield is not higher precision.</strong> In a manual UMLS 2023AA audit of 40 MedQA answer options, 35.6% of MetaMap’s links were correct, versus 46.7% of scispaCy’s. MetaMap nevertheless grounded a correct concept in all 40 options, compared with 36 for scispaCy. Reachability and mapping quality answer different questions.</p>
+    <h3 class="subsection">The knowledge base changes coverage even when the linker is fixed</h3>
+    <p>Holding scispaCy’s mention detector fixed and swapping only its concept knowledge base raises the mean question concepts from <strong>57.67 to 71.76</strong> on MedQA dev when moving from 2020AA to 2021AA. Restricting to DrugBank and the Disease Database leaves fewer than one linked question concept on average on both evaluated datasets.</p>
+    <figure id="release-comparison" data-table="2">
+      <a class="figure-link" href="assets/release-table.png" aria-label="Open the full-resolution rendering"><img src="assets/release-table.png" width="890" height="493" loading="lazy" alt="Original paper table. Rows retain four UMLS releases and three source configurations. Grouped columns report mean and distinct concepts for MedQA questions, MedQA options and PubMedQA questions."></a>
+      <figcaption><strong>Linked UMLS concepts across releases and source subsets.</strong> The mention detector stays fixed. MedQA development split (1,272 items); PubMedQA full dataset. Means count linked concepts per instance, with answer-side counts taken as the union across four options. Distinct counts are unique concepts over the evaluated set. † scispaCy’s shipped default.</figcaption>
+    </figure>
+    <h3 class="subsection">Coverage across released preprocessing pipelines</h3>
+    <p>The released QA-GNN, GREASELM and DRAGON artifacts expose where linking fails before inference. The counts retain the original question–option record structure: four option records correspond to one MedQA question. The <strong>5,092 test records are not 5,092 independent questions</strong>.</p>
+    <figure id="linking-records" data-table="10">
+      <a class="figure-link" href="assets/linking-records.png" aria-label="Open the full-resolution rendering"><img src="assets/linking-records.png" width="890" height="484" loading="lazy" alt="Original paper table of present, empty and jointly empty question-side and answer-side links for QA-GNN, GREASELM, DRAGON and MetaMap over development, test and training splits."></a>
+      <figcaption><strong>Linking coverage across systems and splits.</strong> Present means at least one linked concept; empty means none. The native table retains development, test and training counts, including cases with both sides empty.</figcaption>
+    </figure>
+  </section>
+
+  <section class="ksr-section" id="retrieval" aria-labelledby="retrieval-title">
+    <div class="section-head"><span class="label">02 · Knowledge subgraph retrieval</span><h2 id="retrieval-title">Connectivity and pruning decide which evidence survives</h2></div>
+    <p>Expanding the full UMLS neighborhood on PubMedQA grows the mean subgraph from <strong>3,755 nodes at two hops to more than 1.3 million at five hops</strong>. The DRAGON-filtered subset grows from 193 to 46,719 nodes. The resource is smaller, but expansion remains substantial.</p>
+    <figure data-figure="6">
+      <a class="figure-link" href="assets/retrieval-growth.png" aria-label="Open the full-resolution rendering"><img src="assets/retrieval-growth.png" width="890" height="495" loading="lazy" alt="Log-scale line plot of nodes and edges from two to five hops, comparing full UMLS with a DRAGON-filtered subset."></a>
+      <figcaption><strong>Neighborhood growth under hop expansion.</strong> The original log-scale plot reports node and edge counts for full UMLS 2025AB and the DRAGON-filtered subset. Seeds come from scispaCy on PubMedQA test instances; error bars denote mean ± one standard deviation.</figcaption>
+    </figure>
+    <p>Depth is only one choice. On MedQA at two hops, pooling all linked concepts yields <strong>87 times more nodes</strong> than retaining question-to-answer connections on full UMLS, and 60 times more on the DRAGON-filtered subset.</p>
+    <p>QA-GNN, GREASELM and DRAGON then impose a 200-node budget. It is exceeded in <strong>70–73% of evaluation instances</strong>; only about 1.5 answer-side concepts survive per question–option pair after pruning. Missing answer concepts can therefore be lost first in linking and again in truncation.</p>
+    <p>Fallbacks matter too. Released systems insert fixed concepts such as <em>Serine</em> and <em>Ethanol</em> when linking produces no seed. In three-seed QA-GNN comparisons, replacing these placeholders with a random CUI or skipping retrieval yields similar mean accuracy. The fallback is part of what the reported score evaluates.</p>
+  </section>
+
+  <section class="ki-section" id="injection" aria-labelledby="injection-title">
+    <div class="section-head"><span class="label">03 · Knowledge injection</span><h2 id="injection-title">A benchmark score can conceal very different evidence</h2></div>
+    <p>UMLS reaches the model through three different routes: <strong>textual linearization</strong> exposes serialized facts, <strong>structural injection</strong> provides a graph at inference, and <strong>parameter encoding</strong> uses the resource as training-time supervision. The review classifies systems by their primary route.</p>
+    <figure id="injection-mechanisms" data-table="12">
+      <a class="figure-link" href="assets/injection-mechanisms.png" aria-label="Open the full-resolution rendering"><img src="assets/injection-mechanisms.png" width="890" height="250" loading="lazy" alt="Original paper taxonomy table: five textual-linearization systems, nine structural-injection systems and seven parameter-encoding systems, for 21 explicitly classified systems."></a>
+      <figcaption><strong>Three routes for UMLS injection.</strong> Counts cover the 21 reviewed systems with an explicit injection mechanism; they do not represent all 25 studies.</figcaption>
+    </figure>
+    <h3 class="subsection">Retraining systems under seven UMLS constructions</h3>
+    <p>We retrain QA-GNN and GREASELM on MedQA under seven UMLS constructions, keeping architecture, hyperparameters and training schedule at published values. Each linker is paired with a graph from the same release, and each construction is evaluated over three random seeds.</p>
+    <p><strong>QA-GNN test accuracy spans 37.5–38.7% across the six graph configurations</strong>; its placeholder-only control reaches 37.4%. GREASELM spans 37.7–39.3%, while its control reaches 36.7%. Whether a graph helps at all is system-dependent, even when the construction comparisons appear similar.</p>
+    <figure id="endtoend-comparison" data-table="4">
+      <a class="figure-link" href="assets/endtoend-table.png" aria-label="Open the full-resolution rendering"><img src="assets/endtoend-table.png" width="890" height="209" loading="lazy" alt="Original paper table. QA-GNN development and test rows and the GREASELM test row are compared across four releases, Level-0, DrugBank plus DDB and the empty-graph control. Every mean and seed standard deviation retains the original layout."></a>
+      <figcaption><strong>End-to-end accuracy across UMLS constructions.</strong> MedQA accuracy (%), mean ± standard deviation over three random seeds. † Published configuration. The empty-graph control retains the fixed placeholder concepts used on linking failure; it does not provide question-specific UMLS evidence.</figcaption>
+    </figure>
+    <h3 class="subsection">The useful evidence view changes with the task and reader</h3>
+    <p>For LLM readers, we compare relation neighborhoods, question-to-answer paths and metadata-enriched evidence. <strong class="mark ki">No evidence view wins uniformly.</strong> Metadata-enriched paths are strongest on most MedQA and MedMCQA readers, whereas relation neighborhoods lead on nine of ten readers on PubMedQA.</p>
+    <figure data-figure="7">
+      <a class="figure-link" href="assets/evidence-views.png" aria-label="Open the full-resolution rendering"><img src="assets/evidence-views.png" width="890" height="671" loading="lazy" alt="Three stacked bar-chart panels compare evidence conditions for ten readers on MedQA, MedMCQA and PubMedQA. Slanted model labels include their family logos."></a>
+      <figcaption><strong>Evidence constructions across ten readers and three benchmarks.</strong> Answer-only reader comparison, with 95% confidence intervals. Every reader is evaluated on its own baseline-wrong subset. Panels show MedQA, MedMCQA and PubMedQA.</figcaption>
+    </figure>
+    <div class="method-note"><p><strong>Read these results as error recovery.</strong> The reader experiments evaluate items answered incorrectly without UMLS. Their percentages describe recovery within that subset; they do not measure the change in overall benchmark accuracy, including any previously correct answers that evidence might disrupt.</p></div>
+    <p>The ordering also changes with the reading procedure. A chain-of-thought pilot on a MedQA subsample changes the winning view relative to answer-only prompting. Evidence format and prompting regime should be evaluated together.</p>
+    <h3 class="subsection">The shortest path is not always the most useful</h3>
+    <p>Within the Qwen3.5 scale ladder, path depth changes recovery under matched evidence conditions. <strong>The 9B reader performs best at three hops; the 35B reader performs best at four.</strong> Choosing the smallest graph distance alone misses how the reader uses intermediate biomedical concepts.</p>
+    <figure data-figure="8">
+      <a class="figure-link" href="assets/path-depth.png" aria-label="Open the full-resolution rendering"><img src="assets/path-depth.png" width="890" height="465" loading="lazy" alt="Grouped bars compare recovery at two, three and four hops for Qwen3.5 model scales from 0.8B to 35B."></a>
+      <figcaption><strong>Question-to-answer depth on the Qwen3.5 ladder.</strong> MedQA recovery and 95% confidence intervals at two, three and four hops. The comparison uses items with paths of all three lengths simultaneously available; at each depth, every answer option must be reachable by an exact path of that length.</figcaption>
+    </figure>
+  </section>
+
+  <section class="checklist" id="checklist" aria-labelledby="checklist-title">
+    <h2 id="checklist-title">Make the UMLS construction reportable</h2>
+    <p>The paper’s minimum reporting checklist makes the evidence construction explicit, from resource selection to missing-seed behavior.</p>
+    <div class="check-group"><h3>UMLS snapshot</h3><ul>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="release"><path d="M4 5h16v15H4zM8 5V3M16 5V3M4 9h16M8 13h3M8 16h7"/></svg><strong>Release version.</strong> Identify the source snapshot.</li>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="subset"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg><strong>Subset.</strong> Name source vocabularies and concept/relation filters.</li>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="metadata"><path d="M5 4h14v16H5zM8 8h8M8 12h3M8 16h6"/></svg><strong>Metadata.</strong> Specify attached fields, including definitions and semantic types.</li>
+    </ul></div>
+    <div class="check-group check-nel"><h3><span class="mark nel">Named entity linking</span></h3><ul>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="linker"><path d="m9 15 6-6M7 14l-2 2a3 3 0 0 0 4 4l3-3M17 10l2-2a3 3 0 0 0-4-4l-3 3"/></svg><strong>Linker.</strong> Report the tool and non-default settings.</li>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="coverage"><path d="M5 5h14v14H5zM8 12l3 3 5-6"/></svg><strong>Linking result.</strong> Report entity coverage and unlinked items.</li>
+    </ul></div>
+    <div class="check-group check-ksr"><h3><span class="mark ksr">Knowledge subgraph retrieval</span></h3><ul>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="connectivity"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6 8l5 8M18 8l-5 8"/></svg><strong>Connectivity rule.</strong> State which concepts are connected.</li>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="depth"><path d="M4 7h16M4 4v6M20 4v6M8 7v3M12 7v3M16 7v3M5 18h14m-3-3 3 3-3 3"/></svg><strong>Depth and scale.</strong> Report hop depth and resulting subgraph size.</li>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="pruning"><circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/><path d="M8.5 8.5 20 20M8.5 15.5 20 4"/></svg><strong>Pruning.</strong> State the criterion and node budget.</li>
+      <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="fallback"><path d="m8 5-4 4 4 4M4 9h9a6 6 0 0 1 0 12h-2"/></svg><strong>Fallback.</strong> Explain what happens when no seed is linked.</li>
+    </ul></div>
+  </section>
+
+  <section class="literature-panel" id="literature" aria-labelledby="literature-title">
+<h2 id="literature-title">The reviewed literature, with papers and code</h2>
+<p>The review records the UMLS sources, linking tools, retrieval rules and injection mechanisms used by each system. The directory retains the repository’s method notes and links, including its qualifications for adjacent settings.</p>
+<nav class="reference-code" aria-label="Reference implementations"><span>Reference code</span><a href="https://github.com/michiyasunaga/qagnn">QA-GNN</a><a href="https://github.com/snap-stanford/GreaseLM">GREASELM</a><a href="https://github.com/michiyasunaga/dragon">DRAGON</a></nav>
+<details class="review-detail"><summary>25 annotated systems <span>Methods, papers and released code</span></summary><ol class="paper-list">
+<li class="paper-entry" data-paper-number="1"><h3>DRAGON: Deep Bidirectional Language-Knowledge Graph Pretraining</h3><p class="paper-attribution">Yasunaga et al. (NeurIPS 2022)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://arxiv.org/abs/2210.09338">Paper<span aria-hidden="true"> ↗</span></a>
+<a href="https://github.com/michiyasunaga/dragon">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
+<p class="paper-note">Deeply bidirectional text-KG pretraining; 2-hop expansion + entity linking; masked LM + KG link prediction joint objectives. Strong fit.</p></li>
+<li class="paper-entry" data-paper-number="2"><h3>MediSage</h3><p class="paper-attribution">Choudhury et al. (WWW 2023)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRSTY</li><li>NEL: string match</li><li>K=3</li><li>Budget: unspecified</li><li>Injection: not specified</li></ul>
+<p class="paper-note">Conversational clinical decision-support over EHR + clinical KG; BioLinkBERT NEL fallback. Not centered on UMLS as core source.</p></li>
+<li class="paper-entry" data-paper-number="3"><h3>KnowledgeDA</h3><p class="paper-attribution">Ding et al. (Findings of ACL 2023)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://aclanthology.org/2023.findings-acl.24/">Paper<span aria-hidden="true"> ↗</span></a>
+<a href="https://github.com/RuiqingDing/KnowledgeDA">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRSTY</li><li>UMLS subset</li><li>NEL: neural embedding</li><li>K=2</li><li>Budget: unspecified</li><li>Textual linearization</li></ul>
+<p class="paper-note">Mention-to-entity similarity matching; 2-hop relation-consistent replacements; data augmentation around UMLS-grounded entities. UMLS 2021AA; 1.15M CUIs, 4.88M triples after filtering to medicine-related semantic types and 502 relation types.</p></li>
+<li class="paper-entry" data-paper-number="4"><h3>KG-Infused LLM for Virtual Health Assistant</h3><p class="paper-attribution">Katta et al. (ICMLA 2024)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://github.com/SivaKatta1010/NeoKG-LLM">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRDEF</li><li>UMLS subset</li><li>NEL: scispaCy</li><li>K=1</li><li>Budget: 20 rel.</li><li>Textual linearization</li></ul>
+<p class="paper-note">Builds large Neo4j KG from UMLS subsets (MSH + NCI), 622K nodes / 4.94M edges; RAG-style pipeline with semantic matching + learning-to-rank; not question-specific subgraph construction.</p></li>
+<li class="paper-entry" data-paper-number="5"><h3>QAVSA</h3><p class="paper-attribution">Laube &amp; Eliasmith (RepL4NLP 2024)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: unspecified</li><li>Structural injection</li></ul>
+<p class="paper-note">Follows QA-GNN-style graph setup (300K nodes / 1M edges); replaces GNN with vector symbolic algebra + MLP reasoning on MedQA-USMLE.</p></li>
+<li class="paper-entry" data-paper-number="6"><h3>QAT: Relation-Aware Language-Graph Transformer</h3><p class="paper-attribution">Park et al. (AAAI 2023)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: not specified</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
+<p class="paper-note">Per-QA subgraph retrieval (9K nodes / 44K edges); meta-path relation encoding. Q→A connectivity.</p></li>
+<li class="paper-entry" data-paper-number="7"><h3>QA-GNN: Reasoning with Language Models and Knowledge Graphs for Question Answering</h3><p class="paper-attribution">Yasunaga et al. (NAACL 2021)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://aclanthology.org/2021.naacl-main.45/">Paper<span aria-hidden="true"> ↗</span></a>
+<a href="https://github.com/michiyasunaga/qagnn">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
+<p class="paper-note">Self-constructed biomedical KG (DDB portion of UMLS + DrugBank; 9K nodes / 44K edges). Question–choice-specific subgraph + LM-based relevance scoring + joint LM+KG reasoning. Canonical benchmark paper.</p></li>
+<li class="paper-entry" data-paper-number="8"><h3>Towards Efficient Methods using KG Embeddings</h3><p class="paper-attribution">Sengupta et al. (BIBM 2024)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://github.com/saptarshi059/CDQA-project">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRDEF</li><li>NEL: MetaMap</li><li>K=1</li><li>Budget: unspecified</li><li>Structural injection</li></ul>
+<p class="paper-note">UMLS definitions + pre-trained UMLS KGE fused into BERT/RoBERTa for COVID-QA / PubMedQA. Embedding/definition infusion; not subgraph construction.</p></li>
+<li class="paper-entry" data-paper-number="9"><h3>Graph Neural Prompting (GNP)</h3><p class="paper-attribution">Tian et al. (AAAI 2024)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: unspecified</li><li>Structural injection</li></ul>
+<p class="paper-note">NEL → 2-hop subgraph → GNN + cross-modality pooling + domain projector. UMLS as biomedical-domain KG encoded into graph neural prompts for LLM prompting.</p></li>
+<li class="paper-entry" data-paper-number="10"><h3>Adapter Modules for Knowledge Enhancement</h3><p class="paper-attribution">Vladika et al. (ICAART 2024)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
+<p class="paper-note">UMLS 2023AA; SNOMED CT US subset (1.75M triplets). Top-20 UMLS relations + METIS partitioning; entity-prediction adapter training; evaluated on BioASQ-7b / PubMedQA / MedNLI / HoC.</p></li>
+<li class="paper-entry" data-paper-number="11"><h3>Medical Knowledge-Enriched Textual Entailment</h3><p class="paper-attribution">Yadav et al. (COLING 2020)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://aclanthology.org/2020.coling-main.161/">Paper<span aria-hidden="true"> ↗</span></a>
+<a href="https://github.com/VishalPallagani/Medical-Knowledge-enriched-Textual-Entailment">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: unspecified</li><li>Structural injection</li></ul>
+<p class="paper-note">UMLS + SNOMED-CT + ICD10 to enrich vocabulary graph for MEDIQA-RQE entailment. Knowledge-enriched graph + BERT via GCN + attention fusion.</p></li>
+<li class="paper-entry" data-paper-number="12"><h3>KG-Rank</h3><p class="paper-attribution">Yang et al. (BioNLP 2024)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://github.com/YangRui525/KG-Rank">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: LLM prompt</li><li>K=1</li><li>Budget: unspecified</li><li>Textual linearization</li></ul>
+<p class="paper-note">UMLS as primary medical KG; one-hop triples retrieved and re-ranked before LLM generation. Similarity ranking + MMR + cross-encoder re-ranking. Evaluated on LiveQA, ExpertQA-Med/Bio, MedicationQA.</p></li>
+<li class="paper-entry" data-paper-number="13"><h3>DRLK</h3><p class="paper-attribution">Zhang et al. (EMNLP 2022)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://github.com/MZ-MiaoZhang/DRLK">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
+<p class="paper-note">Pre-computed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). QA-GNN/GREASELM-style preprocessing; dynamic hierarchical LM-KG interaction.</p></li>
+<li class="paper-entry" data-paper-number="14"><h3>GREASELM</h3><p class="paper-attribution">Zhang et al. (ICLR 2022)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://github.com/snap-stanford/GreaseLM">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
+<p class="paper-note">Self-constructed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). NEL + 2-hop bridge entities + top-200 node retrieval; LM-KG cross-modal fusion across layers.</p></li>
+<li class="paper-entry" data-paper-number="15"><h3>Heterogeneous Knowledge Grounding</h3><p class="paper-attribution">Zhao et al. (WWW 2024)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: neural embedding</li><li>K=1</li><li>Budget: unspecified</li><li>Textual linearization</li></ul>
+<p class="paper-note">DDB subset (50K triples); UMLS mentioned mainly as future direction — method uses unspecified structured medical KB + textbook corpus. Medical RAG; UMLS not operational in method as reported.</p></li>
+<li class="paper-entry" data-paper-number="16"><h3>InfuserKI</h3><p class="paper-attribution">Tian et al. (EMNLP 2024)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
+<p class="paper-note">UMLS triplets (2.5K &amp; 25K) as domain KG for infuser-guided knowledge integration via adapters. Parameter-level integration; question-style supervision from UMLS triplets.</p></li>
+<li class="paper-entry" data-paper-number="17"><h3>HiPrompt</h3><p class="paper-attribution">Lu et al. (SIGIR 2023)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Injection: not specified</li></ul>
+<p class="paper-note">Biomedical KG–to-hierarchy alignment via hierarchy-oriented few-shot prompting; retrieval + re-ranking for entity–term alignment. <em>Borderline case retained for §5 discussion of adjacent settings.</em></p></li>
+<li class="paper-entry" data-paper-number="18"><h3>UMLS-KGI-BERT</h3><p class="paper-attribution">Mannion et al. (ClinicalNLP 2023)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRSTY</li><li>UMLS subset</li><li>NEL: string match</li><li>K=1</li><li>Budget: unspecified</li><li>Parameter encoding</li></ul>
+<p class="paper-note">UMLS 2022AB; restricted to human-biology/medicine semantic types (2.53M CUIs). Pretraining via entity prediction, link prediction, triple classification; downstream clinical NER. Cited in §5.1 as the sole reviewed system that evaluates linker performance directly.</p></li>
+<li class="paper-entry" data-paper-number="19"><h3>Healthcare QA Assistant</h3><p class="paper-attribution">Sukhwal et al. (ICIS 2022)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>NEL: scispaCy</li><li>K=1</li><li>Budget: unspecified</li><li>Injection: not specified</li></ul>
+<p class="paper-note">Disease-specific KG (7.17K CUIs) from PubMed abstracts + OpenIE; CUIs + synonym merging; KG-only vs. LM-only vs. joint reasoning comparison on a skin-eczema QA assistant.</p></li>
+<li class="paper-entry" data-paper-number="20"><h3>Chest ImaGenome</h3><p class="paper-attribution">Wu et al. (NeurIPS 2021)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>NEL: scispaCy</li><li>No per-question retrieval</li><li>Injection: not specified</li></ul>
+<p class="paper-note">Anatomy-centered scene graphs from radiology reports; UMLS as indexing/normalization layer only (scene-graph nodes → CUIs). <em>Retained for adjacent-settings discussion.</em></p></li>
+<li class="paper-entry" data-paper-number="21"><h3>GLaM: Graph-Aligned Language Models</h3><p class="paper-attribution">Dernbach et al. (AAAI-SSS 2024)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Textual linearization</li></ul>
+<p class="paper-note">UMLS as training graph for graph-aligned LLM fine-tuning; 4 relation types, 126K triples. QA pairs synthesized from UMLS graph neighborhoods + subgraph encodings; evaluated on fact recall and multi-hop reasoning over UMLS.</p></li>
+<li class="paper-entry" data-paper-number="22"><h3>Selective UMLS Knowledge Infusion</h3><p class="paper-attribution">Park et al. (Scientific Reports, 2024)</p>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRSTY</li><li>SRDEF</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
+<p class="paper-note">Extends MoP by comparing METIS partitions vs. semantic-group partitioning of UMLS for adapter pretraining; evaluated on BioASQ7b / PubMedQA / MedQA. (SRDEF is part of the UMLS Semantic Network, not the Metathesaurus.)</p></li>
+<li class="paper-entry" data-paper-number="23"><h3>Mixture-of-Partitions (MoP)</h3><p class="paper-attribution">Meng et al. (EMNLP 2021)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://aclanthology.org/2021.emnlp-main.383/">Paper<span aria-hidden="true"> ↗</span></a>
+<a href="https://github.com/cambridgeltl/mop">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
+<p class="paper-note">SNOMED CT US subset. UMLS partitioned via METIS into smaller subgraphs; adapter pretraining per partition. Global KG partitions, not per-question retrieval. Evaluated on PubMedQA / BioASQ7b / BioASQ8b / MedQA / MedNLI.</p></li>
+<li class="paper-entry" data-paper-number="24"><h3>UmlsBERT</h3><p class="paper-attribution">Michalopoulos et al. (NAACL 2021)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://aclanthology.org/2021.naacl-main.139/">Paper<span aria-hidden="true"> ↗</span></a>
+<a href="https://github.com/gmichalo/UmlsBERT">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRSTY</li><li>NEL: cTAKES</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
+<p class="paper-note">UMLS 2020AA. Pretraining with UMLS Metathesaurus: CUI-shared term linking + semantic type embeddings. Evaluated on MedNLI + clinical NER.</p></li>
+<li class="paper-entry" data-paper-number="25"><h3>DAKI</h3><p class="paper-attribution">Lu et al. (Findings of EMNLP 2021)</p>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://aclanthology.org/2021.findings-emnlp.325/">Paper<span aria-hidden="true"> ↗</span></a>
+</nav>
+<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: not specified</li><li>K=1</li><li>Budget: unspecified</li><li>Parameter encoding</li></ul>
+<p class="paper-note">UMLS Metathesaurus graph (1.77M triples) as one of three knowledge sources, encoded through a dedicated knowledge adapter and combined via an attention-based controller. UMLS adapter pretrained on graph triples; evaluated on MEDIQA-2019, TRECQA-2017, MedNLI + NER.</p></li>
+</ol></details>
+<details class="review-detail"><summary>Search, eligibility and annotation <span>How the review was assembled</span></summary>
+<div class="detail-content"><p>The Scopus search was run on <strong>January 15, 2026</strong>, targeting English-language conference and journal work published during 2020–2025. Two researchers annotated the screened literature independently; disagreements were resolved through discussion.</p>
+<ul><li>UMLS must play a substantive technical role.</li><li>The task must be medical question answering or a related reasoning setting.</li><li>The method must support comparison across knowledge grounding, retrieval and injection.</li></ul>
+<p>Fields are recovered from the paper and supplement, then released code, then code from cited systems. Unavailable fields remain explicitly unreported.</p>
+<h3>Search query</h3><pre><code>ABS (
+    (&quot;*knowledge graph*&quot;)
+    OR (&quot;knowledge base*&quot;)
+    OR (&quot;structured&quot;)
+    OR (&quot;graph*&quot;)
+)
+AND ABS (
+    (&quot;natural language processing&quot;)
+    OR (&quot;NLP&quot;)
+    OR (&quot;language model*&quot;)
+    OR (&quot;LLM*&quot;)
+    OR (&quot;LM*&quot;)
+)
+AND ABS (
+    (&quot;question answering&quot;)
+    OR (&quot;*QA*&quot;)
+    OR (&quot;reasoning*&quot;)
+)
+AND PUBYEAR &gt; 2019
+AND PUBYEAR &lt; 2026
+
+AND LIMIT-TO ( SRCTYPE,  &quot;p&quot; )
+AND LIMIT-TO ( PUBSTAGE, &quot;final&quot; )
+
+AND (
+    LIMIT-TO ( DOCTYPE, &quot;cp&quot; )
+    OR LIMIT-TO ( DOCTYPE, &quot;ar&quot; )
+)
+
+AND LIMIT-TO ( SUBJAREA, &quot;COMP&quot; )
+AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
+<h3 class="subsection">Benchmark coverage</h3>
+<p><strong>Closed-form:</strong> PubMedQA, BioASQ, MedQA (USMLE) and MedMCQA.<br><strong>Open-form:</strong> MedicationQA, COVID-QA and ExpertQA.</p>
+</div></details>
+<details class="review-detail"><summary>Screening and exclusion record <span>Repository notes on 20 screened papers</span></summary><div class="detail-content">
+<h3>UMLS Not Methodologically Used</h3><ul class="excluded-list">
+<li><strong>Gupta et al. (2024) — Cancer CPG QA using LLMs</strong><p>Method centers on NCCN guideline KG, not UMLS. UMLS appears only as background.</p></li>
+<li><strong>Aasman (2024) — Neuro-Symbolic Document Matching</strong><p>UMLS mentioned as example healthcare taxonomy; task is document matching.</p></li>
+<li><strong>Chen et al. (2023) — RoBERT-Agr</strong><p>No UMLS involvement; agricultural domain.</p></li>
+<li><strong>Crum et al. (2024) — Enriching Ontologies with Disjointness Axioms</strong><p>Ontology enrichment on DBpedia; no UMLS-based method.</p></li>
+<li><strong>Liu et al. (2024) — KNOWFORMER</strong><p>Generic KG reasoning; no UMLS.</p></li>
+<li><strong>Patel (2024) — Optimizing KGE for QA Performance</strong><p>Generic KGQA; not UMLS-based, not medical.</p></li>
+<li><strong>Schulz — Ontology-Based Annotation of Clinical Narratives</strong><p>Annotation principles; not a QA/reasoning system.</p></li>
+<li><strong>Tian et al. (2022) — Evaluation System Framework for Medical AI</strong><p>Evaluation framework; UMLS not methodologically involved.</p></li>
+<li><strong>Wang et al. (2024) — Understanding Reasoning Ability of LMs</strong><p>Analyzes LM reasoning over generic KGs; not UMLS.</p></li>
+<li><strong>Youn &amp; Tagkopoulos (2023) — KGLM</strong><p>Generic KG link prediction; no medical/UMLS scope.</p></li>
+<li><strong>Zhang et al. (2021) — GMH</strong><p>KG completion; no UMLS, not QA.</p></li>
+<li><strong>Zhang et al. (2024) — Making LLMs Perform Better in KG Completion</strong><p>Generic KGC; no UMLS, not medical QA.</p></li>
+<li><strong>Agrawal et al. (2024) — Can KGs Reduce Hallucinations in LLMs (Survey)</strong><p>Survey of KG-augmented LLM methods; not a primary methodology paper.</p></li>
+<li><strong>Cai et al. (2024) — Bringing Two Worlds Together (Survey)</strong><p>Broad survey of LLM-KG integration.</p></li>
+</ul>
+<h3>Task Outside Scope (UMLS Used, but Not for MQA/Reasoning)</h3><ul class="excluded-list">
+<li><strong>Adjei-Frempah et al. (2024) — KB2Bench</strong><p>UMLS used to generate benchmark QA pairs, not to answer questions. Benchmark construction is outside our scope.</p></li>
+<li><strong>Luo et al. (2023) — Systematic Assessment of Factual Knowledge in LLMs</strong><p>Generates factual questions from KGs to test LLMs; benchmark-style evaluation, not UMLS-based MQA methodology.</p></li>
+<li><strong>Sakhovskiy et al. (2023) — Graph-Enriched Biomedical LMs (Research Proposal)</strong><p>Research proposal without concrete implementation.</p></li>
+<li><strong>Wallace et al. (2024) — Pruning Cycles in UMLS Metathesaurus</strong><p>Task is graph cleanup / cycle pruning; not MQA.</p></li>
+<li><strong>Jiang et al. (2023) — Text-Augmented Open KGC</strong><p>Uses UMLS-PubMed as KGC benchmark; task is KG completion, not QA.</p></li>
+<li><strong>He et al. (2020) — BERT-MK</strong><p>UMLS-central but downstream tasks are entity typing and relation classification, not MQA/reasoning.</p></li>
+</ul>
+</div></details>
+<p class="table-note">Corrections or a missing paper? <a href="https://github.com/disi-unibo-nlp/are-we-done-with-umls/issues">Open an issue in the research repository.</a></p>
+</section>
+
+
+  <section id="resources" aria-labelledby="resources-title">
+    <h2 id="resources-title">Code and literature annotations</h2>
+    <p>The repository accompanies the review with per-paper annotations, linker comparisons, retrieval diagnostics and reader-experiment code. Full UMLS releases remain licensed local inputs and are not bundled with this page.</p>
+    <ul class="link-list">
+      <li><a href="https://github.com/disi-unibo-nlp/are-we-done-with-umls">Research repository</a></li>
+      <li><a href="https://github.com/disi-unibo-nlp/are-we-done-with-umls#papers">Annotated literature and review methodology</a></li>
+      <li><a href="https://github.com/disi-unibo-nlp/are-we-done-with-umls/tree/main/scripts">Experiment entrypoints</a></li>
+    </ul>
+
+  </section>
+
+  <section class="citation" id="citation" aria-labelledby="citation-title">
+    <h2 id="citation-title">Citation</h2>
+    <pre><code>@misc{zeng_umls,
+  title = {Are We Done with UMLS Injection into Language Models
+           for Medical Question Answering?},
+  author = {Yiran Zeng and Giacomo Frisoni and
+            Lorenzo Molfetta and Gianluca Moro},
+  note = {Manuscript}
+}</code></pre>
+  </section>
+  <footer><p>UMLS injection for medical question answering · University of Bologna</p></footer>
+</main>
+</body>
+</html>

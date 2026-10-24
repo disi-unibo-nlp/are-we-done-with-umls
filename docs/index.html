@@ -22,14 +22,14 @@
       --ksr: #e67e22; --ksr-wash: #fff3e7; --ksr-ink: #914708;
       --ki: #d81b60; --ki-wash: #fce9f0; --ki-ink: #a8164b;
       --umls: #b79482; --umls-wash: #f5efeb;
-      --reading: 780px;
+      --reading: 900px;
     }
     * { box-sizing: border-box; }
     html { scroll-padding-top: 24px; }
     body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.75 "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-text-size-adjust: 100%; }
-    a { color: var(--nel-ink); text-underline-offset: .2em; }
-    a:hover { text-decoration-thickness: 2px; }
-    a:focus-visible, button:focus-visible { outline: 3px solid var(--nel-ink); outline-offset: 5px; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { color: #8a2424; }
+    a:focus-visible, button:focus-visible, .review-pane:focus-visible { outline: 3px solid var(--nel-ink); outline-offset: 5px; }
     .skip { position: absolute; top: -100px; left: 16px; min-height: 44px; padding: 8px 16px; background: white; z-index: 2; }
     .skip:focus { top: 12px; }
     .masthead { width: min(1040px, calc(100% - 64px)); margin: auto; padding-top: 60px; text-align: center; }
@@ -40,9 +40,12 @@
     .authors li { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
     .authors img { width: 18px; height: 18px; }
 
-    .affiliation { display: flex; justify-content: center; gap: 9px; align-items: center; margin: 16px 0 0; font-size: .85rem; color: var(--muted); }
+    .affiliation { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px 24px; align-items: center; margin: 16px 0 0; font-size: .85rem; color: var(--muted); }
+    .affiliation > span, .affiliation a { display: inline-flex; align-items: center; gap: 10px; }
+    .affiliation a { min-height: 48px; }
     .affiliation span { text-align: left; }
     .affiliation img { width: 29px; height: auto; }
+    .affiliation .group-logo { width: 38px; }
     .resources { display: flex; justify-content: center; flex-wrap: wrap; gap: 15px; margin-top: 28px; padding-bottom: 4px; }
     .resource-pair { display: inline-flex; gap: 15px; }
     .resources a, .resources button { --button-ink: #5b463c; --button-wash: var(--umls-wash); display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 48px; border: 1.5px solid var(--button-ink); border-radius: 999px; padding: 9px 17px; background: var(--button-wash); color: var(--button-ink); font: 650 .85rem/1.5 "Helvetica Neue", Helvetica, Arial, sans-serif; text-decoration: none; }
@@ -50,6 +53,7 @@
     .resources .resource-code { --button-ink: var(--nel-ink); --button-wash: var(--nel-wash); }
     .resources .resource-citation { --button-ink: var(--ksr-ink); --button-wash: var(--ksr-wash); }
     .resources .resource-checklist { --button-ink: var(--nel-ink); --button-wash: #f3f7fc; }
+    .resources .resource-literature { --button-ink: #1a1611; --button-wash: #ece4b9; }
     .resources a:hover { transform: translateY(-1px); }
     .resources button:disabled { opacity: 1; -webkit-text-fill-color: currentColor; cursor: not-allowed; }
     .pending-label { font-size: .68rem; font-weight: 500; }
@@ -70,7 +74,11 @@
     .mark.ki { background: #f9dce7; }
     .stage-key { display: flex; gap: 18px; flex-wrap: wrap; padding: 0; list-style: none; font-size: .79rem; color: var(--muted); }
     .stage-key li { display: flex; align-items: center; gap: 7px; }
-    .stage-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--color); }
+    .stage-icon { display: inline-block; width: 1.1em; height: 1.1em; flex: none; vertical-align: -.12em; fill: currentColor; }
+    .stage-nel { color: var(--nel-ink); }
+    .stage-ksr { color: var(--ksr-ink); }
+    .stage-ki { color: var(--ki-ink); }
+    .section-head .stage-icon { margin-right: 7px; }
     #findings, .nel-section, .ksr-section, .ki-section, .checklist, #resources, .citation { border: 1px solid #dce3e8; border-radius: 18px; padding: 28px; }
     .section-head { border: 0; background: var(--section-wash, var(--umls-wash)); padding: 24px 28px; margin: -28px -28px 26px; border-radius: 18px 18px 0 0; }
     .section-head h2 { margin-bottom: 0; }
@@ -99,15 +107,22 @@
     .check-ksr { --check-ink: var(--ksr-ink); }
     .link-list { margin: 12px 0 0; padding: 0; list-style: none; }
     .link-list a { display: inline-flex; align-items: center; min-height: 44px; }
+    .link-list a::after, .table-note a::after { content: "↗"; margin-left: .4em; }
+    .link-list a, .paper-links a, .table-note a { font-weight: 600; }
     #resources { background: var(--nel-wash); }
     .citation { background: #f6f7f8; }
-    .review-index { display: flex; flex-wrap: wrap; gap: 0 20px; margin: 24px 0 34px; padding: 8px 0; border-block: 1px solid var(--line); font-size: .8rem; }
-    .review-index span { margin-left: 4px; color: var(--muted); }
+    .review-browser { margin-top: 28px; }
+    .review-index { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 4px; margin-bottom: -2px; position: relative; z-index: 1; }
+    .review-index a { justify-content: center; flex-wrap: wrap; gap: 0 4px; min-height: 54px; padding: 8px 5px; border: 2px solid #1a1611; border-radius: 9px 9px 0 0; background: #f7f4e9; color: #1a1611; font: 500 .85rem/1.35 "Fraunces", Georgia, serif; text-align: center; text-decoration: none; }
+    .review-index a:hover { background: #f0ebd2; }
+    .review-index a[aria-selected="true"] { background: #ece4b9; border-bottom-color: #ece4b9; }
+    .review-index a:focus-visible { outline-offset: -5px; }
+    .review-index span { font-size: .75rem; }
     .review-index a, .paper-links a, .literature-panel > .table-note a { display: inline-flex; align-items: center; min-height: 44px; }
-    .literature-group { margin: 44px 0; scroll-margin-top: 24px; }
-    .literature-heading { padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+    .review-pane { margin: 0 0 24px; padding: 26px; border: 2px solid #1a1611; box-shadow: 4px 4px 0 #8a2424; scroll-margin-top: 24px; }
+    .literature-heading, .review-method > h3 { margin: -26px -26px 24px; padding: 22px 26px; background: #ece4b9; color: #1a1611; border-bottom: 2px solid #1a1611; }
     .literature-heading h3 { font: 500 1.5rem/1.35 "Fraunces", Georgia, serif; margin-bottom: 7px; }
-    .literature-heading h3 span { color: var(--muted); margin-right: 6px; }
+
     .literature-heading p { margin: 0; font-size: .8rem; color: var(--muted); }
     .paper-list { margin: 0; padding: 0; list-style: none; }
     .paper-list > .paper-entry { padding: 23px 0; border-bottom: 1px solid var(--line); }
@@ -124,7 +139,7 @@
     .pipeline-ksr dt { color: var(--ksr-ink); }
     .paper-note { font-size: .84rem; line-height: 1.7; margin-bottom: 0; }
     .unavailable-link { display: inline-flex; align-items: center; min-height: 44px; font-size: .75rem; color: var(--muted); }
-    .review-method { margin-top: 54px; font-size: .88rem; scroll-margin-top: 24px; }
+    .review-method { font-size: .88rem; }
     .review-method h3 { font: 500 1.5rem/1.35 "Fraunces", Georgia, serif; }
     .review-method h4 { margin: 28px 0 16px; }
     .excluded-list { columns: 2; column-gap: 32px; padding-left: 20px; }
@@ -141,6 +156,9 @@
       h1 { font-size: clamp(2rem, 7.9vw, 3rem); }
       .authors { gap: 9px 18px; font-size: .88rem; }
       .affiliation { font-size: .79rem; }
+      .resource-pair { gap: 8px; }
+      .resource-pair a { padding-inline: 11px; gap: 7px; font-size: .78rem; }
+      .resource-pair svg { width: 18px; height: 18px; }
       main { width: calc(100% - 36px); }
       body { font-size: 16px; }
       .lead { font-size: 1.04rem; }
@@ -152,6 +170,11 @@
       .section-head { padding: 21px 17px; margin: -22px -17px 24px; border-radius: 14px 14px 0 0; }
 
       .paper-top { display: block; }
+      .review-index { grid-template-columns: repeat(3,minmax(0,1fr)); }
+      .review-index a { font-size: .8rem; }
+      .review-index a[aria-selected="true"] { border-bottom-color: #1a1611; box-shadow: inset 0 -3px 0 #8a2424; }
+      .review-pane { padding: 18px; }
+      .literature-heading, .review-method > h3 { margin: -18px -18px 22px; padding: 20px 18px; }
       .paper-pipeline { display: block; }
       .paper-pipeline > div { display: grid; grid-template-columns: 76px minmax(0,1fr); gap: 10px; margin-bottom: 5px; }
       .paper-pipeline dd { margin: 0; }
@@ -161,7 +184,7 @@
       pre { padding: 18px; font-size: .72rem; }
     }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
-    @media print { .skip, .resources { display: none; } .masthead, main { width: 100%; } .intro { padding-top: 20px; } figure { break-inside: avoid; } a { color: inherit; } }
+    @media print { .skip, .resources, .review-index { display: none; } .review-pane[hidden] { display: block !important; } .review-pane { box-shadow: none; } .masthead, main { width: 100%; } .intro { padding-top: 20px; } figure { break-inside: avoid; } a { color: inherit; } }
   </style>
 </head>
 <body>
@@ -176,15 +199,16 @@
       <li>Gianluca Moro <img src="assets/author-s.png" width="106" height="106" alt=""></li>
     </ul>
 
-    <p class="affiliation"><img src="assets/unibo.png" width="350" height="254" alt=""><span>Department of Computer Science and Engineering<br>University of Bologna, Italy</span></p>
+    <p class="affiliation"><span><img src="assets/unibo.png" width="350" height="254" alt=""><span>Department of Computer Science and Engineering<br>University of Bologna, Italy</span></span><a href="https://disi-unibo-nlp.github.io/"><img class="group-logo" src="assets/unibonlp.svg" width="350" height="402" alt=""><span>UniboNLP<br>Research group ↗</span></a></p>
     <!-- Resource icons adapted from Tabler Icons (MIT), copyright (c) 2020-2026 Paweł Kuna.
     Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
     <nav class="resources" aria-label="Study resources">
       <button class="resource-pdf" type="button" disabled title="Awaiting the arXiv upload"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="pdf"><path d="M14 3v4a1 1 0 0 0 1 1h4M5 12V5a2 2 0 0 1 2-2h7l5 5v4M5 18h1.5a1.5 1.5 0 0 0 0-3H5v6M17 18h2M20 15h-3v6M11 15v6h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-1"/></svg><span>PDF <span class="pending-label">· soon</span></span></button>
       <a class="resource-code" href="https://github.com/disi-unibo-nlp/are-we-done-with-umls"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="code"><path d="M9 19c-4.3 1.4 -4.3 -2.5 -6 -3m12 5v-3.5c0 -1 .1 -1.4 -.5 -2c2.8 -.3 5.5 -1.4 5.5 -6a4.6 4.6 0 0 0 -1.3 -3.2a4.2 4.2 0 0 0 -.1 -3.2s-1.1 -.3 -3.5 1.3a12.3 12.3 0 0 0 -6.2 0c-2.4 -1.6 -3.5 -1.3 -3.5 -1.3a4.2 4.2 0 0 0 -.1 3.2a4.6 4.6 0 0 0 -1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6 -.6 1.2 -.5 2v3.5"/></svg><span>Code &amp; annotations</span></a>
       <a class="resource-citation" href="#citation"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="citation"><path d="M4 5h6v7H5c0 4-1 6-3 7M14 5h6v7h-5c0 4-1 6-3 7"/></svg><span>Citation</span></a>
+      <a class="resource-literature" href="#literature"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="literature"><path d="M3 5h6a3 3 0 0 1 3 3v13a4 4 0 0 0-4-3H3V5Zm18 0h-6a3 3 0 0 0-3 3v13a4 4 0 0 1 4-3h5V5Z"/></svg><span>Literature analysis</span></a>
       <span class="resource-pair"><a class="resource-findings" href="#findings"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="findings"><path d="M4 4v16h17M8 16v-4M13 16V7M18 16v-7"/></svg><span>Findings</span></a>
-      <a class="resource-checklist" href="#checklist"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="checklist"><path d="m4 6 1 1 2-2M10 6h10m-16 6 1 1 2-2m3 1h10m-16 6 1 1 2-2m3 1h10"/></svg><span>Checklist</span></a></span>
+      <a class="resource-checklist" href="#checklist" aria-label="UMLS construction reporting checklist"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-icon="checklist"><path d="m4 6 1 1 2-2M10 6h10m-16 6 1 1 2-2m3 1h10m-16 6 1 1 2-2m3 1h10"/></svg><span>Reporting checklist</span></a></span>
     </nav>
 
   </div>
@@ -194,9 +218,12 @@
     <h2 class="answer" id="opening-title">Maybe not.</h2>
     <p class="lead">The UMLS evidence reaching a language model is constructed through a sequence of choices. <strong>Its release, source filters, entity linker, retrieval rule and injection format decide what knowledge the model can use.</strong> We review how these choices are made and test their effects in isolation.</p>
     <ul class="stage-key" aria-label="Three stages of UMLS use">
-      <li><span class="stage-dot" style="--color:var(--nel)"></span>NEL · named entity linking</li>
-      <li><span class="stage-dot" style="--color:var(--ksr)"></span>KSR · knowledge subgraph retrieval</li>
-      <li><span class="stage-dot" style="--color:var(--ki)"></span>KI · knowledge injection</li>
+      <li><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
+<svg class="stage-icon stage-nel" aria-hidden="true" focusable="false" data-paper-icon="nel" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1060 846" fill="currentColor"><path transform="scale(1,-1)" d="M250 607C250 567 219 536 179 536C139 536 107 567 107 607C107 647 139 679 179 679C219 679 250 647 250 607ZM845 286C845 305 838 323 825 336L426 735C398 763 344 786 304 786H71C32 786 0 753 0 714V482C0 442 23 388 51 360L450 -39C463 -52 481 -60 500 -60C519 -60 538 -52 551 -39L825 235C838 248 845 267 845 286ZM1060 286C1060 305 1052 323 1039 336L640 735C612 763 558 786 518 786H393C433 786 487 763 515 735L914 336C927 323 935 305 935 286C935 267 927 248 914 235L652 -27C671 -47 685 -60 714 -60C733 -60 752 -52 765 -39L1039 235C1052 248 1060 267 1060 286Z"/></svg> NEL · named entity linking</li>
+      <li><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
+<svg class="stage-icon stage-ksr" aria-hidden="true" focusable="false" data-paper-icon="ksr" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1000 857" fill="currentColor"><path transform="scale(1,-1)" d="M1000 161C1000 191 976 214 946 214H893V321C893 360 860 393 821 393H536V500H589C619 500 643 524 643 554V732C643 762 619 786 589 786H411C381 786 357 762 357 732V554C357 524 381 500 411 500H464V393H179C140 393 107 360 107 321V214H54C24 214 0 191 0 161V-18C0 -48 24 -71 54 -71H232C262 -71 286 -48 286 -18V161C286 191 262 214 232 214H179V321H464V214H411C381 214 357 191 357 161V-18C357 -48 381 -71 411 -71H589C619 -71 643 -48 643 -18V161C643 191 619 214 589 214H536V321H821V214H768C738 214 714 191 714 161V-18C714 -48 738 -71 768 -71H946C976 -71 1000 -48 1000 -18Z"/></svg> KSR · knowledge subgraph retrieval</li>
+      <li><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
+<svg class="stage-icon stage-ki" aria-hidden="true" focusable="false" data-paper-icon="ki" xmlns="http://www.w3.org/2000/svg" viewBox="0 -856.25 999.25 999.25" fill="currentColor"><path transform="scale(1,-1)" d="M979 604C951 632 906 632 878 604L655 381L524 512L747 735C775 762 775 808 747 836C719 863 674 863 646 836L423 613L339 696L250 607C128 485 110 298 202 160L0 -42V-143H101L303 59C441 -33 628 -15 750 107L839 196L756 280L979 503C1006 531 1006 576 979 604Z"/></svg> KI · knowledge injection</li>
     </ul>
     <figure data-figure="4">
       <a class="figure-link" href="assets/umls-pipeline.png" aria-label="Open the full-resolution rendering"><img src="assets/umls-pipeline.png" width="1248" height="600" loading="lazy" alt="A medical question passes through entity linking, subgraph retrieval and knowledge injection before an answer is selected."></a>
@@ -223,7 +250,8 @@
   </section>
 
   <section class="nel-section" id="linking" aria-labelledby="linking-title">
-    <div class="section-head"><span class="label">01 · Named entity linking</span><h2 id="linking-title">Grounding the question can still leave the answers unreachable</h2></div>
+    <div class="section-head"><span class="label"><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
+<svg class="stage-icon stage-nel" aria-hidden="true" focusable="false" data-paper-icon="nel" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1060 846" fill="currentColor"><path transform="scale(1,-1)" d="M250 607C250 567 219 536 179 536C139 536 107 567 107 607C107 647 139 679 179 679C219 679 250 647 250 607ZM845 286C845 305 838 323 825 336L426 735C398 763 344 786 304 786H71C32 786 0 753 0 714V482C0 442 23 388 51 360L450 -39C463 -52 481 -60 500 -60C519 -60 538 -52 551 -39L825 235C838 248 845 267 845 286ZM1060 286C1060 305 1052 323 1039 336L640 735C612 763 558 786 518 786H393C433 786 487 763 515 735L914 336C927 323 935 305 935 286C935 267 927 248 914 235L652 -27C671 -47 685 -60 714 -60C733 -60 752 -52 765 -39L1039 235C1052 248 1060 267 1060 286Z"/></svg> 01 · Named entity linking</span><h2 id="linking-title">Grounding the question can still leave the answers unreachable</h2></div>
     <p>On the MedQA test split, both MetaMap and scispaCy ground every question stem. Their answer-side coverage is different: <strong>MetaMap reaches the correct answer in 98.2% of items and the full option set in 96.4%</strong>, compared with 86.1% and 65.0% for scispaCy. Question-only coverage hides the missing evidence on the discriminating side of a multiple-choice item.</p>
     <figure data-figure="5">
       <a class="figure-link" href="assets/linker-coverage.png" aria-label="Open the full-resolution rendering"><img src="assets/linker-coverage.png" width="890" height="517" loading="lazy" alt="Five question and answer groups compare mean, minimum and maximum linked concepts for MetaMap and scispaCy on MedQA, PubMedQA and MedMCQA."></a>
@@ -245,7 +273,8 @@
   </section>
 
   <section class="ksr-section" id="retrieval" aria-labelledby="retrieval-title">
-    <div class="section-head"><span class="label">02 · Knowledge subgraph retrieval</span><h2 id="retrieval-title">Connectivity and pruning decide which evidence survives</h2></div>
+    <div class="section-head"><span class="label"><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
+<svg class="stage-icon stage-ksr" aria-hidden="true" focusable="false" data-paper-icon="ksr" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1000 857" fill="currentColor"><path transform="scale(1,-1)" d="M1000 161C1000 191 976 214 946 214H893V321C893 360 860 393 821 393H536V500H589C619 500 643 524 643 554V732C643 762 619 786 589 786H411C381 786 357 762 357 732V554C357 524 381 500 411 500H464V393H179C140 393 107 360 107 321V214H54C24 214 0 191 0 161V-18C0 -48 24 -71 54 -71H232C262 -71 286 -48 286 -18V161C286 191 262 214 232 214H179V321H464V214H411C381 214 357 191 357 161V-18C357 -48 381 -71 411 -71H589C619 -71 643 -48 643 -18V161C643 191 619 214 589 214H536V321H821V214H768C738 214 714 191 714 161V-18C714 -48 738 -71 768 -71H946C976 -71 1000 -48 1000 -18Z"/></svg> 02 · Knowledge subgraph retrieval</span><h2 id="retrieval-title">Connectivity and pruning decide which evidence survives</h2></div>
     <p>Expanding the full UMLS neighborhood on PubMedQA grows the mean subgraph from <strong>3,755 nodes at two hops to more than 1.3 million at five hops</strong>. The DRAGON-filtered subset grows from 193 to 46,719 nodes. The resource is smaller, but expansion remains substantial.</p>
     <figure data-figure="6">
       <a class="figure-link" href="assets/retrieval-growth.png" aria-label="Open the full-resolution rendering"><img src="assets/retrieval-growth.png" width="890" height="495" loading="lazy" alt="Log-scale line plot of nodes and edges from two to five hops, comparing full UMLS with a DRAGON-filtered subset."></a>
@@ -257,7 +286,8 @@
   </section>
 
   <section class="ki-section" id="injection" aria-labelledby="injection-title">
-    <div class="section-head"><span class="label">03 · Knowledge injection</span><h2 id="injection-title">A benchmark score can conceal very different evidence</h2></div>
+    <div class="section-head"><span class="label"><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
+<svg class="stage-icon stage-ki" aria-hidden="true" focusable="false" data-paper-icon="ki" xmlns="http://www.w3.org/2000/svg" viewBox="0 -856.25 999.25 999.25" fill="currentColor"><path transform="scale(1,-1)" d="M979 604C951 632 906 632 878 604L655 381L524 512L747 735C775 762 775 808 747 836C719 863 674 863 646 836L423 613L339 696L250 607C128 485 110 298 202 160L0 -42V-143H101L303 59C441 -33 628 -15 750 107L839 196L756 280L979 503C1006 531 1006 576 979 604Z"/></svg> 03 · Knowledge injection</span><h2 id="injection-title">A benchmark score can conceal very different evidence</h2></div>
     <p>UMLS reaches the model through three different routes: <strong>textual linearization</strong> exposes serialized facts, <strong>structural injection</strong> provides a graph at inference, and <strong>parameter encoding</strong> uses the resource as training-time supervision. The review classifies systems by their primary route.</p>
     <figure id="injection-mechanisms" data-table="12">
       <a class="figure-link" href="assets/injection-mechanisms.png" aria-label="Open the full-resolution rendering"><img src="assets/injection-mechanisms.png" width="890" height="250" loading="lazy" alt="Original paper taxonomy table: five textual-linearization systems, nine structural-injection systems and seven parameter-encoding systems, for 21 explicitly classified systems."></a>
@@ -294,11 +324,13 @@
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="subset"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg><strong>Subset.</strong> Name source vocabularies and concept/relation filters.</li>
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="metadata"><path d="M5 4h14v16H5zM8 8h8M8 12h3M8 16h6"/></svg><strong>Metadata.</strong> Specify attached fields, including definitions and semantic types.</li>
     </ul></div>
-    <div class="check-group check-nel"><h3><span class="mark nel">Named entity linking</span></h3><ul>
+    <div class="check-group check-nel"><h3><span class="mark nel"><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
+<svg class="stage-icon stage-nel" aria-hidden="true" focusable="false" data-paper-icon="nel" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1060 846" fill="currentColor"><path transform="scale(1,-1)" d="M250 607C250 567 219 536 179 536C139 536 107 567 107 607C107 647 139 679 179 679C219 679 250 647 250 607ZM845 286C845 305 838 323 825 336L426 735C398 763 344 786 304 786H71C32 786 0 753 0 714V482C0 442 23 388 51 360L450 -39C463 -52 481 -60 500 -60C519 -60 538 -52 551 -39L825 235C838 248 845 267 845 286ZM1060 286C1060 305 1052 323 1039 336L640 735C612 763 558 786 518 786H393C433 786 487 763 515 735L914 336C927 323 935 305 935 286C935 267 927 248 914 235L652 -27C671 -47 685 -60 714 -60C733 -60 752 -52 765 -39L1039 235C1052 248 1060 267 1060 286Z"/></svg> Named entity linking</span></h3><ul>
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="linker"><path d="m9 15 6-6M7 14l-2 2a3 3 0 0 0 4 4l3-3M17 10l2-2a3 3 0 0 0-4-4l-3 3"/></svg><strong>Linker.</strong> Report the tool and non-default settings.</li>
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="coverage"><path d="M5 5h14v14H5zM8 12l3 3 5-6"/></svg><strong>Linking result.</strong> Report entity coverage and unlinked items.</li>
     </ul></div>
-    <div class="check-group check-ksr"><h3><span class="mark ksr">Knowledge subgraph retrieval</span></h3><ul>
+    <div class="check-group check-ksr"><h3><span class="mark ksr"><!-- Font Awesome 4, Dave Gandy. Font licensed under SIL OFL 1.1: https://openfontlicense.org/ -->
+<svg class="stage-icon stage-ksr" aria-hidden="true" focusable="false" data-paper-icon="ksr" xmlns="http://www.w3.org/2000/svg" viewBox="0 -786 1000 857" fill="currentColor"><path transform="scale(1,-1)" d="M1000 161C1000 191 976 214 946 214H893V321C893 360 860 393 821 393H536V500H589C619 500 643 524 643 554V732C643 762 619 786 589 786H411C381 786 357 762 357 732V554C357 524 381 500 411 500H464V393H179C140 393 107 360 107 321V214H54C24 214 0 191 0 161V-18C0 -48 24 -71 54 -71H232C262 -71 286 -48 286 -18V161C286 191 262 214 232 214H179V321H464V214H411C381 214 357 191 357 161V-18C357 -48 381 -71 411 -71H589C619 -71 643 -48 643 -18V161C643 191 619 214 589 214H536V321H821V214H768C738 214 714 191 714 161V-18C714 -48 738 -71 768 -71H946C976 -71 1000 -48 1000 -18Z"/></svg> Knowledge subgraph retrieval</span></h3><ul>
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="connectivity"><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M7 6h10M6 8l5 8M18 8l-5 8"/></svg><strong>Connectivity rule.</strong> State which concepts are connected.</li>
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="depth"><path d="M4 7h16M4 4v6M20 4v6M8 7v3M12 7v3M16 7v3M5 18h14m-3-3 3 3-3 3"/></svg><strong>Depth and scale.</strong> Report hop depth and resulting subgraph size.</li>
       <li><svg class="check-icon" viewBox="0 0 24 24" aria-hidden="true" data-icon="pruning"><circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/><path d="M8.5 8.5 20 20M8.5 15.5 20 4"/></svg><strong>Pruning.</strong> State the criterion and node budget.</li>
@@ -309,13 +341,14 @@
   <section class="literature-panel" id="literature" aria-labelledby="literature-title">
 <h2 id="literature-title">Reviewed literature</h2>
 <p>Compare the 25 system annotations by how UMLS reaches the model. Each entry retains its source tables, linking and retrieval choices, method notes and available paper/code links.</p>
-<nav class="review-index" aria-label="Literature index">
-<a href="#review-textual">Textual linearization <span>(5)</span></a>
-<a href="#review-structural">Structural injection <span>(9)</span></a>
-<a href="#review-parameter">Parameter encoding <span>(7)</span></a>
-<a href="#review-unreported">Not specified <span>(4)</span></a>
-<a href="#review-protocol">Review protocol</a><a href="#review-exclusions">Screening record</a></nav>
-<div class="literature-group" id="review-textual"><header class="literature-heading"><h3><span>I.</span> Textual linearization</h3><p>Serialized factual context · 5 systems</p></header><ol class="paper-list" role="list">
+<div class="review-browser">
+<nav class="review-index" aria-label="Literature analysis">
+<a id="tab-textual" href="#review-textual">Textual <span>(5)</span></a>
+<a id="tab-structural" href="#review-structural">Structural <span>(9)</span></a>
+<a id="tab-parameter" href="#review-parameter">Parameter <span>(7)</span></a>
+<a id="tab-unreported" href="#review-unreported">Not specified <span>(4)</span></a>
+<a id="tab-protocol" href="#review-protocol">Protocol</a><a id="tab-exclusions" href="#review-exclusions">Screening</a></nav>
+<div class="review-pane literature-group" id="review-textual"><header class="literature-heading"><h3>Textual linearization</h3><p>Serialized factual context · 5 systems</p></header><ol class="paper-list" role="list">
 <li value="3" class="paper-entry" data-paper-number="3"><div class="paper-top"><div class="paper-identity"><h4>KnowledgeDA</h4><p class="paper-attribution">Ding et al. (Findings of ACL 2023)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2023.findings-acl.24/">Paper<span aria-hidden="true"> ↗</span></a>
@@ -357,7 +390,7 @@
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
 </dl><p class="paper-note">UMLS as training graph for graph-aligned LLM fine-tuning; 4 relation types, 126K triples. QA pairs synthesized from UMLS graph neighborhoods + subgraph encodings; evaluated on fact recall and multi-hop reasoning over UMLS.</p></li>
 </ol></div>
-<div class="literature-group" id="review-structural"><header class="literature-heading"><h3><span>II.</span> Structural injection</h3><p>An explicit graph at inference · 9 systems</p></header><ol class="paper-list" role="list">
+<div class="review-pane literature-group" id="review-structural"><header class="literature-heading"><h3>Structural injection</h3><p>An explicit graph at inference · 9 systems</p></header><ol class="paper-list" role="list">
 <li value="1" class="paper-entry" data-paper-number="1"><div class="paper-top"><div class="paper-identity"><h4>DRAGON: Deep Bidirectional Language-Knowledge Graph Pretraining</h4><p class="paper-attribution">Yasunaga et al. (NeurIPS 2022)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://arxiv.org/abs/2210.09338">Paper<span aria-hidden="true"> ↗</span></a>
@@ -434,7 +467,7 @@
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
 </dl><p class="paper-note">Self-constructed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). NEL + 2-hop bridge entities + top-200 node retrieval; LM-KG cross-modal fusion across layers.</p></li>
 </ol></div>
-<div class="literature-group" id="review-parameter"><header class="literature-heading"><h3><span>III.</span> Parameter encoding</h3><p>Training-time supervision · 7 systems</p></header><ol class="paper-list" role="list">
+<div class="review-pane literature-group" id="review-parameter"><header class="literature-heading"><h3>Parameter encoding</h3><p>Training-time supervision · 7 systems</p></header><ol class="paper-list" role="list">
 <li value="10" class="paper-entry" data-paper-number="10"><div class="paper-top"><div class="paper-identity"><h4>Adapter Modules for Knowledge Enhancement</h4><p class="paper-attribution">Vladika et al. (ICAART 2024)</p></div>
 </div><dl class="paper-pipeline">
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
@@ -489,7 +522,7 @@
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
 </dl><p class="paper-note">UMLS Metathesaurus graph (1.77M triples) as one of three knowledge sources, encoded through a dedicated knowledge adapter and combined via an attention-based controller. UMLS adapter pretrained on graph triples; evaluated on MEDIQA-2019, TRECQA-2017, MedNLI + NER.</p></li>
 </ol></div>
-<div class="literature-group" id="review-unreported"><header class="literature-heading"><h3><span>IV.</span> Mechanism not specified</h3><p>No primary mechanism reported · 4 systems</p></header><ol class="paper-list" role="list">
+<div class="review-pane literature-group" id="review-unreported"><header class="literature-heading"><h3>Mechanism not specified</h3><p>No primary mechanism reported · 4 systems</p></header><ol class="paper-list" role="list">
 <li value="2" class="paper-entry" data-paper-number="2"><div class="paper-top"><div class="paper-identity"><h4>MediSage</h4><p class="paper-attribution">Choudhury et al. (WWW 2023)</p></div>
 </div><dl class="paper-pipeline">
 <div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY</dd></div>
@@ -515,7 +548,7 @@
 <div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
 </dl><p class="paper-note">Anatomy-centered scene graphs from radiology reports; UMLS as indexing/normalization layer only (scene-graph nodes → CUIs). <em>Retained for adjacent-settings discussion.</em></p></li>
 </ol></div>
-<div class="review-method" id="review-protocol"><h3>Review protocol</h3>
+<div class="review-pane review-method" id="review-protocol"><h3>Review protocol</h3>
 <p>The Scopus search was run on <strong>January 15, 2026</strong>, targeting English-language conference and journal work published during 2020–2025. Two researchers annotated the screened literature independently; disagreements were resolved through discussion.</p>
 <ul><li>UMLS must play a substantive technical role.</li><li>The task must be medical question answering or a related reasoning setting.</li><li>The method must support comparison across knowledge grounding, retrieval and injection.</li></ul>
 <p>Fields are recovered from the paper and supplement, then released code, then code from cited systems. Unavailable fields remain explicitly unreported.</p>
@@ -553,7 +586,7 @@ AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
 <h4 class="subsection">Benchmark coverage</h4>
 <p><strong>Closed-form:</strong> PubMedQA, BioASQ, MedQA (USMLE) and MedMCQA.<br><strong>Open-form:</strong> MedicationQA, COVID-QA and ExpertQA.</p>
 </div>
-<div class="review-method" id="review-exclusions"><h3>Screening record</h3><p>The repository records 20 screened papers outside the analytical corpus, grouped by their exclusion rationale.</p>
+<div class="review-pane review-method" id="review-exclusions"><h3>Screening record</h3><p>The repository records 20 screened papers outside the analytical corpus, grouped by their exclusion rationale.</p>
 <h4>UMLS Not Methodologically Used</h4><ul class="excluded-list">
 <li><strong>Gupta et al. (2024) — Cancer CPG QA using LLMs</strong><p>Method centers on NCCN guideline KG, not UMLS. UMLS appears only as background.</p></li>
 <li><strong>Aasman (2024) — Neuro-Symbolic Document Matching</strong><p>UMLS mentioned as example healthcare taxonomy; task is document matching.</p></li>
@@ -578,7 +611,7 @@ AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
 <li><strong>Jiang et al. (2023) — Text-Augmented Open KGC</strong><p>Uses UMLS-PubMed as KGC benchmark; task is KG completion, not QA.</p></li>
 <li><strong>He et al. (2020) — BERT-MK</strong><p>UMLS-central but downstream tasks are entity typing and relation classification, not MQA/reasoning.</p></li>
 </ul>
-</div>
+</div></div>
 <p class="table-note">Corrections or a missing paper? <a href="https://github.com/disi-unibo-nlp/are-we-done-with-umls/issues">Open an issue in the research repository.</a></p>
 </section>
 
@@ -606,5 +639,48 @@ AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
   </section>
   <footer><p>UMLS injection for medical question answering · University of Bologna</p></footer>
 </main>
+<script>
+  const reviewNav = document.querySelector('.review-index');
+  const reviewTabs = [...reviewNav.querySelectorAll('a')];
+  reviewNav.setAttribute('role', 'tablist');
+  reviewTabs.forEach(tab => {
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-controls', tab.hash.slice(1));
+    const pane = document.getElementById(tab.hash.slice(1));
+    pane.setAttribute('role', 'tabpanel');
+    pane.setAttribute('aria-labelledby', tab.id);
+    pane.tabIndex = 0;
+  });
+  function selectReview(tab) {
+    reviewTabs.forEach(item => {
+      const selected = item === tab;
+      item.setAttribute('aria-selected', String(selected));
+      item.tabIndex = selected ? 0 : -1;
+      document.getElementById(item.hash.slice(1)).hidden = !selected;
+    });
+  }
+  function syncReviewHash() {
+    const pane = document.getElementById(location.hash.slice(1))?.closest('.review-pane');
+    if (pane) selectReview(reviewTabs.find(tab => tab.hash === '#' + pane.id));
+  }
+  reviewNav.addEventListener('click', event => {
+    const tab = event.target.closest('a');
+    if (!tab || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    selectReview(tab);
+    if (location.hash !== tab.hash) history.pushState(null, '', tab.hash);
+  });
+  reviewNav.addEventListener('keydown', event => {
+    const index = reviewTabs.indexOf(document.activeElement);
+    if (index < 0 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? reviewTabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + reviewTabs.length) % reviewTabs.length;
+    reviewTabs[next].click();
+    reviewTabs[next].focus();
+  });
+  selectReview(reviewTabs[0]);
+  syncReviewHash();
+  addEventListener('hashchange', syncReviewHash);
+</script>
 </body>
 </html>

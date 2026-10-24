@@ -29,7 +29,7 @@
     body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.75 "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-text-size-adjust: 100%; }
     a { color: var(--nel-ink); text-underline-offset: .2em; }
     a:hover { text-decoration-thickness: 2px; }
-    a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid var(--nel-ink); outline-offset: 5px; }
+    a:focus-visible, button:focus-visible { outline: 3px solid var(--nel-ink); outline-offset: 5px; }
     .skip { position: absolute; top: -100px; left: 16px; min-height: 44px; padding: 8px 16px; background: white; z-index: 2; }
     .skip:focus { top: 12px; }
     .masthead { width: min(1040px, calc(100% - 64px)); margin: auto; padding-top: 60px; text-align: center; }
@@ -71,7 +71,7 @@
     .stage-key { display: flex; gap: 18px; flex-wrap: wrap; padding: 0; list-style: none; font-size: .79rem; color: var(--muted); }
     .stage-key li { display: flex; align-items: center; gap: 7px; }
     .stage-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--color); }
-    #findings, .nel-section, .ksr-section, .ki-section, .checklist, .literature-panel, #resources, .citation { border: 1px solid #dce3e8; border-radius: 18px; padding: 28px; }
+    #findings, .nel-section, .ksr-section, .ki-section, .checklist, #resources, .citation { border: 1px solid #dce3e8; border-radius: 18px; padding: 28px; }
     .section-head { border: 0; background: var(--section-wash, var(--umls-wash)); padding: 24px 28px; margin: -28px -28px 26px; border-radius: 18px 18px 0 0; }
     .section-head h2 { margin-bottom: 0; }
     .section-head .label { display: block; margin-bottom: 10px; color: var(--label-ink, var(--muted)); font-size: .74rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 650; }
@@ -101,28 +101,34 @@
     .link-list a { display: inline-flex; align-items: center; min-height: 44px; }
     #resources { background: var(--nel-wash); }
     .citation { background: #f6f7f8; }
-    .literature-panel { background: #f1f5f6; }
-    .reference-code { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 18px; font-size: .84rem; }
-    .reference-code > span { color: var(--muted); }
-    .reference-code a, .paper-links a, .literature-panel > .table-note a { display: inline-flex; align-items: center; min-height: 44px; }
-    .review-detail { margin-top: 18px; background: #fff; border: 1px solid #d5dfe4; border-radius: 11px; }
-    .review-detail > summary { padding: 17px 18px; min-height: 66px; font-size: .94rem; font-weight: 650; cursor: pointer; }
-    .review-detail > summary > span { display: block; margin-left: 17px; color: var(--muted); font-size: .77rem; font-weight: 400; }
-    .review-detail[open] > summary { background: #e9f0f3; border-radius: 11px 11px 0 0; }
-    .paper-list { margin: 0; padding: 2px 18px 18px; list-style: none; counter-reset: paper; }
-    .paper-list > .paper-entry { counter-increment: paper; margin-top: 18px; padding: 18px; background: #f8fafb; border: 1px solid #e0e7eb; border-radius: 9px; }
-    .paper-entry h3 { font-size: 1rem; margin-bottom: 8px; }
-    .paper-entry h3::before { content: counter(paper, decimal-leading-zero) ". "; color: var(--muted); font-size: .86em; }
-    .paper-attribution { font-size: .79rem; color: var(--muted); margin-bottom: 4px; }
-    .paper-links { display: flex; gap: 18px; font-size: .8rem; }
-    .paper-tags { display: flex; flex-wrap: wrap; gap: 5px; padding: 0; margin: 8px 0 12px; list-style: none; }
-    .paper-tags li { padding: 3px 7px; background: #eaf0f3; border-radius: 3px; font-size: .66rem; line-height: 1.5; color: #43515d; }
+    .review-index { display: flex; flex-wrap: wrap; gap: 0 20px; margin: 24px 0 34px; padding: 8px 0; border-block: 1px solid var(--line); font-size: .8rem; }
+    .review-index span { margin-left: 4px; color: var(--muted); }
+    .review-index a, .paper-links a, .literature-panel > .table-note a { display: inline-flex; align-items: center; min-height: 44px; }
+    .literature-group { margin: 44px 0; scroll-margin-top: 24px; }
+    .literature-heading { padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+    .literature-heading h3 { font: 500 1.5rem/1.35 "Fraunces", Georgia, serif; margin-bottom: 7px; }
+    .literature-heading h3 span { color: var(--muted); margin-right: 6px; }
+    .literature-heading p { margin: 0; font-size: .8rem; color: var(--muted); }
+    .paper-list { margin: 0; padding: 0; list-style: none; }
+    .paper-list > .paper-entry { padding: 23px 0; border-bottom: 1px solid var(--line); }
+
+    .paper-top { display: flex; justify-content: space-between; gap: 18px; }
+    .paper-identity { min-width: 0; }
+    .paper-entry h4 { font-size: 1.03rem; font-weight: 600; line-height: 1.45; margin: 0; }
+    .paper-attribution { font-size: .79rem; color: var(--muted); margin: 5px 0 0; }
+    .paper-links { display: flex; flex: none; gap: 16px; font-size: .8rem; }
+    .paper-pipeline { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,.8fr) minmax(0,1fr); gap: 18px; margin: 14px 0; }
+    .paper-pipeline dt { color: var(--muted); font-size: .66rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+    .paper-pipeline dd { font-size: .75rem; line-height: 1.65; margin: 2px 0 0; overflow-wrap: anywhere; }
+    .pipeline-nel dt { color: var(--nel-ink); }
+    .pipeline-ksr dt { color: var(--ksr-ink); }
     .paper-note { font-size: .84rem; line-height: 1.7; margin-bottom: 0; }
     .unavailable-link { display: inline-flex; align-items: center; min-height: 44px; font-size: .75rem; color: var(--muted); }
-    .detail-content { padding: 20px; font-size: .88rem; }
-    .detail-content h3 { font-size: 1.05rem; }
-    .excluded-list { padding-left: 18px; }
-    .excluded-list li { padding: 8px 0; font-size: .83rem; }
+    .review-method { margin-top: 54px; font-size: .88rem; scroll-margin-top: 24px; }
+    .review-method h3 { font: 500 1.5rem/1.35 "Fraunces", Georgia, serif; }
+    .review-method h4 { margin: 28px 0 16px; }
+    .excluded-list { columns: 2; column-gap: 32px; padding-left: 20px; }
+    .excluded-list li { break-inside: avoid; padding: 8px 0; font-size: .83rem; }
     .excluded-list p { margin-bottom: 3px; }
     pre { margin: 0; padding: 22px; background: #f5f7f8; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .76rem; line-height: 1.8; }
     code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
@@ -142,11 +148,14 @@
       h2 { font-size: 1.7rem; }
       .stage-key { gap: 8px 14px; }
       .study-note, .method-note { padding: 20px 18px 1px; }
-      #findings, .nel-section, .ksr-section, .ki-section, .checklist, .literature-panel, #resources, .citation { padding: 22px 17px; border-radius: 14px; }
+      #findings, .nel-section, .ksr-section, .ki-section, .checklist, #resources, .citation { padding: 22px 17px; border-radius: 14px; }
       .section-head { padding: 21px 17px; margin: -22px -17px 24px; border-radius: 14px 14px 0 0; }
-      .paper-list { padding: 0 10px 12px; }
-      .paper-list > .paper-entry { padding: 14px; }
-      .detail-content { padding: 16px; }
+
+      .paper-top { display: block; }
+      .paper-pipeline { display: block; }
+      .paper-pipeline > div { display: grid; grid-template-columns: 76px minmax(0,1fr); gap: 10px; margin-bottom: 5px; }
+      .paper-pipeline dd { margin: 0; }
+      .excluded-list { columns: 1; }
       figcaption { font-size: .79rem; }
 
       pre { padding: 18px; font-size: .72rem; }
@@ -298,133 +307,219 @@
   </section>
 
   <section class="literature-panel" id="literature" aria-labelledby="literature-title">
-<h2 id="literature-title">The reviewed literature, with papers and code</h2>
-<p>The review records the UMLS sources, linking tools, retrieval rules and injection mechanisms used by each system. The directory retains the repository’s method notes and links, including its qualifications for adjacent settings.</p>
-<nav class="reference-code" aria-label="Reference implementations"><span>Reference code</span><a href="https://github.com/michiyasunaga/qagnn">QA-GNN</a><a href="https://github.com/snap-stanford/GreaseLM">GREASELM</a><a href="https://github.com/michiyasunaga/dragon">DRAGON</a></nav>
-<details class="review-detail"><summary>25 annotated systems <span>Methods, papers and released code</span></summary><ol class="paper-list">
-<li class="paper-entry" data-paper-number="1"><h3>DRAGON: Deep Bidirectional Language-Knowledge Graph Pretraining</h3><p class="paper-attribution">Yasunaga et al. (NeurIPS 2022)</p>
-<nav class="paper-links" aria-label="Paper resources">
-<a href="https://arxiv.org/abs/2210.09338">Paper<span aria-hidden="true"> ↗</span></a>
-<a href="https://github.com/michiyasunaga/dragon">Code<span aria-hidden="true"> ↗</span></a>
-</nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
-<p class="paper-note">Deeply bidirectional text-KG pretraining; 2-hop expansion + entity linking; masked LM + KG link prediction joint objectives. Strong fit.</p></li>
-<li class="paper-entry" data-paper-number="2"><h3>MediSage</h3><p class="paper-attribution">Choudhury et al. (WWW 2023)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRSTY</li><li>NEL: string match</li><li>K=3</li><li>Budget: unspecified</li><li>Injection: not specified</li></ul>
-<p class="paper-note">Conversational clinical decision-support over EHR + clinical KG; BioLinkBERT NEL fallback. Not centered on UMLS as core source.</p></li>
-<li class="paper-entry" data-paper-number="3"><h3>KnowledgeDA</h3><p class="paper-attribution">Ding et al. (Findings of ACL 2023)</p>
+<h2 id="literature-title">Reviewed literature</h2>
+<p>Compare the 25 system annotations by how UMLS reaches the model. Each entry retains its source tables, linking and retrieval choices, method notes and available paper/code links.</p>
+<nav class="review-index" aria-label="Literature index">
+<a href="#review-textual">Textual linearization <span>(5)</span></a>
+<a href="#review-structural">Structural injection <span>(9)</span></a>
+<a href="#review-parameter">Parameter encoding <span>(7)</span></a>
+<a href="#review-unreported">Not specified <span>(4)</span></a>
+<a href="#review-protocol">Review protocol</a><a href="#review-exclusions">Screening record</a></nav>
+<div class="literature-group" id="review-textual"><header class="literature-heading"><h3><span>I.</span> Textual linearization</h3><p>Serialized factual context · 5 systems</p></header><ol class="paper-list" role="list">
+<li value="3" class="paper-entry" data-paper-number="3"><div class="paper-top"><div class="paper-identity"><h4>KnowledgeDA</h4><p class="paper-attribution">Ding et al. (Findings of ACL 2023)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2023.findings-acl.24/">Paper<span aria-hidden="true"> ↗</span></a>
 <a href="https://github.com/RuiqingDing/KnowledgeDA">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRSTY</li><li>UMLS subset</li><li>NEL: neural embedding</li><li>K=2</li><li>Budget: unspecified</li><li>Textual linearization</li></ul>
-<p class="paper-note">Mention-to-entity similarity matching; 2-hop relation-consistent replacements; data augmentation around UMLS-grounded entities. UMLS 2021AA; 1.15M CUIs, 4.88M triples after filtering to medicine-related semantic types and 502 relation types.</p></li>
-<li class="paper-entry" data-paper-number="4"><h3>KG-Infused LLM for Virtual Health Assistant</h3><p class="paper-attribution">Katta et al. (ICMLA 2024)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>neural embedding</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">Mention-to-entity similarity matching; 2-hop relation-consistent replacements; data augmentation around UMLS-grounded entities. UMLS 2021AA; 1.15M CUIs, 4.88M triples after filtering to medicine-related semantic types and 502 relation types.</p></li>
+<li value="4" class="paper-entry" data-paper-number="4"><div class="paper-top"><div class="paper-identity"><h4>KG-Infused LLM for Virtual Health Assistant</h4><p class="paper-attribution">Katta et al. (ICMLA 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://github.com/SivaKatta1010/NeoKG-LLM">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRDEF</li><li>UMLS subset</li><li>NEL: scispaCy</li><li>K=1</li><li>Budget: 20 rel.</li><li>Textual linearization</li></ul>
-<p class="paper-note">Builds large Neo4j KG from UMLS subsets (MSH + NCI), 622K nodes / 4.94M edges; RAG-style pipeline with semantic matching + learning-to-rank; not question-specific subgraph construction.</p></li>
-<li class="paper-entry" data-paper-number="5"><h3>QAVSA</h3><p class="paper-attribution">Laube &amp; Eliasmith (RepL4NLP 2024)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: unspecified</li><li>Structural injection</li></ul>
-<p class="paper-note">Follows QA-GNN-style graph setup (300K nodes / 1M edges); replaces GNN with vector symbolic algebra + MLP reasoning on MedQA-USMLE.</p></li>
-<li class="paper-entry" data-paper-number="6"><h3>QAT: Relation-Aware Language-Graph Transformer</h3><p class="paper-attribution">Park et al. (AAAI 2023)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: not specified</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
-<p class="paper-note">Per-QA subgraph retrieval (9K nodes / 44K edges); meta-path relation encoding. Q→A connectivity.</p></li>
-<li class="paper-entry" data-paper-number="7"><h3>QA-GNN: Reasoning with Language Models and Knowledge Graphs for Question Answering</h3><p class="paper-attribution">Yasunaga et al. (NAACL 2021)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRDEF · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: 20 rel.</dd></div>
+</dl><p class="paper-note">Builds large Neo4j KG from UMLS subsets (MSH + NCI), 622K nodes / 4.94M edges; RAG-style pipeline with semantic matching + learning-to-rank; not question-specific subgraph construction.</p></li>
+<li value="12" class="paper-entry" data-paper-number="12"><div class="paper-top"><div class="paper-identity"><h4>KG-Rank</h4><p class="paper-attribution">Yang et al. (BioNLP 2024)</p></div>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://github.com/YangRui525/KG-Rank">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>LLM prompt</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">UMLS as primary medical KG; one-hop triples retrieved and re-ranked before LLM generation. Similarity ranking + MMR + cross-encoder re-ranking. Evaluated on LiveQA, ExpertQA-Med/Bio, MedicationQA.</p></li>
+<li value="15" class="paper-entry" data-paper-number="15"><div class="paper-top"><div class="paper-identity"><h4>Heterogeneous Knowledge Grounding</h4><p class="paper-attribution">Zhao et al. (WWW 2024)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>neural embedding</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">DDB subset (50K triples); UMLS mentioned mainly as future direction — method uses unspecified structured medical KB + textbook corpus. Medical RAG; UMLS not operational in method as reported.</p></li>
+<li value="21" class="paper-entry" data-paper-number="21"><div class="paper-top"><div class="paper-identity"><h4>GLaM: Graph-Aligned Language Models</h4><p class="paper-attribution">Dernbach et al. (AAAI-SSS 2024)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
+</dl><p class="paper-note">UMLS as training graph for graph-aligned LLM fine-tuning; 4 relation types, 126K triples. QA pairs synthesized from UMLS graph neighborhoods + subgraph encodings; evaluated on fact recall and multi-hop reasoning over UMLS.</p></li>
+</ol></div>
+<div class="literature-group" id="review-structural"><header class="literature-heading"><h3><span>II.</span> Structural injection</h3><p>An explicit graph at inference · 9 systems</p></header><ol class="paper-list" role="list">
+<li value="1" class="paper-entry" data-paper-number="1"><div class="paper-top"><div class="paper-identity"><h4>DRAGON: Deep Bidirectional Language-Knowledge Graph Pretraining</h4><p class="paper-attribution">Yasunaga et al. (NeurIPS 2022)</p></div>
+<nav class="paper-links" aria-label="Paper resources">
+<a href="https://arxiv.org/abs/2210.09338">Paper<span aria-hidden="true"> ↗</span></a>
+<a href="https://github.com/michiyasunaga/dragon">Code<span aria-hidden="true"> ↗</span></a>
+</nav>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
+</dl><p class="paper-note">Deeply bidirectional text-KG pretraining; 2-hop expansion + entity linking; masked LM + KG link prediction joint objectives. Strong fit.</p></li>
+<li value="5" class="paper-entry" data-paper-number="5"><div class="paper-top"><div class="paper-identity"><h4>QAVSA</h4><p class="paper-attribution">Laube &amp; Eliasmith (RepL4NLP 2024)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">Follows QA-GNN-style graph setup (300K nodes / 1M edges); replaces GNN with vector symbolic algebra + MLP reasoning on MedQA-USMLE.</p></li>
+<li value="6" class="paper-entry" data-paper-number="6"><div class="paper-top"><div class="paper-identity"><h4>QAT: Relation-Aware Language-Graph Transformer</h4><p class="paper-attribution">Park et al. (AAAI 2023)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
+</dl><p class="paper-note">Per-QA subgraph retrieval (9K nodes / 44K edges); meta-path relation encoding. Q→A connectivity.</p></li>
+<li value="7" class="paper-entry" data-paper-number="7"><div class="paper-top"><div class="paper-identity"><h4>QA-GNN: Reasoning with Language Models and Knowledge Graphs for Question Answering</h4><p class="paper-attribution">Yasunaga et al. (NAACL 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2021.naacl-main.45/">Paper<span aria-hidden="true"> ↗</span></a>
 <a href="https://github.com/michiyasunaga/qagnn">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
-<p class="paper-note">Self-constructed biomedical KG (DDB portion of UMLS + DrugBank; 9K nodes / 44K edges). Question–choice-specific subgraph + LM-based relevance scoring + joint LM+KG reasoning. Canonical benchmark paper.</p></li>
-<li class="paper-entry" data-paper-number="8"><h3>Towards Efficient Methods using KG Embeddings</h3><p class="paper-attribution">Sengupta et al. (BIBM 2024)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
+</dl><p class="paper-note">Self-constructed biomedical KG (DDB portion of UMLS + DrugBank; 9K nodes / 44K edges). Question–choice-specific subgraph + LM-based relevance scoring + joint LM+KG reasoning. Canonical benchmark paper.</p></li>
+<li value="8" class="paper-entry" data-paper-number="8"><div class="paper-top"><div class="paper-identity"><h4>Towards Efficient Methods using KG Embeddings</h4><p class="paper-attribution">Sengupta et al. (BIBM 2024)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://github.com/saptarshi059/CDQA-project">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRDEF</li><li>NEL: MetaMap</li><li>K=1</li><li>Budget: unspecified</li><li>Structural injection</li></ul>
-<p class="paper-note">UMLS definitions + pre-trained UMLS KGE fused into BERT/RoBERTa for COVID-QA / PubMedQA. Embedding/definition infusion; not subgraph construction.</p></li>
-<li class="paper-entry" data-paper-number="9"><h3>Graph Neural Prompting (GNP)</h3><p class="paper-attribution">Tian et al. (AAAI 2024)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: unspecified</li><li>Structural injection</li></ul>
-<p class="paper-note">NEL → 2-hop subgraph → GNN + cross-modality pooling + domain projector. UMLS as biomedical-domain KG encoded into graph neural prompts for LLM prompting.</p></li>
-<li class="paper-entry" data-paper-number="10"><h3>Adapter Modules for Knowledge Enhancement</h3><p class="paper-attribution">Vladika et al. (ICAART 2024)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
-<p class="paper-note">UMLS 2023AA; SNOMED CT US subset (1.75M triplets). Top-20 UMLS relations + METIS partitioning; entity-prediction adapter training; evaluated on BioASQ-7b / PubMedQA / MedNLI / HoC.</p></li>
-<li class="paper-entry" data-paper-number="11"><h3>Medical Knowledge-Enriched Textual Entailment</h3><p class="paper-attribution">Yadav et al. (COLING 2020)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRDEF</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>MetaMap</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">UMLS definitions + pre-trained UMLS KGE fused into BERT/RoBERTa for COVID-QA / PubMedQA. Embedding/definition infusion; not subgraph construction.</p></li>
+<li value="9" class="paper-entry" data-paper-number="9"><div class="paper-top"><div class="paper-identity"><h4>Graph Neural Prompting (GNP)</h4><p class="paper-attribution">Tian et al. (AAAI 2024)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">NEL → 2-hop subgraph → GNN + cross-modality pooling + domain projector. UMLS as biomedical-domain KG encoded into graph neural prompts for LLM prompting.</p></li>
+<li value="11" class="paper-entry" data-paper-number="11"><div class="paper-top"><div class="paper-identity"><h4>Medical Knowledge-Enriched Textual Entailment</h4><p class="paper-attribution">Yadav et al. (COLING 2020)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2020.coling-main.161/">Paper<span aria-hidden="true"> ↗</span></a>
 <a href="https://github.com/VishalPallagani/Medical-Knowledge-enriched-Textual-Entailment">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: unspecified</li><li>Structural injection</li></ul>
-<p class="paper-note">UMLS + SNOMED-CT + ICD10 to enrich vocabulary graph for MEDIQA-RQE entailment. Knowledge-enriched graph + BERT via GCN + attention fusion.</p></li>
-<li class="paper-entry" data-paper-number="12"><h3>KG-Rank</h3><p class="paper-attribution">Yang et al. (BioNLP 2024)</p>
-<nav class="paper-links" aria-label="Paper resources">
-<a href="https://github.com/YangRui525/KG-Rank">Code<span aria-hidden="true"> ↗</span></a>
-</nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: LLM prompt</li><li>K=1</li><li>Budget: unspecified</li><li>Textual linearization</li></ul>
-<p class="paper-note">UMLS as primary medical KG; one-hop triples retrieved and re-ranked before LLM generation. Similarity ranking + MMR + cross-encoder re-ranking. Evaluated on LiveQA, ExpertQA-Med/Bio, MedicationQA.</p></li>
-<li class="paper-entry" data-paper-number="13"><h3>DRLK</h3><p class="paper-attribution">Zhang et al. (EMNLP 2022)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">UMLS + SNOMED-CT + ICD10 to enrich vocabulary graph for MEDIQA-RQE entailment. Knowledge-enriched graph + BERT via GCN + attention fusion.</p></li>
+<li value="13" class="paper-entry" data-paper-number="13"><div class="paper-top"><div class="paper-identity"><h4>DRLK</h4><p class="paper-attribution">Zhang et al. (EMNLP 2022)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://github.com/MZ-MiaoZhang/DRLK">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
-<p class="paper-note">Pre-computed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). QA-GNN/GREASELM-style preprocessing; dynamic hierarchical LM-KG interaction.</p></li>
-<li class="paper-entry" data-paper-number="14"><h3>GREASELM</h3><p class="paper-attribution">Zhang et al. (ICLR 2022)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
+</dl><p class="paper-note">Pre-computed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). QA-GNN/GREASELM-style preprocessing; dynamic hierarchical LM-KG interaction.</p></li>
+<li value="14" class="paper-entry" data-paper-number="14"><div class="paper-top"><div class="paper-identity"><h4>GREASELM</h4><p class="paper-attribution">Zhang et al. (ICLR 2022)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://github.com/snap-stanford/GreaseLM">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: scispaCy</li><li>K=2</li><li>Budget: 200 nodes</li><li>Structural injection</li></ul>
-<p class="paper-note">Self-constructed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). NEL + 2-hop bridge entities + top-200 node retrieval; LM-KG cross-modal fusion across layers.</p></li>
-<li class="paper-entry" data-paper-number="15"><h3>Heterogeneous Knowledge Grounding</h3><p class="paper-attribution">Zhao et al. (WWW 2024)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: neural embedding</li><li>K=1</li><li>Budget: unspecified</li><li>Textual linearization</li></ul>
-<p class="paper-note">DDB subset (50K triples); UMLS mentioned mainly as future direction — method uses unspecified structured medical KB + textbook corpus. Medical RAG; UMLS not operational in method as reported.</p></li>
-<li class="paper-entry" data-paper-number="16"><h3>InfuserKI</h3><p class="paper-attribution">Tian et al. (EMNLP 2024)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
-<p class="paper-note">UMLS triplets (2.5K &amp; 25K) as domain KG for infuser-guided knowledge integration via adapters. Parameter-level integration; question-style supervision from UMLS triplets.</p></li>
-<li class="paper-entry" data-paper-number="17"><h3>HiPrompt</h3><p class="paper-attribution">Lu et al. (SIGIR 2023)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Injection: not specified</li></ul>
-<p class="paper-note">Biomedical KG–to-hierarchy alignment via hierarchy-oriented few-shot prompting; retrieval + re-ranking for entity–term alignment. <em>Borderline case retained for §5 discussion of adjacent settings.</em></p></li>
-<li class="paper-entry" data-paper-number="18"><h3>UMLS-KGI-BERT</h3><p class="paper-attribution">Mannion et al. (ClinicalNLP 2023)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRSTY</li><li>UMLS subset</li><li>NEL: string match</li><li>K=1</li><li>Budget: unspecified</li><li>Parameter encoding</li></ul>
-<p class="paper-note">UMLS 2022AB; restricted to human-biology/medicine semantic types (2.53M CUIs). Pretraining via entity prediction, link prediction, triple classification; downstream clinical NER. Cited in §5.1 as the sole reviewed system that evaluates linker performance directly.</p></li>
-<li class="paper-entry" data-paper-number="19"><h3>Healthcare QA Assistant</h3><p class="paper-attribution">Sukhwal et al. (ICIS 2022)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>NEL: scispaCy</li><li>K=1</li><li>Budget: unspecified</li><li>Injection: not specified</li></ul>
-<p class="paper-note">Disease-specific KG (7.17K CUIs) from PubMed abstracts + OpenIE; CUIs + synonym merging; KG-only vs. LM-only vs. joint reasoning comparison on a skin-eczema QA assistant.</p></li>
-<li class="paper-entry" data-paper-number="20"><h3>Chest ImaGenome</h3><p class="paper-attribution">Wu et al. (NeurIPS 2021)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>NEL: scispaCy</li><li>No per-question retrieval</li><li>Injection: not specified</li></ul>
-<p class="paper-note">Anatomy-centered scene graphs from radiology reports; UMLS as indexing/normalization layer only (scene-graph nodes → CUIs). <em>Retained for adjacent-settings discussion.</em></p></li>
-<li class="paper-entry" data-paper-number="21"><h3>GLaM: Graph-Aligned Language Models</h3><p class="paper-attribution">Dernbach et al. (AAAI-SSS 2024)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Textual linearization</li></ul>
-<p class="paper-note">UMLS as training graph for graph-aligned LLM fine-tuning; 4 relation types, 126K triples. QA pairs synthesized from UMLS graph neighborhoods + subgraph encodings; evaluated on fact recall and multi-hop reasoning over UMLS.</p></li>
-<li class="paper-entry" data-paper-number="22"><h3>Selective UMLS Knowledge Infusion</h3><p class="paper-attribution">Park et al. (Scientific Reports, 2024)</p>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>MRSTY</li><li>SRDEF</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
-<p class="paper-note">Extends MoP by comparing METIS partitions vs. semantic-group partitioning of UMLS for adapter pretraining; evaluated on BioASQ7b / PubMedQA / MedQA. (SRDEF is part of the UMLS Semantic Network, not the Metathesaurus.)</p></li>
-<li class="paper-entry" data-paper-number="23"><h3>Mixture-of-Partitions (MoP)</h3><p class="paper-attribution">Meng et al. (EMNLP 2021)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=2 · Budget: 200 nodes</dd></div>
+</dl><p class="paper-note">Self-constructed medical KG (DDB ⊂ UMLS + DrugBank; 9K nodes / 44K edges). NEL + 2-hop bridge entities + top-200 node retrieval; LM-KG cross-modal fusion across layers.</p></li>
+</ol></div>
+<div class="literature-group" id="review-parameter"><header class="literature-heading"><h3><span>III.</span> Parameter encoding</h3><p>Training-time supervision · 7 systems</p></header><ol class="paper-list" role="list">
+<li value="10" class="paper-entry" data-paper-number="10"><div class="paper-top"><div class="paper-identity"><h4>Adapter Modules for Knowledge Enhancement</h4><p class="paper-attribution">Vladika et al. (ICAART 2024)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
+</dl><p class="paper-note">UMLS 2023AA; SNOMED CT US subset (1.75M triplets). Top-20 UMLS relations + METIS partitioning; entity-prediction adapter training; evaluated on BioASQ-7b / PubMedQA / MedNLI / HoC.</p></li>
+<li value="16" class="paper-entry" data-paper-number="16"><div class="paper-top"><div class="paper-identity"><h4>InfuserKI</h4><p class="paper-attribution">Tian et al. (EMNLP 2024)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
+</dl><p class="paper-note">UMLS triplets (2.5K &amp; 25K) as domain KG for infuser-guided knowledge integration via adapters. Parameter-level integration; question-style supervision from UMLS triplets.</p></li>
+<li value="18" class="paper-entry" data-paper-number="18"><div class="paper-top"><div class="paper-identity"><h4>UMLS-KGI-BERT</h4><p class="paper-attribution">Mannion et al. (ClinicalNLP 2023)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>string match</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">UMLS 2022AB; restricted to human-biology/medicine semantic types (2.53M CUIs). Pretraining via entity prediction, link prediction, triple classification; downstream clinical NER. Cited in §5.1 as the sole reviewed system that evaluates linker performance directly.</p></li>
+<li value="22" class="paper-entry" data-paper-number="22"><div class="paper-top"><div class="paper-identity"><h4>Selective UMLS Knowledge Infusion</h4><p class="paper-attribution">Park et al. (Scientific Reports, 2024)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY · SRDEF</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
+</dl><p class="paper-note">Extends MoP by comparing METIS partitions vs. semantic-group partitioning of UMLS for adapter pretraining; evaluated on BioASQ7b / PubMedQA / MedQA. (SRDEF is part of the UMLS Semantic Network, not the Metathesaurus.)</p></li>
+<li value="23" class="paper-entry" data-paper-number="23"><div class="paper-top"><div class="paper-identity"><h4>Mixture-of-Partitions (MoP)</h4><p class="paper-attribution">Meng et al. (EMNLP 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2021.emnlp-main.383/">Paper<span aria-hidden="true"> ↗</span></a>
 <a href="https://github.com/cambridgeltl/mop">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>UMLS subset</li><li>NEL: not specified</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
-<p class="paper-note">SNOMED CT US subset. UMLS partitioned via METIS into smaller subgraphs; adapter pretraining per partition. Global KG partitions, not per-question retrieval. Evaluated on PubMedQA / BioASQ7b / BioASQ8b / MedQA / MedNLI.</p></li>
-<li class="paper-entry" data-paper-number="24"><h3>UmlsBERT</h3><p class="paper-attribution">Michalopoulos et al. (NAACL 2021)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · UMLS subset</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
+</dl><p class="paper-note">SNOMED CT US subset. UMLS partitioned via METIS into smaller subgraphs; adapter pretraining per partition. Global KG partitions, not per-question retrieval. Evaluated on PubMedQA / BioASQ7b / BioASQ8b / MedQA / MedNLI.</p></li>
+<li value="24" class="paper-entry" data-paper-number="24"><div class="paper-top"><div class="paper-identity"><h4>UmlsBERT</h4><p class="paper-attribution">Michalopoulos et al. (NAACL 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2021.naacl-main.139/">Paper<span aria-hidden="true"> ↗</span></a>
 <a href="https://github.com/gmichalo/UmlsBERT">Code<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRSTY</li><li>NEL: cTAKES</li><li>No per-question retrieval</li><li>Parameter encoding</li></ul>
-<p class="paper-note">UMLS 2020AA. Pretraining with UMLS Metathesaurus: CUI-shared term linking + semantic type embeddings. Evaluated on MedNLI + clinical NER.</p></li>
-<li class="paper-entry" data-paper-number="25"><h3>DAKI</h3><p class="paper-attribution">Lu et al. (Findings of EMNLP 2021)</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRSTY</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>cTAKES</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
+</dl><p class="paper-note">UMLS 2020AA. Pretraining with UMLS Metathesaurus: CUI-shared term linking + semantic type embeddings. Evaluated on MedNLI + clinical NER.</p></li>
+<li value="25" class="paper-entry" data-paper-number="25"><div class="paper-top"><div class="paper-identity"><h4>DAKI</h4><p class="paper-attribution">Lu et al. (Findings of EMNLP 2021)</p></div>
 <nav class="paper-links" aria-label="Paper resources">
 <a href="https://aclanthology.org/2021.findings-emnlp.325/">Paper<span aria-hidden="true"> ↗</span></a>
 </nav>
-<ul class="paper-tags" aria-label="Annotation tags"><li>MRCONSO</li><li>MRREL</li><li>NEL: not specified</li><li>K=1</li><li>Budget: unspecified</li><li>Parameter encoding</li></ul>
-<p class="paper-note">UMLS Metathesaurus graph (1.77M triples) as one of three knowledge sources, encoded through a dedicated knowledge adapter and combined via an attention-based controller. UMLS adapter pretrained on graph triples; evaluated on MEDIQA-2019, TRECQA-2017, MedNLI + NER.</p></li>
-</ol></details>
-<details class="review-detail"><summary>Search, eligibility and annotation <span>How the review was assembled</span></summary>
-<div class="detail-content"><p>The Scopus search was run on <strong>January 15, 2026</strong>, targeting English-language conference and journal work published during 2020–2025. Two researchers annotated the screened literature independently; disagreements were resolved through discussion.</p>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">UMLS Metathesaurus graph (1.77M triples) as one of three knowledge sources, encoded through a dedicated knowledge adapter and combined via an attention-based controller. UMLS adapter pretrained on graph triples; evaluated on MEDIQA-2019, TRECQA-2017, MedNLI + NER.</p></li>
+</ol></div>
+<div class="literature-group" id="review-unreported"><header class="literature-heading"><h3><span>IV.</span> Mechanism not specified</h3><p>No primary mechanism reported · 4 systems</p></header><ol class="paper-list" role="list">
+<li value="2" class="paper-entry" data-paper-number="2"><div class="paper-top"><div class="paper-identity"><h4>MediSage</h4><p class="paper-attribution">Choudhury et al. (WWW 2023)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO · MRREL · MRSTY</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>string match</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=3 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">Conversational clinical decision-support over EHR + clinical KG; BioLinkBERT NEL fallback. Not centered on UMLS as core source.</p></li>
+<li value="17" class="paper-entry" data-paper-number="17"><div class="paper-top"><div class="paper-identity"><h4>HiPrompt</h4><p class="paper-attribution">Lu et al. (SIGIR 2023)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>not specified</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
+</dl><p class="paper-note">Biomedical KG–to-hierarchy alignment via hierarchy-oriented few-shot prompting; retrieval + re-ranking for entity–term alignment. <em>Borderline case retained for §5 discussion of adjacent settings.</em></p></li>
+<li value="19" class="paper-entry" data-paper-number="19"><div class="paper-top"><div class="paper-identity"><h4>Healthcare QA Assistant</h4><p class="paper-attribution">Sukhwal et al. (ICIS 2022)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>K=1 · Budget: unspecified</dd></div>
+</dl><p class="paper-note">Disease-specific KG (7.17K CUIs) from PubMed abstracts + OpenIE; CUIs + synonym merging; KG-only vs. LM-only vs. joint reasoning comparison on a skin-eczema QA assistant.</p></li>
+<li value="20" class="paper-entry" data-paper-number="20"><div class="paper-top"><div class="paper-identity"><h4>Chest ImaGenome</h4><p class="paper-attribution">Wu et al. (NeurIPS 2021)</p></div>
+</div><dl class="paper-pipeline">
+<div class="pipeline-source"><dt>UMLS</dt><dd>MRCONSO</dd></div>
+<div class="pipeline-nel"><dt>Linker</dt><dd>scispaCy</dd></div>
+<div class="pipeline-ksr"><dt>Retrieval</dt><dd>No per-question retrieval</dd></div>
+</dl><p class="paper-note">Anatomy-centered scene graphs from radiology reports; UMLS as indexing/normalization layer only (scene-graph nodes → CUIs). <em>Retained for adjacent-settings discussion.</em></p></li>
+</ol></div>
+<div class="review-method" id="review-protocol"><h3>Review protocol</h3>
+<p>The Scopus search was run on <strong>January 15, 2026</strong>, targeting English-language conference and journal work published during 2020–2025. Two researchers annotated the screened literature independently; disagreements were resolved through discussion.</p>
 <ul><li>UMLS must play a substantive technical role.</li><li>The task must be medical question answering or a related reasoning setting.</li><li>The method must support comparison across knowledge grounding, retrieval and injection.</li></ul>
 <p>Fields are recovered from the paper and supplement, then released code, then code from cited systems. Unavailable fields remain explicitly unreported.</p>
-<h3>Search query</h3><pre><code>ABS (
+<h4>Search query</h4><pre><code>ABS (
     (&quot;*knowledge graph*&quot;)
     OR (&quot;knowledge base*&quot;)
     OR (&quot;structured&quot;)
@@ -455,11 +550,11 @@ AND (
 
 AND LIMIT-TO ( SUBJAREA, &quot;COMP&quot; )
 AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
-<h3 class="subsection">Benchmark coverage</h3>
+<h4 class="subsection">Benchmark coverage</h4>
 <p><strong>Closed-form:</strong> PubMedQA, BioASQ, MedQA (USMLE) and MedMCQA.<br><strong>Open-form:</strong> MedicationQA, COVID-QA and ExpertQA.</p>
-</div></details>
-<details class="review-detail"><summary>Screening and exclusion record <span>Repository notes on 20 screened papers</span></summary><div class="detail-content">
-<h3>UMLS Not Methodologically Used</h3><ul class="excluded-list">
+</div>
+<div class="review-method" id="review-exclusions"><h3>Screening record</h3><p>The repository records 20 screened papers outside the analytical corpus, grouped by their exclusion rationale.</p>
+<h4>UMLS Not Methodologically Used</h4><ul class="excluded-list">
 <li><strong>Gupta et al. (2024) — Cancer CPG QA using LLMs</strong><p>Method centers on NCCN guideline KG, not UMLS. UMLS appears only as background.</p></li>
 <li><strong>Aasman (2024) — Neuro-Symbolic Document Matching</strong><p>UMLS mentioned as example healthcare taxonomy; task is document matching.</p></li>
 <li><strong>Chen et al. (2023) — RoBERT-Agr</strong><p>No UMLS involvement; agricultural domain.</p></li>
@@ -475,7 +570,7 @@ AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
 <li><strong>Agrawal et al. (2024) — Can KGs Reduce Hallucinations in LLMs (Survey)</strong><p>Survey of KG-augmented LLM methods; not a primary methodology paper.</p></li>
 <li><strong>Cai et al. (2024) — Bringing Two Worlds Together (Survey)</strong><p>Broad survey of LLM-KG integration.</p></li>
 </ul>
-<h3>Task Outside Scope (UMLS Used, but Not for MQA/Reasoning)</h3><ul class="excluded-list">
+<h4>Task Outside Scope (UMLS Used, but Not for MQA/Reasoning)</h4><ul class="excluded-list">
 <li><strong>Adjei-Frempah et al. (2024) — KB2Bench</strong><p>UMLS used to generate benchmark QA pairs, not to answer questions. Benchmark construction is outside our scope.</p></li>
 <li><strong>Luo et al. (2023) — Systematic Assessment of Factual Knowledge in LLMs</strong><p>Generates factual questions from KGs to test LLMs; benchmark-style evaluation, not UMLS-based MQA methodology.</p></li>
 <li><strong>Sakhovskiy et al. (2023) — Graph-Enriched Biomedical LMs (Research Proposal)</strong><p>Research proposal without concrete implementation.</p></li>
@@ -483,7 +578,7 @@ AND LIMIT-TO ( LANGUAGE, &quot;English&quot; )</code></pre>
 <li><strong>Jiang et al. (2023) — Text-Augmented Open KGC</strong><p>Uses UMLS-PubMed as KGC benchmark; task is KG completion, not QA.</p></li>
 <li><strong>He et al. (2020) — BERT-MK</strong><p>UMLS-central but downstream tasks are entity typing and relation classification, not MQA/reasoning.</p></li>
 </ul>
-</div></details>
+</div>
 <p class="table-note">Corrections or a missing paper? <a href="https://github.com/disi-unibo-nlp/are-we-done-with-umls/issues">Open an issue in the research repository.</a></p>
 </section>
 

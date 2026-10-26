@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Skeletons in the UMLS closet: the game of "Are We Done with UMLS Injection?"</title>
+<meta name="description" content="An 8-bit game about our study of UMLS knowledge in language models for medical question answering: open the literature closet and catch nine skeletons.">
+<meta name="theme-color" content="#0b0e1d">
+<meta property="og:title" content="Skeletons in the UMLS closet">
+<meta property="og:description" content="An 8-bit tour of our study on how UMLS reaches language models for medical question answering.">
+<meta property="og:image" content="assets/og-game.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="assets/visuals.css">
+<link rel="preload" href="assets/fonts/Fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/PressStart2P-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: "Fraunces"; src: url("assets/fonts/Fraunces.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Press Start 2P"; src: url("assets/fonts/PressStart2P-Regular.woff2") format("woff2"); font-display: swap; }
+:root {
+  --ink: #070914; --bar: #0b0e1d; --panel: #10152d; --panel-2: #182046;
+  --bone: #f1ece0; --dim: #a7adc8; --tape: #f5cf1d; --teal: #4fd1c5; --red: #ef6461;
+  --serif: "Fraunces", Georgia, serif; --pixel: "Press Start 2P", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--ink); color: var(--bone); }
+body { font-family: var(--serif); font-variation-settings: "SOFT" 30, "WONK" 0; overflow: hidden; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; }
+button, a { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--tape); outline-offset: 2px; }
+
+/* ---------- paper bar ---------- */
+#bar { position: relative; z-index: 20; flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 11px 20px; background: var(--bar); border-bottom: 1px solid #252c56; box-shadow: 0 1px 0 rgba(0, 0, 0, .5); }
+.blocks { display: flex; gap: 3px; text-decoration: none; }
+.blocks svg { width: 24px; height: 24px; display: block; }
+#bar h1 { margin: 0; font-weight: 600; font-size: 19px; line-height: 1.2; letter-spacing: -0.005em; font-variation-settings: "opsz" 24, "SOFT" 30; }
+.byline { margin: 3px 0 0; font-size: 14px; color: var(--dim); }
+.byline a { color: var(--dim); text-decoration: none; }
+.byline a:hover { color: var(--bone); }
+.actions { display: flex; gap: 6px; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: 7px; font-family: var(--serif); font-weight: 600; font-size: 14px; line-height: 1; padding: 8px 11px; color: var(--bone); background: transparent; border: 1px solid rgba(241, 236, 224, .35); cursor: pointer; text-decoration: none; white-space: nowrap; }
+.btn:hover:not([aria-disabled="true"]) { border-color: var(--bone); background: rgba(241, 236, 224, .08); }
+.btn[aria-disabled="true"] { opacity: .45; cursor: default; }
+.btn svg { width: 14px; height: 14px; }
+.btn.primary { background: var(--tape); color: var(--ink); border-color: var(--tape); }
+.btn.primary:hover { background: #ffe25a; }
+#soundBtn[aria-pressed="false"] .on, #soundBtn[aria-pressed="true"] .off { display: none; }
+.touch-only { display: none !important; } html.touch .touch-only { display: inline-flex !important; }
+
+/* ---------- stage ---------- */
+#app { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+#stage { position: relative; overflow: hidden; background: #121733; --u: 2px; box-shadow: 0 0 0 1px #1d2448; }
+#game { width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+.hud { position: absolute; z-index: 3; font-size: clamp(12px, calc(var(--u) * 5.4), 16px); }
+#objective { left: 2%; top: 3%; max-width: 64%; background: rgba(10, 13, 30, .88); border: 1px solid rgba(241, 236, 224, .3); padding: .45em .75em; line-height: 1.25; }
+#objective b { font-family: var(--pixel); font-weight: 400; font-size: .62em; color: var(--tape); margin-right: .7em; vertical-align: .12em; }
+#objective[hidden], #caseBtn[hidden] { display: none; }
+#caseBtn { right: 2%; top: 3%; font-size: clamp(12px, calc(var(--u) * 5.4), 16px); background: rgba(10, 13, 30, .88); }
+#caseBtn .n { font-family: var(--pixel); font-size: .7em; color: var(--tape); }
+
+/* dialogue box (story) */
+#dlg { position: absolute; z-index: 6; left: 3%; right: 3%; top: 4.5%; background: rgba(12, 16, 36, .96); border: 2px solid var(--bone); box-shadow: inset 0 0 0 3px var(--ink), 5px 5px 0 var(--ink); padding: 1.1em 1.3em .8em; font-size: clamp(14px, calc(var(--u) * 7), 21px); line-height: 1.38; }
+#dlg[hidden] { display: none; }
+#dlg .who { position: absolute; left: 1em; top: -1em; font-family: var(--pixel); font-size: .55em; background: var(--tape); color: var(--ink); padding: .55em .8em; }
+#dlg p { margin: 0; min-height: 2.8em; max-width: 72ch; }
+#dlg .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: .5em; }
+#dlg .next { font-family: var(--pixel); font-size: .52em; color: var(--teal); }
+#dlg .next.blink { animation: blink 1s steps(2) infinite; }
+#dlg .skip { font-size: .72em; padding: .45em .8em; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* story cards */
+#scard { position: absolute; z-index: 5; left: 50%; top: 36%; transform: translateX(-50%); width: min(90%, 900px); max-height: 52%; overflow: auto; background: #fbfaf6; color: #1b1f3b; border: 2px solid var(--ink); border-radius: 6px; box-shadow: 6px 6px 0 rgba(7, 9, 20, .6); padding: 1.1em 1.4em 1.2em; font-size: clamp(11.5px, calc(var(--u) * 5.3), 16px); line-height: 1.45; }
+#scard[hidden] { display: none; }
+#scard h3 { margin: 0 0 1em; font-family: var(--pixel); font-weight: 400; font-size: .6em; line-height: 1.6; color: #6b5a2a; letter-spacing: .02em; }
+#scard .q { font-weight: 600; margin: 0 0 .8em; font-size: 1.05em; line-height: 1.45; }
+#scard .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5em .8em; }
+#scard .opt { display: flex; gap: .7em; align-items: baseline; border: 1px solid #c9ccdb; border-radius: 4px; padding: .45em .7em; background: #fff; }
+#scard .opt b { font-family: var(--pixel); font-weight: 400; font-size: .6em; color: #5d6280; }
+#scard .opt.right { background: #dcf1e8; border-color: #23835f; }
+#scard .muted { color: #5d6280; margin: .9em 0 0; }
+#scard .uvp { border: 0; }
+#scard .uvp-side { display: none; }
+#scard .uvp-body { grid-template-columns: 1fr; }
+#scard .uvp-stage { border: 0; padding: .9em .2em 0; min-height: 0; }
+#scard .uvp-tabs { border-radius: 6px; }
+#scard .uvp-graph, #scard .uvu-graph { max-height: calc(var(--u) * 58); }
+#scard .uvp-text { margin-bottom: .35em; }
+#scard .uvp-opts { margin-bottom: .5em; }
+#scard .uvp-prompt { font-size: .74em; padding: .8em .9em; }
+#scard .uvp-answer { padding: .6em 0; }
+#scard .uvu-db { gap: .6em; margin-bottom: .6em; }
+#scard .uvu-src { padding: .6em .7em; }
+#scard .uvu-stats b { font-size: 1.35em; }
+#scard .uvu-rows { display: grid; grid-template-columns: 1fr 1fr; gap: .2em 1.2em; }
+#scard .uvu-rows .uvt { font-size: .76em; }
+#scard .uvu-rows .uvu-foot { grid-column: 1 / -1; margin-top: 0; }
+/* skeleton cards (light, for reading) */
+#card { position: absolute; z-index: 7; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(86%, 860px); max-height: 92%; overflow: auto; background: #fbfaf6; color: #1b1f3b; border: 2px solid var(--ink); border-radius: 6px; box-shadow: 7px 7px 0 rgba(7, 9, 20, .65); padding: 1.3em 1.6em 1.1em; font-size: clamp(13px, calc(var(--u) * 6), 18px); line-height: 1.5; }
+#card[hidden] { display: none; }
+#card .kicker { font-family: var(--pixel); font-size: .52em; line-height: 1.6; color: #6b5a2a; margin: 0 0 1.1em; }
+#card h2 { margin: 0 0 .7em; font-weight: 650; font-size: 1.34em; line-height: 1.22; font-variation-settings: "opsz" 36; }
+#card p { margin: 0 0 .8em; max-width: 70ch; }
+#card .why { border-left: 4px solid #c9a227; padding: .1em 0 .1em .9em; font-weight: 600; }
+#card .ref { color: #5d6280; font-size: .85em; }
+#card .ref a { color: #1f6f8b; }
+#card .vis { margin: .2em 0 1.1em; padding: 1em 1.1em .5em; background: #fff; border: 1px solid #dcdfea; border-radius: 6px; font-size: .9em; }
+#card .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 1em; flex-wrap: wrap; }
+#card .hint { font-family: var(--pixel); font-size: .48em; color: #5d6280; }
+#card .btn { color: #1b1f3b; border-color: #1b1f3b; }
+#card .btn.primary { background: #1b1f3b; color: #fbfaf6; }
+#card .btn.primary:hover { background: #2c335f; }
+.choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em; margin: .5em 0 .3em; }
+.choice { text-align: left; font-family: var(--serif); font-size: 1em; line-height: 1.3; padding: .7em .8em; color: #1b1f3b; background: #fff; border: 2px solid #c9ccdb; border-radius: 6px; cursor: pointer; }
+.choice:hover, .choice.sel { border-color: #1b1f3b; }
+.choice .k { font-family: var(--pixel); font-size: .52em; color: #6b5a2a; margin-right: .6em; vertical-align: .15em; }
+.choice.on { background: #e3eefb; border-color: #2f74c9; }
+.choice.right { background: #dcf1e8; border-color: #23835f; }
+.choice.wrong { background: #f9e1e8; border-color: #c8456c; }
+.choice small { display: block; color: #5d6280; font-size: .8em; margin-top: .2em; }
+.choice .use { display: block; margin-top: .45em; font-weight: 700; color: #1b1f3b; }
+.feedback { min-height: 1.5em; margin: .7em 0 0; color: #23835f; font-weight: 600; }
+.feedback.bad { color: #b03a5b; }
+.tokens { display: flex; flex-wrap: wrap; gap: .4em; margin: .6em 0; }
+.tok { font-family: var(--serif); font-size: 1em; padding: .35em .6em; background: #fff; color: #1b1f3b; border: 2px solid #c9ccdb; border-radius: 4px; cursor: pointer; }
+.tok:hover, .tok.sel { border-color: #1b1f3b; }
+.tok.t-key { background: #e3eefb; border-color: #2f74c9; color: #1b1f3b; font-weight: 650; }
+.tok.t-generic { background: #fcecd9; border-color: #d97a14; color: #1b1f3b; }
+.tok.t-none { background: #f9e1e8; border-color: #c8456c; color: #1b1f3b; }
+.legend { display: flex; gap: 1.2em; flex-wrap: wrap; font-size: .82em; color: #5d6280; margin: .2em 0 0; }
+.legend i { display: inline-block; width: .8em; height: .8em; border-radius: 2px; margin-right: .35em; vertical-align: -.05em; border: 2px solid; }
+
+/* title screen */
+.overlay { position: absolute; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; text-align: center; padding: 3% 5%; }
+.overlay[hidden] { display: none; }
+#title { background: #0b0e1f; }
+#title .inner { max-width: 860px; }
+.logo { margin: 0; font-family: var(--pixel); font-weight: 400; line-height: 1.25; }
+.logo .pre { display: block; font-size: clamp(10px, calc(var(--u) * 5.5), 22px); color: var(--teal); margin-bottom: .55em; letter-spacing: .04em; }
+.logo .main { display: block; font-size: clamp(22px, calc(var(--u) * 15), 60px); color: var(--bone);
+  text-shadow: 3px 0 0 var(--ink), -3px 0 0 var(--ink), 0 3px 0 var(--ink), 0 -3px 0 var(--ink), 6px 6px 0 #c9a227, 9px 9px 0 var(--ink); }
+.tagline { margin: 1.1em auto 1.5em; max-width: 46ch; font-size: clamp(14px, calc(var(--u) * 6.6), 21px); line-height: 1.4; color: var(--bone); }
+.press { font-family: var(--pixel); font-size: clamp(10px, calc(var(--u) * 4.6), 16px); padding: 1em 1.4em; background: var(--tape); color: var(--ink); border: 0; box-shadow: 0 5px 0 #8f7410, 5px 9px 0 var(--ink); cursor: pointer; }
+.press:active { transform: translateY(3px); box-shadow: 0 2px 0 #8f7410, 5px 6px 0 var(--ink); }
+.press .caret { animation: blink 1s steps(2) infinite; }
+.controls { display: flex; justify-content: center; gap: 2.2em; flex-wrap: wrap; margin: 1.8em 0 1.2em; font-size: clamp(13px, calc(var(--u) * 5.6), 17px); color: var(--dim); }
+.ctrl { display: inline-flex; align-items: center; gap: .5em; }
+.key { font-family: var(--pixel); font-size: .62em; min-width: 2.6em; padding: .7em .6em .6em; color: var(--bone); background: var(--panel-2); border: 2px solid var(--bone); box-shadow: 0 3px 0 var(--bone); line-height: 1; }
+.alt { font-size: clamp(13px, calc(var(--u) * 5.4), 16px); color: var(--dim); }
+.alt a { color: var(--bone); }
+.keys-touch { display: none !important; } html.touch .keys-touch { display: inline-flex !important; } html.touch .keys-desk { display: none !important; }
+
+/* ending */
+#ending { background: rgba(7, 9, 20, .9); align-items: center; }
+#ending .inner { max-width: 940px; max-height: 100%; overflow: auto; background: var(--panel); border: 2px solid var(--bone); box-shadow: inset 0 0 0 3px var(--ink), 7px 7px 0 var(--ink); padding: 1.1em 1.5em; text-align: left; font-size: clamp(13px, calc(var(--u) * 5.5), 16.5px); line-height: 1.38; }
+#ending h2 { margin: 0 0 .5em; font-size: 1.5em; line-height: 1.2; font-weight: 650; }
+#ending .kicker { font-family: var(--pixel); font-size: .55em; color: var(--tape); margin: 0 0 .8em; }
+#ending ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35em 1.4em; padding: 0; margin: .4em 0 .9em; list-style: none; counter-reset: c; }
+#ending li { counter-increment: c; display: grid; grid-template-columns: 1.6em 1fr; gap: .4em; }
+#ending li::before { content: counter(c); font-family: var(--pixel); font-size: .6em; color: var(--tape); padding-top: .45em; }
+#ending li strong { display: block; }
+#ending li span { color: var(--dim); font-size: .85em; line-height: 1.25; }
+#ending .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* touch controls */
+#touch { display: none; } html.touch #touch { display: block; }
+#touch button { position: absolute; z-index: 4; bottom: 4%; width: 9.5%; aspect-ratio: 1; border: 2px solid var(--bone); background: rgba(16, 21, 45, .6); color: var(--bone); font-family: var(--pixel); font-size: clamp(11px, calc(var(--u) * 5.4), 20px); touch-action: none; user-select: none; -webkit-user-select: none; }
+#tLeft { left: 2%; } #tRight { left: 12.5%; }
+#stage.nowalk #tLeft, #stage.nowalk #tRight { display: none; }
+#tA { right: 2.5%; width: 10.5% !important; border-radius: 50%; background: rgba(239, 100, 97, .65) !important; }
+#touch button.on { background: rgba(245, 207, 29, .55); }
+
+/* rotate prompt */
+#rotate { position: absolute; inset: 0; z-index: 15; background: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 18px; padding: 24px; font-size: 19px; }
+#rotate[hidden] { display: none; }
+#rotate svg { width: 84px; height: 84px; animation: tilt 2.4s steps(6) infinite; }
+@keyframes tilt { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+
+/* dialogs */
+dialog { background: var(--panel); color: var(--bone); border: 2px solid var(--bone); box-shadow: 7px 7px 0 var(--ink); padding: 22px 26px; max-width: min(820px, 94vw); max-height: 88vh; font-size: 17px; line-height: 1.45; }
+dialog::backdrop { background: rgba(4, 5, 12, .75); }
+dialog h2 { margin: 0 0 14px; font-weight: 650; font-size: 22px; }
+dialog .close { float: right; margin: -4px -6px 0 14px; }
+dialog pre { background: var(--ink); border: 1px solid #2a3260; padding: 12px; overflow: auto; font-size: 14px; line-height: 1.35; white-space: pre; }
+dialog a { color: var(--teal); }
+.case { border-top: 1px solid #2a3260; padding: 12px 0; display: grid; grid-template-columns: 8.5em 1fr; gap: 14px; }
+.case .stamp b { font-family: var(--pixel); font-weight: 400; font-size: 13px; color: var(--tape); line-height: 1.4; }
+.case.locked { opacity: .55; }
+.case h3 { margin: 0 0 4px; font-size: 17px; }
+.case p { margin: 0 0 6px; }
+
+@media (max-width: 1000px) { #bar h1 { font-size: 16px; } .btn .lbl { display: none; } }
+@media (max-width: 760px), (max-height: 460px) {
+  #bar { padding: 6px 12px 9px; gap: 10px; }
+  #bar h1 { font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .byline { display: none; }
+  .blocks svg { width: 19px; height: 19px; }
+  .btn { font-size: 13px; padding: 7px 9px; }
+  #paperBtn[aria-disabled="true"] { display: none; }
+  #ending ol { grid-template-columns: repeat(2, 1fr); }
+  .choices { grid-template-columns: 1fr; }
+  #scard .opts, #scard .stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (orientation: portrait) and (max-width: 700px) {
+  #bar { grid-template-columns: auto 1fr; padding: 16px 16px 18px; }
+  #bar h1 { font-size: 17px; -webkit-line-clamp: unset; display: block; }
+  .byline { display: block; }
+  .actions { grid-column: 1 / -1; flex-wrap: wrap; }
+  .btn .lbl { display: inline; }
+}
+@media (prefers-reduced-motion: reduce) { .press .caret, #dlg .next.blink { animation: none; } #rotate svg { animation: none; } }
+</style>
+</head>
+<body>
+
+<header id="bar">
+  <a class="blocks" id="blocks" href="index.html" aria-label="Classic page of the paper"></a>
+  <div>
+    <h1 id="paperTitle"></h1>
+    <p class="byline" id="byline"></p>
+  </div>
+  <nav class="actions" aria-label="Paper">
+    <a class="btn" id="paperBtn" href="#">Paper</a>
+    <a class="btn" id="codeBtn" href="#">Code</a>
+    <button class="btn" data-open="citeDlg">Cite</button>
+    <a class="btn" href="index.html">Main page</a>
+    <button class="btn" id="soundBtn" aria-pressed="false" aria-label="Sound">
+      <svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 3h2v2H0zM2 2h1v4H2zM3 1h1v6H3z"/><path class="on" fill="currentColor" d="M5 3h1v2H5zM6 2h1v4H6z"/><path class="off" fill="currentColor" d="M5 2h1v1H5zM7 2h1v1H7zM6 3h1v2H6zM5 5h1v1H5zM7 5h1v1H7z"/></svg><span class="lbl">Sound</span>
+    </button>
+    <button class="btn touch-only" id="fsBtn" aria-label="Full screen"><svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h3v1H1v2H0zM5 0h3v3H7V1H5zM0 5h1v2h2v1H0zM7 5h1v3H5V7h2z"/></svg></button>
+  </nav>
+</header>
+
+<main id="app">
+  <div id="stage">
+    <canvas id="game" width="384" height="216" role="img" aria-label="Pixel-art scene of the game"></canvas>
+    <div class="hud" id="objective" hidden aria-live="polite"></div>
+    <button class="hud btn" id="caseBtn" hidden><span>Case file</span> <span class="n" id="caseN">0/9</span></button>
+    <section id="scard" hidden aria-live="polite"></section>
+    <section id="dlg" hidden aria-live="polite">
+      <span class="who" id="dlgWho"></span>
+      <p id="dlgText"></p>
+      <div class="foot"><button class="btn skip" id="skipBtn">Skip the story</button><span class="next" id="dlgNext"></span></div>
+    </section>
+    <section id="card" hidden role="dialog" aria-modal="false" aria-labelledby="cardTitle"></section>
+    <div id="touch">
+      <button id="tLeft" aria-label="Walk left">&#9664;</button>
+      <button id="tRight" aria-label="Walk right">&#9654;</button>
+      <button id="tA" aria-label="Action">A</button>
+    </div>
+    <div class="overlay" id="title">
+      <div class="inner">
+        <h2 class="logo"><span class="pre">Skeletons in the</span><span class="main">UMLS closet</span></h2>
+        <p class="tagline">An 8-bit story about a study on medical AI. Learn how language models use medical knowledge, then catch the nine skeletons hiding in the literature.</p>
+        <button class="press" id="startBtn"><span class="keys-desk">Press Space to start</span><span class="keys-touch">Tap to start</span><span class="caret">_</span></button>
+        <div class="controls">
+          <span class="ctrl keys-desk"><span class="key">&larr;</span><span class="key">&rarr;</span> Walk</span>
+          <span class="ctrl keys-desk"><span class="key">Space</span> Talk, open, catch</span>
+          <span class="ctrl keys-desk"><span class="key">Esc</span> Skip the story</span>
+          <span class="ctrl keys-touch"><span class="key">&#9664;</span><span class="key">&#9654;</span> Walk</span>
+          <span class="ctrl keys-touch"><span class="key">A</span> Talk, open, catch</span>
+        </div>
+        <p class="alt">About ten minutes, sound is off by default. Prefer reading? <a href="index.html">Open the main page</a>.</p>
+      </div>
+    </div>
+    <div class="overlay" id="ending" hidden>
+      <div class="inner">
+        <p class="kicker">Case file complete: nine of nine</p>
+        <h2 id="verdictTitle"></h2>
+        <p id="verdictText"></p>
+        <p>Report these nine choices with every UMLS result, so that the next gain can be traced to UMLS:</p>
+        <ol id="checklist"></ol>
+        <div class="row">
+          <a class="btn primary" href="index.html">Open the main page</a>
+          <button class="btn" data-open="citeDlg">Cite the paper</button>
+          <button class="btn" data-open="caseDlg">Open the case file</button>
+          <button class="btn" id="replayBtn">Play again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="rotate" hidden>
+    <svg viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="4" y="1" width="8" height="14" fill="#f1ece0"/><rect x="5" y="3" width="6" height="9" fill="#182046"/><rect x="7" y="13" width="2" height="1" fill="#182046"/></svg>
+    <p>Turn your phone sideways to play.</p>
+    <a class="btn primary" href="index.html">Open the main page instead</a>
+  </div>
+</main>
+
+<dialog id="citeDlg" aria-labelledby="citeH">
+  <button class="btn close" data-close>Close</button>
+  <h2 id="citeH">Cite this paper</h2>
+  <pre id="bibtex"></pre>
+  <button class="btn primary" id="copyBib">Copy BibTeX</button> <span id="copyMsg" aria-live="polite"></span>
+</dialog>
+<dialog id="caseDlg" aria-labelledby="caseH">
+  <button class="btn close" data-close>Close</button>
+  <h2 id="caseH">Case file</h2>
+  <div id="caseList"></div>
+</dialog>
+
+<noscript><p style="padding:24px">The game needs JavaScript. The <a style="color:#4fd1c5" href="index.html">classic page</a> works without it.</p></noscript>
+
+<script src="assets/content.js"></script>
+<script src="assets/visuals.js"></script>
+<script>
+(() => {
+'use strict';
+const { PAPER, EXAMPLE, CONCEPT, STORY, SKELS, CHECKLIST, VERDICT, FONT, blockSVG } = window.UMLS;
+const $ = (s) => document.querySelector(s);
+const html = document.documentElement;
+const W = 384, H = 216, GROUND = 186, SCENE = 384, N = SKELS.length;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const stage = $('#stage'), canvas = $('#game'), ctx = canvas.getContext('2d');
+
+/* ---------- static page parts ---------- */
+$('#paperTitle').textContent = PAPER.title;
+$('#byline').innerHTML = PAPER.authors.map(a => a.name).join(', ') + ' &nbsp;<span>University of Bologna</span>';
+$('#blocks').innerHTML = PAPER.authors.map(a => blockSVG(a.letter)).join('');
+$('#codeBtn').href = PAPER.code;
+$('#bibtex').textContent = PAPER.bibtex;
+$('#verdictTitle').textContent = VERDICT.title;
+$('#verdictText').textContent = VERDICT.text;
+$('#checklist').innerHTML = CHECKLIST.map(([t, d]) => `<li><div><strong>${t}</strong><span>${d}</span></div></li>`).join('');
+const paperBtn = $('#paperBtn');
+if (PAPER.pdf) paperBtn.href = PAPER.pdf; else { paperBtn.textContent = 'Paper soon'; paperBtn.setAttribute('aria-disabled', 'true'); paperBtn.addEventListener('click', e => e.preventDefault()); }
+document.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openDlg(b.dataset.open)));
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+function openDlg(id) { if (id === 'caseDlg') renderCase(); const d = document.getElementById(id); if (!d.open) d.showModal(); keys.left = keys.right = false; }
+const dialogOpen = () => !!document.querySelector('dialog[open]');
+$('#copyBib').addEventListener('click', async () => { try { await navigator.clipboard.writeText(PAPER.bibtex); $('#copyMsg').textContent = 'Copied.'; } catch (e) { $('#copyMsg').textContent = 'Select the text and copy it.'; } });
+$('#caseBtn').addEventListener('click', () => openDlg('caseDlg'));
+function renderCase() {
+  $('#caseList').innerHTML = `<p>${SKELS.filter(s => s.caught).length} of ${N} skeletons caught. Their findings are collected here.</p>` + SKELS.map((s, i) => s.caught
+    ? `<article class="case"><div class="stamp"><b>${s.stamp}</b></div><div><h3>${i + 1}. ${s.title}</h3><p>${s.text}</p><p><em>${s.why}</em></p></div></article>`
+    : `<article class="case locked"><div class="stamp"><b>?</b></div><div><h3>${i + 1}. ${s.name}</h3><p>Not caught yet.</p></div></article>`).join('');
+}
+
+/* ---------- sound ---------- */
+let audio = null, soundOn = false;
+const soundBtn = $('#soundBtn');
+soundBtn.addEventListener('click', () => {
+  soundOn = !soundOn;
+  if (soundOn && !audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { soundOn = false; } }
+  if (audio && audio.state === 'suspended') audio.resume();
+  soundBtn.setAttribute('aria-pressed', String(soundOn)); soundBtn.blur(); if (soundOn) sfx.ok();
+});
+function tone(f, d, type = 'square', vol = 0.045, slide = 0) {
+  if (!soundOn || !audio) return;
+  const t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(audio.destination); o.start(t); o.stop(t + d + 0.03);
+}
+function noise(d, vol = 0.05) {
+  if (!soundOn || !audio) return;
+  const len = Math.floor(audio.sampleRate * d), b = audio.createBuffer(1, len, audio.sampleRate), ch = b.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const s = audio.createBufferSource(), g = audio.createGain(); s.buffer = b; g.gain.value = vol; s.connect(g).connect(audio.destination); s.start();
+}
+const seq = (fs, d, gap) => fs.forEach((f, i) => setTimeout(() => tone(f, d), i * gap));
+const sfx = {
+  blip: () => tone(660, 0.03, 'square', 0.025), ok: () => tone(880, 0.07), start: () => seq([523, 659, 784, 1046], 0.09, 80),
+  rattle: () => { for (let i = 0; i < 4; i++) setTimeout(() => noise(0.04, 0.05), i * 70); }, open: () => { noise(0.35, 0.06); tone(150, 0.45, 'sawtooth', 0.035, 0.5); },
+  escape: () => seq([880, 740, 622, 523, 440, 370], 0.06, 50), right: () => seq([659, 880, 1175], 0.08, 70), wrong: () => tone(170, 0.28, 'square', 0.05, 0.6),
+  miss: () => tone(120, 0.14, 'square', 0.05),
+  capture: () => seq([392, 523, 659, 784, 1046], 0.07, 55), fanfare: () => seq([523, 523, 784, 784, 1046, 988, 1046], 0.12, 120),
+};
+
+/* ---------- sprites ---------- */
+function sprite(rows, pal) {
+  const c = document.createElement('canvas'); c.width = rows[0].length; c.height = rows.length; const g = c.getContext('2d');
+  rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const col = pal[r[x]]; if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); } } }); return c;
+}
+const HEAD = ['...hhhh...', '..hhhhhh..', '..hhssss..', '..hssksk..', '...ssss...', '....ss....'];
+const TORSO = ['pp.bbbbb..', 'gpbbbbbbb.', 'ppbbbbbbs.', 'pp.bbbbb..', 'pp.bbbbb..', '...ddddd..'];
+const LEGS_A = ['...dd.dd..', '...dd.dd..', '...dd.dd..', '...oo.oo..'];
+const LEGS_B = ['..dd..dd..', '.dd....dd.', '.d......d.', 'oo......oo'];
+const STYLE = [
+  { h: '#1c1420', s: '#f0c79a', b: '#7b5bc4', d: '#4b3584' }, { h: '#4a2d1a', s: '#e9b98a', b: '#2f9a8c', d: '#1d5f57' },
+  { h: '#6b4423', s: '#f1c79c', b: '#d0a23a', d: '#7d5e17' }, { h: '#b9b4c2', s: '#e8b98f', b: '#c4604a', d: '#733222' },
+];
+const authorSprites = STYLE.map(st => { const pal = { h: st.h, s: st.s, k: '#1a0f22', b: st.b, d: st.d, o: '#101321', p: '#3b3f63', g: '#4fd1c5' }; return [sprite([...HEAD, ...TORSO, ...LEGS_A], pal), sprite([...HEAD, ...TORSO, ...LEGS_B], pal)]; });
+const SK_TOP = ['..bbbbb..', '.bbbbbbb.', '.bkkbkkb.', '.bbbbbbb.', '..bkbkb..', '...bbb...'];
+const SK1 = [...SK_TOP, '.bbbbbbb.', 'b..bkb..b', '...bbb...', '...bkb...', '..bbbbb..', '..b...b..', '..b...b..', '.b.....b.', 'bb.....bb'];
+const SK2 = [...SK_TOP, '.bbbbbbb.', 'b..bkb..b', '...bbb...', '...bkb...', '..bbbbb..', '...b.b...', '...b.b...', '..b...b..', '.bb...bb.'];
+const SK3 = ['b.bbbbb.b', 'bbbbbbbbb', '.bkkbkkb.', '.bbbbbbb.', '..bkbkb..', '...bbb...', '..bbbbb..', '...bkb...', '...bbb...', '...bkb...', '..bbbbb..', '..b...b..', '..b...b..', '..b...b..', '.bb...bb.'];
+const skA = [SK1, SK2, SK3].map(r => sprite(r, { b: '#ece6d6', k: '#1a0f22' }));
+const skB = [SK1, SK2, SK3].map(r => sprite(r, { b: '#d3ece8', k: '#1a0f22' }));
+
+/* ---------- drawing helpers ---------- */
+let camX = 0, time = 0, dt = 0, shake = 0;
+function rect(x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); }
+function text(str, x, y, color, scale = 1, slope = 0) {
+  ctx.fillStyle = color; let cx = Math.round(x);
+  for (const chr of String(str).toUpperCase()) { const g = FONT[chr] || FONT['?']; for (let i = 0; i < 15; i++) if (g[i] === '1') { const px = cx + (i % 3) * scale; ctx.fillRect(px, Math.round(y + Math.floor(i / 3) * scale + (px - x) * slope), scale, scale); } cx += 4 * scale; }
+}
+const textW = (s, scale = 1) => s.length * 4 * scale - scale;
+const wx = (x) => Math.round(x - camX);
+function bubble(str, x, y) {
+  const w = textW(str) + 8, bx = Math.round(x - camX - w / 2), by = Math.round(y);
+  rect(bx - 1, by - 1, w + 2, 11, '#070914'); rect(bx, by, w, 9, '#f1ece0'); rect(bx + w / 2 - 2, by + 9, 4, 2, '#f1ece0'); rect(bx + w / 2 - 1, by + 11, 2, 1, '#f1ece0');
+  text(str, bx + 4, by + 2, '#10152d');
+}
+function blit(img, x, y, flip = false, scale = 1) {
+  const X = Math.round(x - camX), Y = Math.round(y);
+  if (!flip && scale === 1) { ctx.drawImage(img, X, Y); return; }
+  ctx.save(); ctx.translate(X + img.width / 2, Y + img.height / 2); ctx.scale(flip ? -scale : scale, scale); ctx.drawImage(img, -img.width / 2, -img.height / 2); ctx.restore();
+}
+function plaque(str, cx, y, bg = '#c9a227', fg = '#2a1f05') {
+  const w = textW(str) + 10, x = Math.round(cx - camX - w / 2);
+  rect(x - 1, y - 1, w + 2, 11, '#070914'); rect(x, y, w, 9, bg); rect(x, y, w, 1, '#ffe38a'); text(str, x + 5, y + 2, fg);
+}
+let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+/* night window view, drawn once */
+const skyline = document.createElement('canvas'); skyline.width = 200; skyline.height = 44;
+(() => {
+  const g = skyline.getContext('2d'); const bands = ['#0d1230', '#141a3e', '#1b2350', '#232c60'];
+  bands.forEach((c, i) => { g.fillStyle = c; g.fillRect(0, i * 11, 200, 11); });
+  g.fillStyle = '#f1ece0'; for (let i = 0; i < 26; i++) g.fillRect(Math.floor(rnd() * 200), Math.floor(rnd() * 22), 1, 1);
+  let x = 0; while (x < 200) { const w = 8 + Math.floor(rnd() * 14), h = 10 + Math.floor(rnd() * 22); g.fillStyle = '#0a0d22'; g.fillRect(x, 44 - h, w, h);
+    g.fillStyle = '#f5cf1d'; for (let yy = 44 - h + 3; yy < 42; yy += 4) for (let xx = x + 2; xx < x + w - 2; xx += 3) if (rnd() < 0.3) g.fillRect(xx, yy, 1, 1); x += w + 1; }
+})();
+
+const WALLS = ['#1c2447', '#22284a', '#1e2a4a', '#24264a', '#1c2c48', '#26284c', '#1e2648', '#232a4e', '#1d2a46', '#252a4a', '#1e2747', '#232749'];
+function drawRooms() {
+  const first = Math.max(0, Math.floor(camX / SCENE)), last = Math.min(11, Math.floor((camX + W) / SCENE));
+  for (let i = first; i <= last; i++) {
+    const x0 = i * SCENE - camX;
+    rect(x0, 0, SCENE, GROUND, WALLS[i]);
+    rect(x0, 0, SCENE, 6, '#151b38'); rect(x0, 6, SCENE, 1, '#2f3866');
+    rect(x0, GROUND - 30, SCENE, 30, '#171d3a'); rect(x0, GROUND - 30, SCENE, 1, '#2f3866'); rect(x0, GROUND - 28, SCENE, 1, '#111632');
+    // windows
+    if ([0, 2, 5, 7, 9, 11].includes(i)) for (const wxp of [26, 300]) {
+      const X = x0 + wxp; rect(X - 2, 62, 62, 52, '#0a0d22'); ctx.drawImage(skyline, Math.floor(((i * 70 + wxp) + camX * 0.15) % 140), 0, 58, 44, Math.round(X), 64, 58, 44);
+      rect(X + 28, 64, 2, 44, '#0a0d22'); rect(X, 85, 58, 2, '#0a0d22'); rect(X - 4, 114, 66, 3, '#2f3866');
+    }
+    // ceiling lamps
+    for (const lx of [110, 270]) { const X = x0 + lx; rect(X, 7, 1, 14, '#0f1330'); rect(X - 7, 21, 15, 4, '#3b4378'); rect(X - 5, 25, 11, 1, '#ffe7a3');
+      ctx.globalAlpha = 0.07; ctx.fillStyle = '#ffe7a3'; ctx.beginPath(); ctx.moveTo(X - 5, 26); ctx.lineTo(X + 6, 26); ctx.lineTo(X + 40, GROUND); ctx.lineTo(X - 40, GROUND); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
+    // door frame between rooms
+    if (i > 0) { rect(x0 - 3, 46, 6, GROUND - 46, '#121735'); rect(x0 - 2, 46, 4, GROUND - 46, '#2a3263'); }
+    drawProps(i, i * SCENE);
+  }
+  // floor
+  rect(0, GROUND, W, H - GROUND, '#2c3152'); rect(0, GROUND, W, 1, '#4a5385');
+  for (let x = -Math.floor(camX % 16); x < W; x += 16) { rect(x, GROUND + 1, 1, H - GROUND, '#262b49'); }
+  rect(0, GROUND + 15, W, 1, '#262b49');
+}
+
+/* props of each room (world x0 = room start) */
+function drawProps(i, x0) {
+  const X = (x) => x0 + x - camX;
+  if (i === 0) { // the lab
+    for (const dx of [40, 200]) {
+      rect(X(dx), GROUND - 22, 70, 3, '#5b4a3a'); rect(X(dx + 3), GROUND - 19, 3, 19, '#3e3226'); rect(X(dx + 64), GROUND - 19, 3, 19, '#3e3226');
+      for (const mx of [8, 38]) { rect(X(dx + mx), GROUND - 40, 22, 16, '#0a0d22'); rect(X(dx + mx + 1), GROUND - 39, 20, 13, '#0f2a2e');
+        for (let l = 0; l < 4; l++) rect(X(dx + mx + 3), GROUND - 37 + l * 3, 6 + ((l * 5 + mx) % 11), 1, l === 1 ? '#f5cf1d' : '#4fd1c5');
+        if (Math.floor(time * 2) % 2) rect(X(dx + mx + 3 + 12), GROUND - 28, 2, 1, '#f1ece0');
+        rect(X(dx + mx + 10), GROUND - 24, 3, 2, '#3b4378'); }
+    }
+    rect(X(132), 92, 60, 40, '#0a0d22'); rect(X(133), 93, 58, 38, '#eef0f6');
+    text('MEDQA', X(138), 97, '#1c2447'); rect(X(138), 105, 30, 1, '#1c2447');
+    for (const [a, b] of [[142, 114], [156, 120], [170, 112], [180, 124]]) rect(X(a), b, 3, 3, '#c4604a');
+    text('A B C D', X(138), 124, '#2f9a8c');
+    rect(X(350), GROUND - 18, 12, 18, '#5b4a3a'); rect(X(348), GROUND - 34, 4, 16, '#2f9a8c'); rect(X(356), GROUND - 38, 4, 20, '#2f9a8c'); rect(X(352), GROUND - 30, 4, 12, '#3fb59f');
+    plaque('MEDICAL NLP LAB', x0 + 192, 46);
+  } else if (i === 1) { // the archive
+    for (const sx of [12, 300]) { rect(X(sx), 58, 68, GROUND - 58, '#3d2a1c'); for (let r = 0; r < 5; r++) { const y = 64 + r * 24; rect(X(sx + 3), y + 18, 62, 3, '#5a3e29');
+      let bx = sx + 4; seed = 100 + r * 7 + sx; while (bx < sx + 62) { const bw = 3 + Math.floor(rnd() * 3), bh = 12 + Math.floor(rnd() * 6), cols = ['#7b5bc4', '#2f9a8c', '#c4604a', '#d0a23a', '#5a6bb0', '#8a3b4f']; rect(X(bx), y + 18 - bh, bw, bh, cols[Math.floor(rnd() * cols.length)]); bx += bw + 1; } } }
+    plaque('THE ARCHIVE', x0 + 192, 46);
+    // wall plaque for the closet
+    const px = CLOSET_X - 64; rect(wx(px), 104, 50, 17, '#070914'); rect(wx(px) + 1, 105, 48, 15, '#d8c79a'); text('LITERATURE', wx(px) + 5, 107, '#2a1f05'); text('CLOSET', wx(px) + 13, 113, '#2a1f05');
+    rect(wx(px) + 46, 112, 8, 1, '#d8c79a'); rect(wx(px) + 52, 111, 1, 3, '#d8c79a');
+    drawCloset();
+  } else if (i >= 2 && i <= 10) {
+    const s = SKELS[i - 2]; plaque(s.room, x0 + 192, 46);
+    const k = i - 2;
+    if (k === 0) { // release shelf
+      rect(X(40), 112, 130, 4, '#5a3e29'); rect(X(40), 152, 130, 4, '#5a3e29');
+      ['20AA', '20AB', '21AB', '22AB', '23AB', '24AB', '25AB'].forEach((lab, j) => { const bx = 44 + (j % 4) * 31, by = j < 4 ? 92 : 132; rect(X(bx), by, 26, 20, ['#5a6bb0', '#7b5bc4', '#2f9a8c', '#c4604a', '#d0a23a', '#8a3b4f', '#3f7f6f'][j]); rect(X(bx + 3), by + 7, 20, 7, '#f1ece0'); text(lab, X(bx + 5), by + 8, '#1c2447'); });
+    } else if (k === 1) { // database room: a cabinet of 23 tables, all closed
+      rect(X(38), 84, 132, 100, '#2a2238'); rect(X(40), 86, 128, 96, '#3b4378');
+      rect(X(40), 86, 128, 11, '#141a3a'); text('METATHESAURUS: 23 TABLES', X(43), 89, '#f1ece0');
+      let n = 0;
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) { if (n >= 23) break; const dx = 44 + c * 20, dy = 100 + r * 20; rect(X(dx), dy, 18, 17, '#525c9a'); rect(X(dx + 2), dy + 3, 14, 4, '#e8e4d8'); rect(X(dx + 7), dy + 11, 4, 2, '#2a2238'); n++; }
+      // a database cylinder icon
+      rect(X(184), 128, 26, 40, '#4fd1c5'); rect(X(184), 124, 26, 5, '#8fe6dc'); rect(X(184), 140, 26, 1, '#2f9a8c'); rect(X(184), 153, 26, 1, '#2f9a8c'); rect(X(184), 167, 26, 2, '#2f9a8c');
+    } else if (k === 2) { // linking bench
+      rect(X(30), GROUND - 22, 150, 3, '#5b4a3a');
+      for (const [mx, lab, n] of [[38, 'SCISPACY', 6], [112, 'METAMAP', 12]]) { rect(X(mx), GROUND - 60, 52, 38, '#3b4378'); rect(X(mx + 4), GROUND - 56, 44, 14, '#0f2a2e'); text(lab, X(mx + 6), GROUND - 52, '#4fd1c5');
+        for (let t = 0; t < n; t++) rect(X(mx + 6 + (t % 6) * 7), GROUND - 36 + Math.floor(t / 6) * 6, 5, 4, t % 3 === 0 ? '#c4604a' : '#d0a23a'); }
+    } else if (k === 3) { // release swap
+      for (const [bx, lab, c] of [[50, '2020AA', '#5a6bb0'], [130, '2021AA', '#2f9a8c']]) { rect(X(bx), 112, 44, 56, c); rect(X(bx + 2), 114, 40, 52, '#0a0d22'); rect(X(bx + 4), 116, 36, 48, c); rect(X(bx + 6), 134, 32, 9, '#f1ece0'); text(lab, X(bx + 10), 136, '#1c2447'); }
+      text('->', X(103), 136, '#f5cf1d', 2);
+    } else if (k === 4) { // exam hall
+      rect(X(36), 90, 140, 50, '#5b4a3a'); rect(X(39), 93, 134, 44, '#1f3b32'); text('WHICH OPTION?', X(46), 98, '#f1ece0'); text('A    B    C    D', X(48), 116, '#f1ece0'); rect(X(46), 125, 120, 1, '#3f6b5a');
+      for (const dx of [40, 110]) { rect(X(dx), GROUND - 16, 40, 3, '#5b4a3a'); rect(X(dx + 4), GROUND - 13, 2, 13, '#3e3226'); rect(X(dx + 34), GROUND - 13, 2, 13, '#3e3226'); rect(X(dx + 12), GROUND - 18, 14, 2, '#f1ece0'); }
+    } else if (k === 5) { // graph room
+      seed = 555; const cx = 110, cy = 128; const nodes = [[cx, cy]];
+      for (let ring = 1; ring <= 3; ring++) { const n = ring * ring * 5; for (let j = 0; j < n; j++) { const a = j / n * Math.PI * 2 + ring, r = ring * 15 + rnd() * 6; nodes.push([cx + Math.cos(a) * r * 1.5, cy + Math.sin(a) * r * 0.75]); } }
+      ctx.strokeStyle = 'rgba(79,209,197,.35)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let j = 1; j < nodes.length; j++) { const p = nodes[Math.max(0, Math.floor((j - 1) / 3))]; ctx.moveTo(X(p[0]) + 0.5, p[1] + 0.5); ctx.lineTo(X(nodes[j][0]) + 0.5, nodes[j][1] + 0.5); } ctx.stroke();
+      nodes.forEach(([nx, ny], j) => rect(X(nx) - 1, ny - 1, 3, 3, j === 0 ? '#f5cf1d' : (j < 6 ? '#f1ece0' : '#4fd1c5')));
+    } else if (k === 6) { // chemistry shelf
+      rect(X(40), GROUND - 22, 140, 3, '#5b4a3a'); rect(X(44), GROUND - 19, 3, 19, '#3e3226'); rect(X(172), GROUND - 19, 3, 19, '#3e3226');
+      for (const [fx, lab, c] of [[56, 'SERINE', '#d3ece8'], [116, 'ETHANOL', '#cfe0ff']]) { rect(X(fx + 8), GROUND - 52, 8, 10, '#9aa3c7'); rect(X(fx), GROUND - 42, 24, 20, '#9aa3c7'); rect(X(fx + 2), GROUND - 36, 20, 14, c);
+        rect(X(fx - 6), GROUND - 64, textW(lab) + 6, 9, '#f1ece0'); text(lab, X(fx - 3), GROUND - 62, '#1c2447');
+        if (!reduceMotion) rect(X(fx + 6 + (Math.floor(time * 3 + fx) % 10)), GROUND - 34 - (Math.floor(time * 6 + fx) % 8), 2, 2, '#ffffff'); }
+    } else if (k === 7) { // training room
+      for (let r = 0; r < 3; r++) { const rx = 36 + r * 34; rect(X(rx), 96, 28, GROUND - 96, '#0f1330'); for (let l = 0; l < 10; l++) { rect(X(rx + 3), 100 + l * 8, 22, 5, '#1d2450'); rect(X(rx + 5 + (l % 3) * 6), 102 + l * 8, 2, 1, Math.sin(time * 6 + l + r * 2) > 0 ? '#4fd1c5' : '#2f3866'); } }
+      rect(X(146), 98, 56, 30, '#0a0d22'); rect(X(148), 100, 52, 26, '#0f2a2e'); text('MEDQA', X(154), 104, '#4fd1c5'); text('38.0%', X(154), 114, '#f5cf1d');
+    } else if (k === 8) { // reading room
+      for (const [mx, c] of [[40, '#7b5bc4'], [90, '#2f9a8c'], [140, '#c4604a']]) { rect(X(mx + 12), GROUND - 26, 4, 26, '#3b4378'); rect(X(mx), GROUND - 54, 30, 28, '#0a0d22'); rect(X(mx + 2), GROUND - 52, 26, 24, '#151d42');
+        rect(X(mx + 8), GROUND - 48, 14, 10, c); rect(X(mx + 11), GROUND - 45, 2, 2, '#f1ece0'); rect(X(mx + 17), GROUND - 45, 2, 2, '#f1ece0'); rect(X(mx + 5), GROUND - 36, 20, 2, '#f1ece0'); rect(X(mx + 5), GROUND - 32, 14, 2, '#a7adc8'); }
+    }
+  } else if (i === 11) { // conference hall
+    plaque('CONFERENCE HALL', x0 + 192, 46);
+    rect(X(58), 70, 180, 96, '#0a0d22'); rect(X(60), 72, 176, 92, '#eef0f6'); text('REPORT WITH EVERY UMLS RESULT', X(90), 78, '#1c2447');
+    ['RELEASE', 'SOURCES', 'METADATA', 'LINKER', 'COVERAGE', 'CONNECTIVITY', 'DEPTH, SIZE', 'PRUNING', 'FALLBACK'].forEach((t, j) => { const cx = 72 + (j % 2) * 84, cy = 92 + Math.floor(j / 2) * 13; rect(X(cx), cy, 5, 5, '#2f9a8c'); text(t, X(cx + 9), cy, '#1c2447'); });
+    for (let c = 0; c < 6; c++) { rect(X(250 + c * 18), GROUND - 12, 12, 2, '#3b4378'); rect(X(252 + c * 18), GROUND - 10, 2, 10, '#3b4378'); rect(X(260 + c * 18), GROUND - 20, 2, 10, '#3b4378'); }
+    // the caught skeletons, catalogued
+    SKELS.forEach((s, j) => { if (!s.caught) return; const sx = x0 + 70 + j * 18; blit(skA[0], sx, GROUND - 15); rect(wx(sx) - 1, GROUND - 1, 11, 1, '#f5cf1d'); });
+  }
+}
+
+/* the literature closet */
+const CLOSET_X = SCENE + 236, CW = 60, CH = 96;
+let closet = { open: 0, rattle: 0, nextRattle: 2.5, eyes: 0 };
+function drawCloset() {
+  const ox = closet.rattle > 0 && !reduceMotion ? (Math.floor(time * 30) % 2 ? 1 : -1) : 0;
+  const X = Math.round(CLOSET_X - camX + ox), T = GROUND - CH;
+  const wood = '#6b4a2c', wood2 = '#4f341d', line = '#1f140a';
+  rect(X - 4, T - 6, CW + 8, 6, line); rect(X - 3, T - 5, CW + 6, 4, '#7d5a37');
+  rect(X, T, CW, CH, line); rect(X + 1, T + 1, CW - 2, CH - 2, wood); rect(X + 2, GROUND - 6, CW - 4, 6, wood2);
+  if (closet.open < 1) {
+    rect(X + 3, T + 4, 26, CH - 12, wood2); rect(X + 31, T + 4, 26, CH - 12, wood2); rect(X + 5, T + 6, 22, CH - 16, wood); rect(X + 33, T + 6, 22, CH - 16, wood);
+    rect(X + 29, T + 4, 2, CH - 12, line); rect(X + 26, T + 50, 2, 4, '#d6a93b'); rect(X + 32, T + 50, 2, 4, '#d6a93b');
+    if (closet.eyes > 0) { rect(X + 29, T + 30, 2, 1, '#f1ece0'); rect(X + 29, T + 34, 2, 1, '#f1ece0'); }
+    // engraved brass label
+    rect(X + 12, T + 10, 36, 17, '#3a2a12'); rect(X + 13, T + 11, 34, 15, '#c9a227'); rect(X + 13, T + 11, 34, 1, '#ffe38a'); rect(X + 13, T + 25, 34, 1, '#8f7410');
+    bigText('UMLS', X + 16, T + 13, '#3a2a12', 1); rect(X + 15, T + 11 + 3, 1, 1, '#8f7410'); rect(X + 44, T + 11 + 3, 1, 1, '#8f7410');
+    drawTape(X - 5, T + 44, CW + 10, 0.07); drawTape(X - 5, T + 68, CW + 10, -0.06);
+  } else {
+    rect(X + 3, T + 4, CW - 6, CH - 12, '#0a0710');
+    rect(X - 8, T + 4, 8, CH - 12, wood2); rect(X - 7, T + 6, 6, CH - 16, wood); rect(X + CW, T + 4, 8, CH - 12, wood2); rect(X + CW + 1, T + 6, 6, CH - 16, wood);
+    rect(X - 12, T + 44, 6, 4, '#f5cf1d'); rect(X - 12, T + 48, 4, 6, '#f5cf1d'); rect(X + CW + 6, T + 47, 6, 4, '#f5cf1d'); rect(X + CW + 9, T + 51, 3, 7, '#f5cf1d');
+    rect(X + 12, T + 10, 36, 17, '#2a1f0a'); bigText('UMLS', X + 16, T + 13, '#6b5a2a', 1);
+  }
+}
+const BIG = { U: '10001100011000110001100011000101110', M: '10001110111010110101100011000110001', L: '10000100001000010000100001000011111', S: '01111100001000001110000010000111110' };
+function bigText(str, x, y, color, scale) { ctx.fillStyle = color; let cx = x; for (const ch of str) { const g = BIG[ch]; for (let i = 0; i < 35; i++) if (g[i] === '1') ctx.fillRect(cx + (i % 5) * scale, y + Math.floor(i / 5) * scale, scale, scale); cx += 7 * scale; } }
+function drawTape(x, y, w, slope) {
+  for (let i = 0; i < w; i++) { const yy = Math.round(y + i * slope); rect(x + i, yy, 1, 9, '#070914'); rect(x + i, yy + 1, 1, 7, (Math.floor((i + 2) / 4) % 2) ? '#f5cf1d' : '#e0b80f'); }
+  const label = 'DO NOT OPEN', lw = textW(label), lx = x + Math.round((w - lw) / 2); text(label, lx, y + 2 + Math.round((lx - x) * slope), '#070914', 1, slope);
+}
+
+/* ---------- state ---------- */
+const team = STYLE.map(() => ({ x: 0, dir: 1, walk: 0, moving: false }));
+const lead = team[0];
+const SKX = (k) => SCENE * (k + 2) + 222;
+const HALL_X = SCENE * 11 + 60;
+SKELS.forEach((s, k) => { s.x = SKX(k); s.caught = false; s.placed = false; });
+let state = 'title', storyIdx = 0, current = 0, gate = CLOSET_X - 18, flyers = [], stateT = 0, capture = null;
+let typing = null, walkTarget = null, mini = null, cardMode = null;
+const keys = { left: false, right: false };
+let inputMode = 'key';
+const SPEED = 128;
+function placeTeam(x) { team.forEach((m, i) => { m.x = x - i * 13; m.dir = 1; }); }
+placeTeam(150);
+
+const objective = $('#objective'), caseBtn = $('#caseBtn');
+function setObjective(htmlStr) { objective.hidden = !htmlStr; objective.innerHTML = htmlStr ? `<b>Goal</b>${htmlStr}` : ''; }
+function updateCase() { const n = SKELS.filter(s => s.caught).length; $('#caseN').textContent = `${n}/${N}`; caseBtn.hidden = !['explore', 'card', 'capture'].includes(state); }
+const ACT = () => inputMode === 'touch' ? 'A' : 'Space';
+
+/* ---------- story ---------- */
+let pipe = null;
+function storyCard(kind, st) {
+  const sc = $('#scard');
+  if (kind === 'pipeline') {
+    if (!pipe || !sc.querySelector('.uvp')) { sc.innerHTML = '<h3>From the question to the answer</h3><div id="pipeHost"></div>'; pipe = UMLSVIS.pipeline($('#pipeHost'), { hideControls: true }); }
+    pipe.set(st.step || 0); return;
+  }
+  pipe = null;
+  if (kind === 'exam') sc.innerHTML = `<h3>An exam-style question</h3><p class="q">${EXAMPLE.question}</p><div class="opts">${EXAMPLE.options.map((o, i) => `<div class="opt ${i === EXAMPLE.answer ? 'right' : ''}"><b>${'ABCD'[i]}</b><span>${o}</span></div>`).join('')}</div><p class="muted">Benchmarks such as MedQA, MedMCQA and PubMedQA contain thousands of questions like this one. Here the right answer is B.</p>`;
+  else if (kind === 'umls-db') { sc.innerHTML = '<h3>UMLS: what it is</h3><div id="umlsHost"></div>'; UMLSVIS.umls($('#umlsHost'), 'db'); }
+  else if (kind === 'umls-rows') { sc.innerHTML = '<h3>Inside the tables: one concept, esophageal achalasia (C0014848)</h3><div id="umlsHost"></div>'; UMLSVIS.umls($('#umlsHost'), 'rows'); }
+  else if (kind === 'umls-graph') { sc.innerHTML = '<h3>From the relation table to a knowledge graph</h3><div id="umlsHost"></div>'; UMLSVIS.umls($('#umlsHost'), 'graph'); }
+}
+function startStory() {
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  $('#title').hidden = true; state = 'story'; storyIdx = -1; sfx.start(); placeTeam(150); camX = 0; nextStory();
+}
+function nextStory() {
+  storyIdx++;
+  if (storyIdx >= STORY.length) { endStory(); return; }
+  const st = STORY[storyIdx];
+  $('#dlg').hidden = false; $('#dlgWho').textContent = st.who;
+  const sc = $('#scard'); if (st.card) { storyCard(st.card, st); sc.hidden = false; } else { sc.hidden = true; pipe = null; }
+  if (st.scene === 'walk') walkTarget = CLOSET_X - 30; else if (st.scene === 'archive' && lead.x < CLOSET_X - 40) { placeTeam(CLOSET_X - 30); }
+  if (st.rattle) { closet.rattle = 0.8; closet.eyes = 1.4; sfx.rattle(); }
+  typing = { full: st.text, shown: 0 }; $('#dlgNext').textContent = ''; $('#dlgNext').classList.remove('blink');
+  placeStoryCard();
+}
+function storyAction() {
+  if (typing && typing.shown < typing.full.length) { typing.shown = typing.full.length; return; }
+  sfx.blip(); nextStory();
+}
+function endStory() {
+  $('#dlg').hidden = true; $('#scard').hidden = true; typing = null; walkTarget = null;
+  if (lead.x < CLOSET_X - 60) placeTeam(CLOSET_X - 30);
+  state = 'walk0'; setObjective(`Open the closet: walk to it and press ${ACT()}.`); updateCase();
+}
+
+function placeStoryCard() {
+  const d = $('#dlg'), sc = $('#scard'); if (d.hidden || sc.hidden) return;
+  const top = d.offsetTop + d.offsetHeight + Math.round(stage.clientHeight * 0.025), maxH = Math.round(stage.clientHeight * 0.86) - top;
+  sc.style.top = top + 'px'; sc.style.maxHeight = Math.max(80, maxH) + 'px';
+}
+/* ---------- closet ---------- */
+const nearCloset = () => Math.abs(lead.x - (CLOSET_X - 18)) < 30;
+function openCloset() {
+  state = 'opening'; stateT = 0; closet.open = 1; sfx.open(); shake = 0.35; setObjective('Nine skeletons escaped to the right.');
+  flyers = SKELS.map((s, i) => ({ s, x: CLOSET_X + 22, y: GROUND - 40, vy: -90 - Math.random() * 50, delay: 0.2 + i * 0.13, vx: 170 + Math.random() * 60, out: false }));
+  setTimeout(sfx.escape, 250);
+}
+
+/* ---------- skeleton cards ---------- */
+const card = $('#card');
+const nearSkeleton = () => current < N && Math.abs(lead.x - (SKELS[current].x - 26)) < 32;
+let lockUntil = 0;
+const clock = () => performance.now() / 1000;
+function showCard(htmlStr, mode) { lockUntil = clock() + 0.45; card.innerHTML = htmlStr; card.hidden = false; card.scrollTop = 0; cardMode = mode; state = 'card'; keys.left = keys.right = false; updateCase(); }
+function hideCard() { card.hidden = true; mini = null; cardMode = null; }
+const foot = (label, hint = true) => `<div class="foot"><button class="btn primary" id="cardGo">${label}</button>${hint ? `<span class="hint">${inputMode === 'touch' ? 'or press A' : 'or press Space'}</span>` : ''}</div>`;
+
+function openBrief() {
+  const s = SKELS[current];
+  showCard(`<p class="kicker">Skeleton ${current + 1} of ${N}</p><h2 id="cardTitle">${s.name}</h2><p>${s.brief}</p>${foot(s.game.type === 'quiz' ? 'Take the question' : 'Play the mini-game')}`, 'brief');
+  $('#cardGo').addEventListener('click', () => cardAction());
+}
+function openChallenge() {
+  const s = SKELS[current], t = s.game.type;
+  if (t === 'quiz') {
+    showCard(`<p class="kicker">Do you know?</p><h2 id="cardTitle">${s.quiz.q}</h2><div class="choices">${s.quiz.options.map((o, i) => `<button class="choice" data-i="${i}"><span class="k">${i + 1}</span>${o}</button>`).join('')}</div><p class="feedback" id="fb" aria-live="assertive"></p><div id="after"></div>`, 'quiz');
+    mini = { type: 'quiz', sel: 0, done: false };
+    const choices = [...card.querySelectorAll('.choice')];
+    const mark = () => choices.forEach((c, i) => c.classList.toggle('sel', i === mini.sel && !mini.done));
+    mini.move = (d) => { if (mini.done) return; mini.sel = (mini.sel + d + choices.length) % choices.length; mark(); };
+    mini.pick = (i) => {
+      if (mini.done) return; mini.done = true; mark();
+      choices[s.quiz.answer].classList.add('right');
+      const fb = $('#fb');
+      if (i === s.quiz.answer) { fb.textContent = 'Right.'; sfx.right(); }
+      else { choices[i].classList.add('wrong'); fb.classList.add('bad'); fb.textContent = `Not quite: the answer is ${s.quiz.options[s.quiz.answer]}.`; sfx.wrong(); }
+      $('#after').innerHTML = foot('See the finding'); $('#cardGo').addEventListener('click', () => cardAction()); if (inputMode !== 'touch') $('#cardGo').focus({ preventScroll: true });
+    };
+    mini.act = () => { if (!mini.done) mini.pick(mini.sel); else openResult(); };
+    choices.forEach(c => c.addEventListener('click', () => mini.pick(+c.dataset.i)));
+    mark();
+  } else if (t === 'link') {
+    const toks = [['A', 'none'], ['patient', 'generic'], ['with', 'none'], ['rheumatoid arthritis', 'key', 'C0003873'], ['(RA)', 'key', 'C0003873'], ['requires', 'none'], ['selective', 'none'], ['inhibition', 'generic'], ['of', 'none'], ['COX-2.', 'key', 'C0387583'], ['Which', 'none'], ['drug', 'generic'], ['is', 'none'], ['most', 'none'], ['appropriate?', 'none']];
+    showCard(`<p class="kicker">Catch it: be the entity linker</p><h2 id="cardTitle">${s.game.prompt}</h2><div class="tokens">${toks.map((t, i) => `<button class="tok" data-i="${i}">${t[0]}</button>`).join('')}</div><p class="feedback" id="fb" aria-live="assertive">Use the arrow keys and ${ACT()}, or tap the words.</p><div id="after"></div>`, 'link');
+    const els = [...card.querySelectorAll('.tok')];
+    mini = { type: 'link', sel: 3, done: false, found: new Set() };
+    const mark = () => els.forEach((e, i) => e.classList.toggle('sel', i === mini.sel && !mini.done));
+    mini.move = (d) => { if (mini.done) return; mini.sel = (mini.sel + d + els.length) % els.length; mark(); };
+    mini.pick = (i) => {
+      if (mini.done) return; const [w, kind, cui] = toks[i], fb = $('#fb'); els[i].classList.add('t-' + kind); fb.classList.toggle('bad', kind === 'none');
+      if (kind === 'key') { mini.found.add(cui); fb.textContent = `Linked: "${w.replace(/[().]/g, '')}" is UMLS concept ${cui}.`; sfx.ok(); }
+      else if (kind === 'generic') { fb.textContent = `"${w}" is a real UMLS concept, but too generic to help answer this question.`; sfx.blip(); }
+      else { fb.textContent = `"${w}" is not a medical concept.`; sfx.miss(); }
+      if (mini.found.size >= 2) { mini.done = true; mark(); sfx.right(); fb.classList.remove('bad'); fb.textContent = 'Both key concepts linked: rheumatoid arthritis and COX-2. Real linkers face the same choice on every word.';
+        $('#after').innerHTML = foot('See what real linkers do'); $('#cardGo').addEventListener('click', () => cardAction()); if (inputMode !== 'touch') $('#cardGo').focus({ preventScroll: true }); }
+    };
+    mini.act = () => { if (!mini.done) mini.pick(mini.sel); else openResult(); };
+    els.forEach(e => e.addEventListener('click', () => mini.pick(+e.dataset.i)));
+    mark();
+  } else if (t === 'tables') {
+    const T = UMLSVIS.TABLES;
+    showCard(`<p class="kicker">Mini-game: pick the tables</p><h2 id="cardTitle">${s.game.prompt}</h2><div class="choices">${T.map((tb, i) => `<button class="choice" data-i="${i}" aria-pressed="false"><span class="k">${tb.id}</span>${tb.what}<small>${tb.desc}</small></button>`).join('')}</div><p class="feedback" id="fb" aria-live="assertive">${inputMode === 'touch' ? 'Tap the tables you expect, then check.' : 'Arrow keys and Space to select, Enter to check.'}</p><div class="foot"><button class="btn primary" id="checkBtn">Check my guess</button></div>`, 'tables');
+    const els = [...card.querySelectorAll('.choice')];
+    mini = { type: 'tables', sel: 0, done: false, picked: new Set() };
+    const mark = () => els.forEach((e, i) => e.classList.toggle('sel', i === mini.sel && !mini.done));
+    mini.move = (d) => { if (mini.done) return; mini.sel = (mini.sel + d + els.length) % els.length; mark(); };
+    mini.pick = (i) => { if (mini.done) return; if (mini.picked.has(i)) mini.picked.delete(i); else mini.picked.add(i); els[i].classList.toggle('on', mini.picked.has(i)); els[i].setAttribute('aria-pressed', String(mini.picked.has(i))); sfx.blip(); };
+    mini.check = () => {
+      if (mini.done) return; mini.done = true; mark();
+      els.forEach((e, i) => { const used = T[i].use >= 50; e.classList.remove('on'); e.classList.add(used ? 'right' : (mini.picked.has(i) ? 'wrong' : 'x')); e.insertAdjacentHTML('beforeend', `<span class="use">${T[i].use}% of papers</span>`); });
+      const exact = T.every((tb, i) => (tb.use >= 50) === mini.picked.has(i));
+      const fb = $('#fb'); fb.classList.toggle('bad', !exact);
+      fb.textContent = exact ? 'Exactly: most papers use only names and relations.' : 'Most papers use only two tables: names and relations. The other four rarely or never reach the model.';
+      (exact ? sfx.right : sfx.wrong)();
+      $('#checkBtn').textContent = 'See the finding'; lockUntil = clock() + 0.6;
+    };
+    mini.act = () => { if (!mini.done) mini.pick(mini.sel); else openResult(); };
+    els.forEach(e => e.addEventListener('click', () => mini.pick(+e.dataset.i)));
+    $('#checkBtn').addEventListener('click', () => { if (!mini.done) mini.check(); else if (clock() >= lockUntil) openResult(); });
+    mark();
+  }
+}
+function openResult() {
+  const s = SKELS[current];
+  showCard(`<p class="kicker">Finding ${current + 1} of ${N}: ${s.name}</p><h2 id="cardTitle">${s.title}</h2><div class="vis">${UMLSVIS.finding(s.anchor)}</div><p>${s.text}</p><p class="why">${s.why}</p><p class="ref">In the paper: ${s.ref}. <a href="index.html#${s.anchor}" target="_blank" rel="noopener">More on the main page</a></p>${foot(current + 1 < N ? 'Continue the hunt' : 'Continue')}`, 'result');
+  UMLSVIS.animate(card);
+  $('#cardGo').addEventListener('click', () => cardAction()); if (inputMode !== 'touch') $('#cardGo').focus({ preventScroll: true });
+  lockUntil = clock() + 0.9;
+}
+function cardAction() {
+  if (clock() < lockUntil) return;
+  if (cardMode === 'brief') { sfx.blip(); openChallenge(); }
+  else if (cardMode === 'result') { hideCard(); startCapture(); }
+  else if (mini) { if (mini.done) { if (mini.type !== 'tables' || clock() >= lockUntil) openResult(); } else mini.act(); }
+}
+function startCapture() { state = 'capture'; stateT = 0; capture = { s: SKELS[current], t: 0 }; sfx.capture(); }
+
+/* ---------- action dispatch ---------- */
+function action() {
+  if (dialogOpen() || !$('#rotate').hidden) return;
+  if (state === 'title') { startStory(); return; }
+  if (state === 'story') { storyAction(); return; }
+  if (state === 'walk0' && nearCloset()) { openCloset(); return; }
+  if (state === 'explore' && nearSkeleton()) { openBrief(); return; }
+  if (state === 'card') { cardAction(); return; }
+}
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function loop(now) {
+  dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const paused = dialogOpen() || !$('#rotate').hidden || document.hidden;
+  if (!paused) { time += dt; update(dt); }
+  stage.classList.toggle('nowalk', !(state === 'walk0' || state === 'explore')); render(); requestAnimationFrame(loop);
+}
+function update(d) {
+  if (closet.open === 0) { closet.nextRattle -= d; if (closet.rattle > 0) closet.rattle -= d; if (closet.eyes > 0) closet.eyes -= d;
+    if (closet.nextRattle <= 0) { closet.rattle = 0.5; closet.eyes = 1.1; closet.nextRattle = 2.6 + Math.random() * 2.6; if (state === 'walk0') sfx.rattle(); } }
+  if (shake > 0) shake -= d;
+  // typewriter
+  if (state === 'story' && typing) {
+    const before = typing.shown; typing.shown = Math.min(typing.full.length, typing.shown + d * 95);
+    if (Math.floor(typing.shown) !== Math.floor(before)) $('#dlgText').textContent = typing.full.slice(0, Math.floor(typing.shown));
+    if (typing.shown >= typing.full.length) { $('#dlgText').textContent = typing.full; const nx = $('#dlgNext'); if (!nx.textContent) { nx.textContent = storyIdx + 1 < STORY.length ? `${ACT()} to continue` : `${ACT()} to begin`; nx.classList.toggle('blink', !reduceMotion); } }
+  }
+  if (state === 'opening') { stateT += d; let done = true;
+    for (const f of flyers) { if (f.out) continue; done = false; if (stateT < f.delay) continue; f.vy += 380 * d; f.y = Math.min(GROUND - 15, f.y + f.vy * d); f.x += f.vx * d; if (f.x > camX + W + 20) { f.out = true; f.s.placed = true; } }
+    if (done && stateT > 0.8) { state = 'explore'; current = 0; gate = SKELS[0].x - 26; flyers = []; announce(); updateCase(); } }
+  if (state === 'capture') { capture.t += d; if (capture.t > 0.75) { capture.s.caught = true; capture = null; current++; gate = current < N ? SKELS[current].x - 26 : HALL_X + 60; state = 'explore'; announce(); updateCase(); } }
+  if (mini && mini.update && state === 'card') mini.update(d);
+
+  // movement
+  if (state === 'story' && walkTarget !== null) { if (lead.x < walkTarget) { lead.x = Math.min(walkTarget, lead.x + SPEED * d); lead.moving = true; lead.dir = 1; } else lead.moving = false; }
+  else if (state === 'walk0' || state === 'explore') {
+    let mv = 0; if (keys.left) mv -= 1; if (keys.right) mv += 1; if (mv) lead.dir = mv;
+    const nx = Math.max(SCENE + 30, Math.min(gate, lead.x + mv * SPEED * d)); lead.moving = Math.abs(nx - lead.x) > 0.01; lead.x = nx;
+    if (state === 'explore' && current >= N && lead.x >= HALL_X + 40) { state = 'ending'; $('#ending').hidden = false; setObjective(''); sfx.fanfare(); updateCase(); }
+  } else lead.moving = false;
+  for (let i = 1; i < team.length; i++) { const m = team[i], target = team[i - 1].x - lead.dir * 13, nx = m.x + (target - m.x) * Math.min(1, d * 8); m.moving = Math.abs(nx - m.x) > 0.05; if (m.moving) m.dir = nx > m.x ? 1 : -1; m.x = nx; }
+  team.forEach(m => { if (m.moving) m.walk += d * 9; });
+  // camera
+  let target = lead.x - W * 0.42;
+  if (state === 'story' && STORY[storyIdx] && STORY[storyIdx].scene === 'lab') target = 0;
+  target = Math.max(0, Math.min(SCENE * 12 - W, target)); camX += (target - camX) * Math.min(1, d * 5);
+}
+function announce() {
+  if (current < N) setObjective(`Catch skeleton ${current + 1} of ${N}, ${SKELS[current].name}. Walk right and press ${ACT()} next to it.`);
+  else setObjective('All nine caught. Walk right to the conference hall.');
+}
+
+function render() {
+  const sh = shake > 0 && !reduceMotion ? (Math.floor(time * 40) % 2 ? 2 : -2) : 0;
+  ctx.save(); ctx.translate(sh, 0);
+  drawRooms();
+  SKELS.forEach((s, k) => { if (!s.placed || s.caught || (capture && capture.s === s)) return; drawSkeleton(s, s.x, GROUND - 15, k === current); });
+  if (capture) { const s = capture.s, p = Math.min(1, capture.t / 0.7), bx = lead.x + 9, by = GROUND - 9; ctx.strokeStyle = '#4fd1c5'; ctx.beginPath(); ctx.moveTo(wx(bx), by);
+    for (let j = 1; j <= 8; j++) { const q = j / 8; ctx.lineTo(wx(bx + (s.x + 4 - bx) * q), by + (j < 8 ? Math.random() * 6 - 3 : 1)); } ctx.stroke();
+    const sc = 1 - p; if (sc > 0.05) { blit(skA[2], s.x, GROUND - 15 * sc - (1 - sc) * 10, false, sc); if (s.twins) blit(skB[2], s.x + 12, GROUND - 15 * sc - (1 - sc) * 10, false, sc); } }
+  for (const f of flyers) { if (f.out || stateT < f.delay) continue; ctx.drawImage(skA[Math.floor(time * 12) % 2], Math.round(f.x - camX), Math.round(f.y)); }
+  team.forEach((m, i) => { const ai = team.length - 1 - i, img = authorSprites[ai][m.moving ? (Math.floor(m.walk) % 2) : 0]; blit(img, m.x, GROUND - 16, m.dir < 0); text(PAPER.authors[ai].letter, wx(m.x) + (m.dir < 0 ? 3 : 4), GROUND - 10, '#f5efdf'); });
+  const cx = team.reduce((a, m) => a + m.x, 0) / team.length + 5; text('THE AUTHORS', Math.round(cx - camX - textW('THE AUTHORS') / 2), GROUND + 8, '#a7adc8');
+  const act = inputMode === 'touch' ? 'A' : 'SPACE';
+  if (state === 'walk0' && nearCloset()) bubble(`${act}: OPEN`, lead.x + 5, GROUND - 32);
+  if (state === 'explore' && nearSkeleton()) bubble(`${act}: CATCH`, SKELS[current].x + (SKELS[current].twins ? 10 : 4), GROUND - (SKELS[current].twins ? 48 : 36));
+  if (state === 'explore' && ((current < N && !nearSkeleton() && SKELS[current].x - camX > W) || (current >= N && HALL_X - camX > W - 40)) && Math.floor(time * 2.5) % 2) text('>>', W - 16, 140, '#f5cf1d', 2);
+  ctx.restore();
+}
+function drawSkeleton(s, x, y, active) {
+  const taunt = Math.floor(time * 1.5 + x) % 3 === 0, fr = taunt ? 2 : (Math.floor(time * 4) % 2), hop = active && !reduceMotion ? Math.abs(Math.sin(time * 4)) * 3 : 0;
+  blit(skA[fr], x, y - hop, true);
+  if (s.twins) { blit(skB[(fr + 1) % 3], x + 12, y - (active && !reduceMotion ? Math.abs(Math.cos(time * 4)) * 3 : 0), true); }
+}
+
+/* ---------- input ---------- */
+addEventListener('keydown', (e) => {
+  if (dialogOpen()) return;
+  const k = e.code, a = document.activeElement;
+  if (k === 'Escape' && state === 'story') { endStory(); e.preventDefault(); return; }
+  if (state === 'card' && mini && (mini.type === 'quiz' || mini.type === 'link' || mini.type === 'tables') && !mini.done) {
+    if (mini.type === 'tables' && k === 'Enter') { mini.check(); e.preventDefault(); return; }
+    if (k === 'ArrowLeft' || k === 'ArrowUp') { mini.move(-1); e.preventDefault(); return; }
+    if (k === 'ArrowRight' || k === 'ArrowDown') { mini.move(1); e.preventDefault(); return; }
+    if (mini.type === 'quiz' && /^(Digit|Numpad)[123]$/.test(k)) { mini.pick(+k.slice(-1) - 1); e.preventDefault(); return; }
+  }
+  if (k === 'ArrowLeft' || k === 'KeyA') { keys.left = true; inputMode = 'key'; e.preventDefault(); }
+  else if (k === 'ArrowRight' || k === 'KeyD') { keys.right = true; inputMode = 'key'; e.preventDefault(); }
+  else if (k === 'Space' || k === 'Enter') {
+    const onBtn = a && (a.tagName === 'BUTTON' || a.tagName === 'A') && !card.contains(a) && a.id !== 'startBtn';
+    if (onBtn && k === 'Enter') return;
+    if (onBtn) a.blur();
+    if (card.contains(a) && k === 'Enter') return;   // Enter activates the focused card button itself
+    e.preventDefault(); if (!e.repeat) action();
+  }
+});
+addEventListener('keyup', (e) => { if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false; if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false; });
+addEventListener('blur', () => { keys.left = keys.right = false; });
+function hold(el, key) {
+  const on = (e) => { e.preventDefault(); inputMode = 'touch'; keys[key] = true; el.classList.add('on'); if (el.setPointerCapture) el.setPointerCapture(e.pointerId); };
+  const off = () => { keys[key] = false; el.classList.remove('on'); };
+  el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off); el.addEventListener('pointercancel', off); el.addEventListener('lostpointercapture', off);
+}
+hold($('#tLeft'), 'left'); hold($('#tRight'), 'right');
+$('#tA').addEventListener('pointerdown', (e) => { e.preventDefault(); inputMode = 'touch'; $('#tA').classList.add('on'); action(); });
+$('#tA').addEventListener('pointerup', () => $('#tA').classList.remove('on'));
+$('#dlg').addEventListener('click', (e) => { if (e.target.closest('#skipBtn')) return; if (state === 'story') storyAction(); });
+$('#skipBtn').addEventListener('click', () => { if (state === 'story') endStory(); });
+addEventListener('touchstart', () => { if (!html.classList.contains('touch')) { html.classList.add('touch'); inputMode = 'touch'; layout(); } }, { passive: true });
+if (matchMedia('(pointer: coarse)').matches) { html.classList.add('touch'); inputMode = 'touch'; }
+$('#startBtn').addEventListener('click', () => { if (html.classList.contains('touch')) goFullscreen(); startStory(); });
+$('#replayBtn').addEventListener('click', () => {
+  SKELS.forEach(s => { s.caught = false; s.placed = false; }); closet = { open: 0, rattle: 0, nextRattle: 2.5, eyes: 0 };
+  $('#ending').hidden = true; current = 0; gate = CLOSET_X - 18; placeTeam(CLOSET_X - 30); state = 'walk0'; setObjective(`Open the closet: walk to it and press ${ACT()}.`); updateCase();
+});
+$('#fsBtn').addEventListener('click', goFullscreen);
+function goFullscreen() { const el = document.documentElement; try { const p = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen && el.webkitRequestFullscreen()); if (p && p.then) p.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {}); } catch (e) {} }
+
+/* ---------- layout ---------- */
+function layout() {
+  const barH = $('#bar').getBoundingClientRect().height, aw = innerWidth, ah = Math.max(100, innerHeight - barH - 4);
+  const w = Math.floor(Math.min(aw, ah * 16 / 9)), h = Math.floor(w * 9 / 16);
+  stage.style.width = w + 'px'; stage.style.height = h + 'px'; stage.style.setProperty('--u', (w / W) + 'px');
+  $('#rotate').hidden = !(innerHeight > innerWidth && Math.min(innerWidth, innerHeight) < 700);
+}
+addEventListener('resize', () => { layout(); placeStoryCard(); }); addEventListener('orientationchange', () => setTimeout(layout, 200));
+layout(); updateCase(); requestAnimationFrame(loop);
+if (/[?&]debug/.test(location.search)) window.__game = { get state() { return state; }, get current() { return current; }, lead, SKELS, action, get storyIdx() { return storyIdx; },
+  jump(n) { $('#title').hidden = true; endStory(); closet.open = 1; SKELS.forEach((s, k) => { s.placed = true; s.caught = k < n; }); current = n; gate = n < N ? SKELS[n].x - 26 : HALL_X + 60; placeTeam(n < N ? SKELS[n].x - 60 : HALL_X - 40); state = 'explore'; announce(); updateCase(); } };
+})();
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@
 const PAPER = {
   title: 'Are We Done with UMLS Injection into Language Models for Medical Question Answering?',
   shortTitle: 'Are We Done with UMLS Injection?',
-  pdf: null, // set to the PDF or arXiv link when the paper is public
+  pdf: 'http://arxiv.org/abs/2610.33801',
   code: 'https://github.com/disi-unibo-nlp/are-we-done-with-umls',
   group: 'https://disi-unibo-nlp.github.io/',
   authors: [

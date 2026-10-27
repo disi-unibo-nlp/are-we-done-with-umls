@@ -16,13 +16,14 @@ const PAPER = {
     { name: 'Gianluca Moro', letter: 'S' },
   ],
   affiliation: 'Department of Computer Science and Engineering, University of Bologna, Italy',
-  bibtex: `@misc{zeng2026umls,
-  title  = {Are We Done with {UMLS} Injection into Language Models
-            for Medical Question Answering?},
-  author = {Yiran Zeng and Giacomo Frisoni and
-            Lorenzo Molfetta and Gianluca Moro},
-  year   = {2026},
-  note   = {Manuscript}
+  bibtex: `@misc{zeng2026umlsinjectionlanguagemodels,
+      title={Are We Done with UMLS Injection into Language Models for Medical Question Answering?},
+      author={Yiran Zeng and Giacomo Frisoni and Lorenzo Molfetta and Gianluca Moro},
+      year={2026},
+      eprint={2610.33801},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2610.33801},
 }`,
 };
 

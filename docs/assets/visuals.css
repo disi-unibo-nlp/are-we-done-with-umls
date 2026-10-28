@@ -69,6 +69,7 @@
 .uvp-answer .arrow { flex: 1; height: 2px; background: var(--uv-ok); position: relative; } .uvp-answer .arrow::after { content: ""; position: absolute; right: -2px; top: -5px; border: 6px solid transparent; border-left: 9px solid var(--uv-ok); }
 .uvp-answer .out { flex: none; padding: .8em 1.1em; border-radius: 10px; background: var(--uv-ok-bg); border: 1.5px solid var(--uv-ok); display: grid; gap: .3em; animation: uvPop .5s; }
 .uvp-answer .out strong { font-size: 1.15em; }
+.uvp-answer .out .lab { font-size: .78em; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--uv-ok); }
 @keyframes uvPop { from { transform: scale(.85); opacity: 0; } }
 @media (max-width: 720px) { .uvp-body { grid-template-columns: 1fr; } .uvp-stage { border-right: 0; border-bottom: 1px solid var(--uv-rule); } .uvp-tab { font-size: .7em; padding: .7em .2em; } .uvp-tab .n { display: none !important; } .uvp-opts { columns: 1; } }
 

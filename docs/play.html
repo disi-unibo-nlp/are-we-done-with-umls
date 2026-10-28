@@ -53,12 +53,25 @@ button, a { font: inherit; color: inherit; }
 #objective { left: 2%; top: 3%; max-width: 64%; background: rgba(10, 13, 30, .88); border: 1px solid rgba(241, 236, 224, .3); padding: .45em .75em; line-height: 1.25; }
 #objective b { font-family: var(--pixel); font-weight: 400; font-size: .62em; color: var(--tape); margin-right: .7em; vertical-align: .12em; }
 #objective[hidden], #caseBtn[hidden] { display: none; }
-#caseBtn { right: 2%; top: 3%; font-size: clamp(12px, calc(var(--u) * 5.4), 16px); background: rgba(10, 13, 30, .88); }
+#hudRight { right: 2%; top: 3%; display: flex; gap: .4em; align-items: stretch; }
+#hudRight[hidden] { display: none; }
+#scoreChip { display: inline-flex; align-items: center; gap: .55em; background: rgba(10, 13, 30, .88); border: 1px solid rgba(241, 236, 224, .3); padding: .45em .75em; line-height: 1.25; }
+#scoreChip b { font-family: var(--pixel); font-weight: 400; font-size: .7em; color: var(--tape); min-width: 3.2em; text-align: right; }
+#scoreChip .streak { font-family: var(--pixel); font-size: .55em; color: var(--teal); }
+#caseBtn { font-size: inherit; background: rgba(10, 13, 30, .88); }
+.pulse { animation: pulse .5s steps(3) 2; }
+@keyframes pulse { 50% { transform: scale(1.14); border-color: var(--tape); } }
+#card.pop { animation: cardPop .35s ease-out; }
+#card.shake { animation: cardShake .4s; }
+@keyframes cardPop { 40% { transform: translate(-50%, -50%) scale(1.025); } }
+@keyframes cardShake { 20%, 60% { transform: translate(calc(-50% - 7px), -50%); } 40%, 80% { transform: translate(calc(-50% + 7px), -50%); } }
+.pts { display: inline-block; margin-left: .5em; font-family: var(--pixel); font-size: .62em; color: #6b5a2a; background: #f5cf1d; padding: .35em .5em; animation: cardPop .4s; }
 #caseBtn .n { font-family: var(--pixel); font-size: .7em; color: var(--tape); }
 
 /* dialogue box (story) */
 #dlg { position: absolute; z-index: 6; left: 3%; right: 3%; top: 4.5%; background: rgba(12, 16, 36, .96); border: 2px solid var(--bone); box-shadow: inset 0 0 0 3px var(--ink), 5px 5px 0 var(--ink); padding: 1.1em 1.3em .8em; font-size: clamp(14px, calc(var(--u) * 7), 21px); line-height: 1.38; }
 #dlg[hidden] { display: none; }
+#dlg .ghost { visibility: hidden; }
 #dlg .who { position: absolute; left: 1em; top: -1em; font-family: var(--pixel); font-size: .55em; background: var(--tape); color: var(--ink); padding: .55em .8em; }
 #dlg p { margin: 0; min-height: 2.8em; max-width: 72ch; }
 #dlg .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: .5em; }
@@ -149,7 +162,13 @@ button, a { font: inherit; color: inherit; }
 .keys-touch { display: none !important; } html.touch .keys-touch { display: inline-flex !important; } html.touch .keys-desk { display: none !important; }
 
 /* ending */
-#ending { background: rgba(7, 9, 20, .9); align-items: center; }
+#ending { background: rgba(7, 9, 20, .4); align-items: center; }
+#ending .inner { animation: endIn .6s ease-out; }
+@keyframes endIn { from { transform: translateY(14px) scale(.97); opacity: 0; } }
+#ending .scoreline { display: flex; gap: .7em; flex-wrap: wrap; margin: 0 0 1em; }
+#ending .scoreline div { border: 1px solid rgba(241, 236, 224, .3); padding: .5em .85em; }
+#ending .scoreline b { display: block; font-family: var(--pixel); font-weight: 400; color: var(--tape); font-size: .62em; margin-bottom: .4em; }
+#ending .scoreline span { font-weight: 650; }
 #ending .inner { max-width: 940px; max-height: 100%; overflow: auto; background: var(--panel); border: 2px solid var(--bone); box-shadow: inset 0 0 0 3px var(--ink), 7px 7px 0 var(--ink); padding: 1.1em 1.5em; text-align: left; font-size: clamp(13px, calc(var(--u) * 5.5), 16.5px); line-height: 1.38; }
 #ending h2 { margin: 0 0 .5em; font-size: 1.5em; line-height: 1.2; font-weight: 650; }
 #ending .kicker { font-family: var(--pixel); font-size: .55em; color: var(--tape); margin: 0 0 .8em; }
@@ -206,7 +225,7 @@ dialog a { color: var(--teal); }
   .actions { grid-column: 1 / -1; flex-wrap: wrap; }
   .btn .lbl { display: inline; }
 }
-@media (prefers-reduced-motion: reduce) { .press .caret, #dlg .next.blink { animation: none; } #rotate svg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #card.pop, #card.shake, .pulse, .pts { animation: none; } .press .caret, #dlg .next.blink { animation: none; } #rotate svg { animation: none; } }
 </style>
 </head>
 <body>
@@ -222,7 +241,7 @@ dialog a { color: var(--teal); }
     <a class="btn" id="codeBtn" href="#">Code</a>
     <button class="btn" data-open="citeDlg">Cite</button>
     <a class="btn" href="index.html">Main page</a>
-    <button class="btn" id="soundBtn" aria-pressed="false" aria-label="Sound">
+    <button class="btn" id="soundBtn" aria-pressed="true" aria-label="Sound">
       <svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 3h2v2H0zM2 2h1v4H2zM3 1h1v6H3z"/><path class="on" fill="currentColor" d="M5 3h1v2H5zM6 2h1v4H6z"/><path class="off" fill="currentColor" d="M5 2h1v1H5zM7 2h1v1H7zM6 3h1v2H6zM5 5h1v1H5zM7 5h1v1H7z"/></svg><span class="lbl">Sound</span>
     </button>
     <button class="btn touch-only" id="fsBtn" aria-label="Full screen"><svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h3v1H1v2H0zM5 0h3v3H7V1H5zM0 5h1v2h2v1H0zM7 5h1v3H5V7h2z"/></svg></button>
@@ -233,7 +252,7 @@ dialog a { color: var(--teal); }
   <div id="stage">
     <canvas id="game" width="384" height="216" role="img" aria-label="Pixel-art scene of the game"></canvas>
     <div class="hud" id="objective" hidden aria-live="polite"></div>
-    <button class="hud btn" id="caseBtn" hidden><span>Case file</span> <span class="n" id="caseN">0/9</span></button>
+    <div class="hud" id="hudRight" hidden><span id="scoreChip" aria-live="polite">Score <b id="scoreN">0</b><span class="streak" id="streakN"></span></span><button class="btn" id="caseBtn"><span>Case file</span> <span class="n" id="caseN">0/9</span></button></div>
     <section id="scard" hidden aria-live="polite"></section>
     <section id="dlg" hidden aria-live="polite">
       <span class="who" id="dlgWho"></span>
@@ -253,17 +272,20 @@ dialog a { color: var(--teal); }
         <button class="press" id="startBtn"><span class="keys-desk">Press Space to start</span><span class="keys-touch">Tap to start</span><span class="caret">_</span></button>
         <div class="controls">
           <span class="ctrl keys-desk"><span class="key">&larr;</span><span class="key">&rarr;</span> Walk</span>
+          <span class="ctrl keys-desk"><span class="key">&uarr;</span> Jump</span>
           <span class="ctrl keys-desk"><span class="key">Space</span> Talk, open, catch</span>
           <span class="ctrl keys-desk"><span class="key">Esc</span> Skip the story</span>
+          <span class="ctrl keys-desk"><span class="key">M</span> Mute</span>
           <span class="ctrl keys-touch"><span class="key">&#9664;</span><span class="key">&#9654;</span> Walk</span>
-          <span class="ctrl keys-touch"><span class="key">A</span> Talk, open, catch</span>
+          <span class="ctrl keys-touch"><span class="key">A</span> Talk, open, catch, jump</span>
         </div>
-        <p class="alt">About ten minutes, sound is off by default. Prefer reading? <a href="index.html">Open the main page</a>.</p>
+        <p class="alt">About ten minutes, with music (M or the Sound button to mute). Prefer reading? <a href="index.html">Open the main page</a>.</p>
       </div>
     </div>
     <div class="overlay" id="ending" hidden>
       <div class="inner">
         <p class="kicker">Case file complete: nine of nine</p>
+        <div class="scoreline" id="scoreline"></div>
         <h2 id="verdictTitle"></h2>
         <p id="verdictText"></p>
         <p>Report these nine choices with every UMLS result, so that the next gain can be traced to UMLS:</p>
@@ -335,25 +357,32 @@ function renderCase() {
 }
 
 /* ---------- sound ---------- */
-let audio = null, soundOn = false;
+let audio = null, soundOn = true, master = null;
 const soundBtn = $('#soundBtn');
+/* Browsers only allow audio after a key press or a tap, so the context is created on the first one. */
+function ensureAudio() {
+  if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); master = audio.createGain(); master.gain.value = soundOn ? 1 : 0; master.connect(audio.destination); } catch (e) { audio = null; return; } }
+  if (audio.state === 'suspended' && !document.hidden) audio.resume();
+}
+addEventListener('keydown', ensureAudio, { capture: true });
+addEventListener('pointerdown', ensureAudio, { capture: true });
 soundBtn.addEventListener('click', () => {
-  soundOn = !soundOn;
-  if (soundOn && !audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { soundOn = false; } }
-  if (audio && audio.state === 'suspended') audio.resume();
+  soundOn = !soundOn; ensureAudio();
+  if (master) master.gain.setTargetAtTime(soundOn ? 1 : 0, audio.currentTime, 0.05);
   soundBtn.setAttribute('aria-pressed', String(soundOn)); soundBtn.blur(); if (soundOn) sfx.ok();
 });
+document.addEventListener('visibilitychange', () => { if (!audio) return; if (document.hidden) audio.suspend(); else audio.resume(); });
 function tone(f, d, type = 'square', vol = 0.045, slide = 0) {
   if (!soundOn || !audio) return;
   const t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
   o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f * slide), t + d);
-  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(audio.destination); o.start(t); o.stop(t + d + 0.03);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g).connect(master); o.start(t); o.stop(t + d + 0.03);
 }
 function noise(d, vol = 0.05) {
   if (!soundOn || !audio) return;
   const len = Math.floor(audio.sampleRate * d), b = audio.createBuffer(1, len, audio.sampleRate), ch = b.getChannelData(0);
   for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
-  const s = audio.createBufferSource(), g = audio.createGain(); s.buffer = b; g.gain.value = vol; s.connect(g).connect(audio.destination); s.start();
+  const s = audio.createBufferSource(), g = audio.createGain(); s.buffer = b; g.gain.value = vol; s.connect(g).connect(master); s.start();
 }
 const seq = (fs, d, gap) => fs.forEach((f, i) => setTimeout(() => tone(f, d), i * gap));
 const sfx = {
@@ -362,7 +391,130 @@ const sfx = {
   escape: () => seq([880, 740, 622, 523, 440, 370], 0.06, 50), right: () => seq([659, 880, 1175], 0.08, 70), wrong: () => tone(170, 0.28, 'square', 0.05, 0.6),
   miss: () => tone(120, 0.14, 'square', 0.05),
   capture: () => seq([392, 523, 659, 784, 1046], 0.07, 55), fanfare: () => seq([523, 523, 784, 784, 1046, 988, 1046], 0.12, 120),
+  coin: () => seq([988, 1319], 0.05, 45), jump: () => tone(380, 0.1, 'square', 0.025, 1.9), card: () => noise(0.07, 0.018), type: () => tone(1500, 0.012, 'square', 0.007),
+  boom: () => { noise(0.5, 0.08); tone(90, 0.5, 'sawtooth', 0.05, 0.4); },
+  fanfareShort: () => seq([784, 988, 1175, 1568], 0.07, 60),
+  sting: () => { tone(247, 0.6, 'square', 0.04, 0.22); tone(233, 0.6, 'sawtooth', 0.03, 0.22); noise(0.1, 0.05); },
 };
+
+/* ---------- music: an original 8-bit theme (E minor, 112 BPM, 8 bars) ----------
+   Written for this game. Each bar has 16 steps (sixteenth notes); "." is a rest, "-" holds the previous note. */
+const THEME = {
+  bpm: 112,
+  lead: [
+    'E4 - G4 - B4 - . A4 G4 - . E4 F#4 - G4 .', 'E4 - . C4 E4 - G4 - . F#4 E4 - D4 - . .',
+    'C5 - B4 - A4 - . E4 A4 - C5 - B4 - A4 -', 'B4 - - - A#4 - B4 - D#5 - - - . . . .',
+    'B4 . B4 G4 . E4 . G4 B4 - E5 - D5 - B4 .', 'C5 - - B4 C5 - E5 - D5 - C5 - B4 - G4 -',
+    'A4 - C5 - E5 - D5 - C5 - B4 - A4 - G4 F#4', 'F#4 - D#4 - F#4 - B4 - - - - - . . . .',
+  ],
+  bass: [
+    'E2 . E3 . E2 . G2 . A2 . G2 . E2 . D2 .', 'C2 . C3 . C2 . E2 . G2 . E2 . C2 . D2 .',
+    'A1 . A2 . A1 . C2 . E2 . C2 . A1 . B1 .', 'B1 . B2 . B1 . D#2 . F#2 . D#2 . B1 . A#1 .',
+  ],
+  kick: [0, 6, 8], snare: [4, 12], fill: [12, 13, 14, 15],
+};
+const NOTE_INDEX = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+const freqOf = (n) => { const m = /^([A-G]#?)(\d)$/.exec(n); return 440 * Math.pow(2, (NOTE_INDEX[m[1]] + (+m[2] + 1) * 12 - 69) / 12); };
+/* turn the bar strings into (step, frequency, length in steps) events */
+function parseTrack(bars) {
+  const ev = []; bars.forEach((bar, b) => { const tk = bar.trim().split(/\s+/); tk.forEach((t, i) => { if (t === '.' || t === '-') return; let len = 1; while (tk[i + len] === '-') len++; ev.push([b * 16 + i, freqOf(t), len]); }); });
+  return ev;
+}
+const LEAD = parseTrack(THEME.lead), BASS = parseTrack([...THEME.bass, ...THEME.bass]), LOOP_STEPS = 8 * 16;
+const MUSIC_LEVEL = 0.4; // volume of both pieces of music relative to the sound effects (1 = the previous level)
+const music = { on: false, gain: null, timer: null, next: 0, step: 0, duck: 1 };
+function musicVoice(f, t, dur, type, vol) {
+  const o = audio.createOscillator(), g = audio.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.01); g.gain.setValueAtTime(vol, t + Math.max(0.02, dur - 0.04)); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(music.gain); o.start(t); o.stop(t + dur + 0.02);
+}
+function musicDrum(kind, t) {
+  if (kind === 'kick') { const o = audio.createOscillator(), g = audio.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14); o.connect(g).connect(music.gain); o.start(t); o.stop(t + 0.16); return; }
+  const len = Math.floor(audio.sampleRate * (kind === 'snare' ? 0.12 : 0.03)), b = audio.createBuffer(1, len, audio.sampleRate), ch = b.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain(); src.buffer = b;
+  f.type = kind === 'snare' ? 'bandpass' : 'highpass'; f.frequency.value = kind === 'snare' ? 1800 : 7000; g.gain.value = kind === 'snare' ? 0.35 : 0.12;
+  src.connect(f).connect(g).connect(music.gain); src.start(t);
+}
+function scheduleMusic() {
+  const spb = 60 / (THEME.bpm + 2 * SKELS.filter(s => s.caught).length) / 4; // seconds per step: 2 BPM faster per skeleton caught
+  while (music.next < audio.currentTime + 0.15) {
+    const s = music.step % LOOP_STEPS, t = music.next, inBar = s % 16, lastBar = s >= 7 * 16;
+    for (const [st, f, len] of LEAD) if (st === s) musicVoice(f, t, len * spb, 'square', 0.07);
+    for (const [st, f, len] of BASS) if (st === s) musicVoice(f, t, Math.min(len, 2) * spb * 0.9, 'triangle', 0.22);
+    if (THEME.kick.includes(inBar)) musicDrum('kick', t);
+    if ((lastBar ? THEME.fill : THEME.snare).includes(inBar)) musicDrum('snare', t);
+    if (inBar % 2 === 1) musicDrum('hat', t);
+    music.step++; music.next += spb;
+  }
+}
+function startMusic() {
+  ensureAudio(); if (!audio || music.on) return;
+  music.gain = audio.createGain(); music.gain.gain.value = 0.0001; music.gain.connect(master);
+  music.gain.gain.setTargetAtTime(0.9 * MUSIC_LEVEL, audio.currentTime, 0.4);
+  music.on = true; music.step = 0; music.next = audio.currentTime + 0.1; music.duck = 1;
+  music.timer = setInterval(scheduleMusic, 25); scheduleMusic();
+}
+function stopMusic(fade = 0.6) {
+  if (!music.on) return; music.on = false; clearInterval(music.timer);
+  const g = music.gain; g.gain.setTargetAtTime(0.0001, audio.currentTime, fade / 3); setTimeout(() => g.disconnect(), fade * 1000 + 300);
+}
+/* quieter while a card is open, so the text can be read in peace */
+function duckMusic(reading) { const d = reading ? 0.45 : 1; if (!music.on || d === music.duck) return; music.duck = d; music.gain.gain.setTargetAtTime(0.9 * MUSIC_LEVEL * d, audio.currentTime, 0.25); }
+
+/* ---------- story music: a calm prelude to the game theme (E minor, 112 BPM, 8 bars, about 17 s) ----------
+   Same key, tempo, chords (Em, C, Am, B) and 8-bit instruments as the theme, at half speed and without drums:
+   soft arpeggios, a slowed fragment of the theme melody, and a quiet clock tick for the lab at night.
+   It plays from the first line of the story and stops abruptly the first time the closet moves. Each bar has 8 steps (eighth notes). */
+const INTRO = {
+  bpm: 112,
+  // per bar: the bass note, then four chord tones (the theme's progression, played twice)
+  chords: [['E2', 'E3', 'G3', 'B3', 'E4'], ['C2', 'C3', 'E3', 'G3', 'C4'], ['A1', 'A2', 'C3', 'E3', 'A3'], ['B1', 'B2', 'D#3', 'F#3', 'B3'],
+           ['E2', 'E3', 'G3', 'B3', 'E4'], ['C2', 'C3', 'E3', 'G3', 'C4'], ['A1', 'A2', 'C3', 'E3', 'A3'], ['B1', 'B2', 'D#3', 'F#3', 'B3']],
+  arp: [1, 2, 3, 4, 3, 2, 3, 4], // which chord tone each eighth note plays
+  melody: ['E4 - G4 - B4 - - -', 'A4 - G4 - E4 - - -', 'C5 - B4 - A4 - - -', 'B4 - - - A#4 - B4 -',
+           'E4 - G4 - B4 - E5 -', 'D5 - C5 - B4 - G4 -', 'A4 - C5 - B4 - A4 -', 'F#4 - - - D#4 - - -'],
+};
+const INTRO_MEL = []; INTRO.melody.forEach((bar, b) => { const tk = bar.trim().split(/\s+/); tk.forEach((t, i) => { if (t === '.' || t === '-') return; let len = 1; while (tk[i + len] === '-') len++; INTRO_MEL.push([b * 8 + i, freqOf(t), len]); }); });
+const intro = { on: false, gain: null, bus: null, timer: null, next: 0, step: 0 };
+function introTone(f, t, type, vol, attack, hold, release) {
+  const o = audio.createOscillator(), g = audio.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + attack);
+  if (hold > 0) g.gain.setValueAtTime(vol, t + attack + hold);
+  g.gain.setTargetAtTime(0.0001, t + attack + Math.max(0, hold), release);
+  o.connect(g).connect(intro.bus); o.start(t); o.stop(t + attack + Math.max(0, hold) + release * 6);
+}
+function introTick(t) { // a soft clock tick: a very short burst of filtered noise
+  const len = Math.floor(audio.sampleRate * 0.02), b = audio.createBuffer(1, len, audio.sampleRate), ch = b.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain(); s.buffer = b; f.type = 'highpass'; f.frequency.value = 5000; g.gain.value = 0.05;
+  s.connect(f).connect(g).connect(intro.bus); s.start(t);
+}
+function scheduleIntro() {
+  const spb = 60 / INTRO.bpm / 2; // seconds per eighth note: half the speed of the theme's sixteenths
+  while (intro.next < audio.currentTime + 0.2) {
+    const s = intro.step % 64, bar = Math.floor(s / 8), inBar = s % 8, t = intro.next, ch = INTRO.chords[bar];
+    if (inBar === 0 || inBar === 4) introTone(freqOf(ch[0]), t, 'triangle', 0.17, 0.01, spb * 2.5, 0.25);           // bass, as in the theme
+    introTone(freqOf(ch[INTRO.arp[inBar]]), t, 'triangle', 0.06, 0.005, 0, 0.18);                                  // arpeggio
+    for (const [st, f, len] of INTRO_MEL) if (st === s) introTone(f, t, 'square', 0.03, 0.02, len * spb * 0.85, 0.12); // melody, theme timbre
+    if (inBar % 2 === 0) introTick(t);                                                                              // clock on every beat
+    intro.step++; intro.next += spb;
+  }
+}
+function startIntro() {
+  ensureAudio(); if (!audio || intro.on) return;
+  intro.gain = audio.createGain(); intro.gain.gain.value = 0.0001; intro.gain.connect(master);
+  intro.bus = audio.createGain(); intro.bus.connect(intro.gain);
+  intro.gain.gain.setTargetAtTime(0.85 * MUSIC_LEVEL, audio.currentTime, 0.6);
+  intro.on = true; intro.step = 0; intro.next = audio.currentTime + 0.15;
+  intro.timer = setInterval(scheduleIntro, 30); scheduleIntro();
+}
+function stopIntro(fade = 1.2) {
+  if (!intro.on) return; intro.on = false; clearInterval(intro.timer);
+  const g = intro.gain; g.gain.setTargetAtTime(0.0001, audio.currentTime, fade / 3); setTimeout(() => g.disconnect(), fade * 1000 + 1500);
+}
+/* the first time the closet moves, the prelude stops dead with a tape-stop sound: something unexpected happened */
+function interruptIntro() { if (!intro.on) return; stopIntro(0.08); sfx.sting(); }
 
 /* ---------- sprites ---------- */
 function sprite(rows, pal) {
@@ -384,6 +536,84 @@ const SK2 = [...SK_TOP, '.bbbbbbb.', 'b..bkb..b', '...bbb...', '...bkb...', '..b
 const SK3 = ['b.bbbbb.b', 'bbbbbbbbb', '.bkkbkkb.', '.bbbbbbb.', '..bkbkb..', '...bbb...', '..bbbbb..', '...bkb...', '...bbb...', '...bkb...', '..bbbbb..', '..b...b..', '..b...b..', '..b...b..', '.bb...bb.'];
 const skA = [SK1, SK2, SK3].map(r => sprite(r, { b: '#ece6d6', k: '#1a0f22' }));
 const skB = [SK1, SK2, SK3].map(r => sprite(r, { b: '#d3ece8', k: '#1a0f22' }));
+
+/* ---------- effects: particles, floating texts, flash ---------- */
+let parts = [], floats = [], flash = 0;
+const FX = reduceMotion ? 0.35 : 1; // fewer particles when the user asks for reduced motion
+const CONFETTI = ['#f5cf1d', '#4fd1c5', '#ef6461', '#7b5bc4', '#f1ece0', '#3fb59f'];
+function emit(n, o) {
+  for (let i = 0; i < Math.round(n * FX); i++) {
+    const a = (o.angle ?? -Math.PI / 2) + (Math.random() - 0.5) * (o.spread ?? Math.PI * 2), sp = (o.speed ?? 60) * (0.4 + Math.random() * 0.8);
+    parts.push({ x: o.x + (Math.random() - 0.5) * (o.jx || 0), y: o.y + (Math.random() - 0.5) * (o.jy || 0), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      g: o.g ?? 160, life: (o.life ?? 0.8) * (0.6 + Math.random() * 0.6), max: 0, size: o.size ?? 1, color: Array.isArray(o.color) ? o.color[Math.floor(Math.random() * o.color.length)] : o.color, back: !!o.back, top: !!o.top, drag: o.drag ?? 0.98 });
+    parts[parts.length - 1].max = parts[parts.length - 1].life;
+  }
+}
+const confetti = (x, y, n = 40) => emit(n, { x, y, speed: 130, g: 200, life: 1.3, size: 2, color: CONFETTI, drag: 0.97 });
+const dust = (x, y, n = 2) => emit(n, { x, y, angle: -Math.PI / 2, spread: 2.2, speed: 14, g: -6, life: 0.5, color: ['#5a6390', '#6c75a6'], back: true });
+const sparkle = (x, y) => emit(10, { x, y, speed: 50, g: 40, life: 0.5, color: ['#fff3a0', '#f5cf1d', '#ffffff'] });
+function floatText(text, x, y, color = '#f5cf1d', scale = 1, life = 1) { floats.push({ text, x, y, color, scale, t: 0, life }); }
+function updateFX(d) {
+  for (const p of parts) { p.vx *= p.drag; p.vy = p.vy * p.drag + p.g * d; p.x += p.vx * d; p.y += p.vy * d; p.life -= d; if (p.y > GROUND && p.g > 0) { p.y = GROUND; p.vy *= -0.3; p.vx *= 0.6; } }
+  parts = parts.filter(p => p.life > 0);
+  for (const f of floats) f.t += d; floats = floats.filter(f => f.t < f.life);
+  if (flash > 0) flash = Math.max(0, flash - d * 2.5);
+}
+/* rockets rise from the floor and burst; they and their sparks are drawn on the top layer */
+let rockets = [];
+function launchRocket() {
+  const side = Math.random(), x = camX + (side < 0.35 ? 20 + Math.random() * 70 : side < 0.7 ? W - 90 + Math.random() * 70 : 110 + Math.random() * (W - 220));
+  rockets.push({ x, y: GROUND, vy: -(170 + Math.random() * 60), ty: 22 + Math.random() * 60, color: CONFETTI[Math.floor(Math.random() * CONFETTI.length)] });
+  tone(500, 0.18, 'triangle', 0.012, 2.2);
+}
+function updateRockets(d) {
+  for (const r of rockets) {
+    r.y += r.vy * d; emit(1, { x: r.x, y: r.y + 2, speed: 12, g: 30, life: 0.35, color: ['#ffe7a3', '#f5cf1d'], top: true });
+    if (r.y <= r.ty) { r.done = true; emit(64, { x: r.x, y: r.y, speed: 115, g: 50, life: 1.5, size: 2, color: [r.color, r.color, r.color, '#ffffff'], drag: 0.965, top: true }); emit(10, { x: r.x, y: r.y, speed: 20, g: 0, life: 0.25, size: 3, color: '#ffffff', top: true }); noise(0.25, 0.03); tone(140 + Math.random() * 120, 0.3, 'square', 0.02, 0.5); }
+  }
+  rockets = rockets.filter(r => !r.done);
+}
+/* fireworks are part of the scene, so the ending card always stays above them and its text stays readable */
+function drawTop() {
+  for (const r of rockets) rect(wx(r.x), r.y, 1, 3, '#fff3c4');
+  for (const p of parts) { if (!p.top) continue; ctx.globalAlpha = Math.min(1, p.life / p.max * 1.5); rect(wx(p.x), p.y, p.size, p.size, p.color); }
+  ctx.globalAlpha = 1;
+}
+function drawParts(back) {
+  for (const p of parts) { if (p.top || p.back !== back) continue; ctx.globalAlpha = Math.min(1, p.life / p.max * 1.5); rect(wx(p.x), p.y, p.size, p.size, p.color); }
+  ctx.globalAlpha = 1;
+}
+function drawFloats() {
+  for (const f of floats) {
+    const q = f.t / f.life, w = textW(f.text, f.scale), x = Math.round(f.x - camX - w / 2), y = Math.round(f.y - q * 16 * f.scale), pop = f.scale > 1 && q < 0.15 ? 1 : 0;
+    ctx.globalAlpha = q > 0.7 ? (1 - q) / 0.3 : 1;
+    text(f.text, x + 1, y + 1 + pop, '#070914', f.scale); text(f.text, x, y + pop, f.color, f.scale);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- score, streak and CUI tokens ---------- */
+let lastStreakTxt = '';
+let score = 0, scoreShown = 0, streak = 0, rightCount = 0, coinsGot = 0, pending = 0;
+let milestone = null, finaleT = 0, rocketT = 0;
+const MILESTONES = { 3: ['STREAK X3!', '#4fd1c5'], 5: ['ON FIRE! X5', '#ef6461'], 9: ['PERFECT RUN!', '#f5cf1d'] };
+function award(correct) { const pts = correct ? 100 + 20 * streak : 40; if (correct) { streak++; rightCount++; } else streak = 0; pending = pts; milestone = correct && MILESTONES[streak] ? MILESTONES[streak] : null; return pts; }
+function addScore(n) { score += n; }
+const RANKS = [[1600, 'Area Chair of the Closet'], [1200, 'Outstanding Reviewer'], [800, 'Reviewer 2'], [0, 'Curious Reader']];
+const rankOf = (sc) => RANKS.find(([t]) => sc >= t)[1];
+/* four concept-ID tokens per skeleton room; the high ones need a jump */
+const COINS = [];
+for (let room = 2; room <= 10; room++) [[70, 11], [118, 40], [292, 11], [334, 40]].forEach(([dx, h]) => COINS.push({ x: room * SCENE + dx, y: GROUND - h, taken: false }));
+const TAUNTS = ['WHICH RELEASE? HA!', 'TRY THE DRAWERS!', 'LINK ME IF YOU CAN', 'NEW RELEASE, NEW ME', 'NO ANSWER HERE!', 'I GROW EVERY HOP', 'WE FILL THE GAPS', 'NOTHING INSIDE ME', 'READ ME RIGHT'];
+function drawCoins() {
+  for (const c of COINS) {
+    if (c.taken) continue; const X = wx(c.x) - 3, bob = reduceMotion ? 0 : Math.round(Math.sin(time * 3 + c.x) * 2), Y = c.y - 3 + bob;
+    if (X < -8 || X > W + 8) continue;
+    rect(X + 1, Y, 5, 7, '#8f7410'); rect(X, Y + 1, 7, 5, '#8f7410'); rect(X + 1, Y + 1, 5, 5, '#f5cf1d'); rect(X + 1, Y + 1, 2, 1, '#fff3a0');
+    text('C', X + 2, Y + 1, '#8f7410');
+    if (!reduceMotion && Math.floor(time * 2 + c.x) % 7 === 0) rect(X + 5, Y - 1, 1, 1, '#ffffff');
+  }
+}
 
 /* ---------- drawing helpers ---------- */
 let camX = 0, time = 0, dt = 0, shake = 0;
@@ -431,11 +661,13 @@ function drawRooms() {
     // windows
     if ([0, 2, 5, 7, 9, 11].includes(i)) for (const wxp of [26, 300]) {
       const X = x0 + wxp; rect(X - 2, 62, 62, 52, '#0a0d22'); ctx.drawImage(skyline, Math.floor(((i * 70 + wxp) + camX * 0.15) % 140), 0, 58, 44, Math.round(X), 64, 58, 44);
+      if (!reduceMotion) { const ph = (time * 0.11 + i * 0.37 + wxp * 0.001) % 1; if (ph < 0.06) { const q = ph / 0.06; for (let k2 = 0; k2 < 6; k2++) rect(X + 6 + q * 40 - k2 * 2, 68 + q * 12 - k2 * 0.6, 1, 1, k2 ? 'rgba(241,236,224,.5)' : '#ffffff'); } }
       rect(X + 28, 64, 2, 44, '#0a0d22'); rect(X, 85, 58, 2, '#0a0d22'); rect(X - 4, 114, 66, 3, '#2f3866');
     }
     // ceiling lamps
-    for (const lx of [110, 270]) { const X = x0 + lx; rect(X, 7, 1, 14, '#0f1330'); rect(X - 7, 21, 15, 4, '#3b4378'); rect(X - 5, 25, 11, 1, '#ffe7a3');
-      ctx.globalAlpha = 0.07; ctx.fillStyle = '#ffe7a3'; ctx.beginPath(); ctx.moveTo(X - 5, 26); ctx.lineTo(X + 6, 26); ctx.lineTo(X + 40, GROUND); ctx.lineTo(X - 40, GROUND); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
+    for (const lx of [110, 270]) { const X = x0 + lx, fl = !reduceMotion && Math.sin(time * 2.3 + i * 1.7 + lx) > 0.985 && Math.floor(time * 24) % 2; rect(X, 7, 1, 14, '#0f1330'); rect(X - 7, 21, 15, 4, '#3b4378'); rect(X - 5, 25, 11, 1, fl ? '#8a7a55' : '#ffe7a3');
+      if (!reduceMotion) for (let j = 0; j < 5; j++) rect(X + Math.sin(time * 0.4 + j * 1.3 + i) * (8 + j * 6), 30 + ((time * 7 + j * 31 + i * 17) % 150), 1, 1, 'rgba(255,240,200,.35)');
+      ctx.globalAlpha = fl ? 0.025 : 0.07; ctx.fillStyle = '#ffe7a3'; ctx.beginPath(); ctx.moveTo(X - 5, 26); ctx.lineTo(X + 6, 26); ctx.lineTo(X + 40, GROUND); ctx.lineTo(X - 40, GROUND); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
     // door frame between rooms
     if (i > 0) { rect(x0 - 3, 46, 6, GROUND - 46, '#121735'); rect(x0 - 2, 46, 4, GROUND - 46, '#2a3263'); }
     drawProps(i, i * SCENE);
@@ -500,9 +732,10 @@ function drawProps(i, x0) {
       ctx.strokeStyle = 'rgba(79,209,197,.35)'; ctx.lineWidth = 1; ctx.beginPath();
       for (let j = 1; j < nodes.length; j++) { const p = nodes[Math.max(0, Math.floor((j - 1) / 3))]; ctx.moveTo(X(p[0]) + 0.5, p[1] + 0.5); ctx.lineTo(X(nodes[j][0]) + 0.5, nodes[j][1] + 0.5); } ctx.stroke();
       nodes.forEach(([nx, ny], j) => rect(X(nx) - 1, ny - 1, 3, 3, j === 0 ? '#f5cf1d' : (j < 6 ? '#f1ece0' : '#4fd1c5')));
+      if (!reduceMotion) for (let k2 = 0; k2 < 7; k2++) { const j = 1 + ((k2 * 13 + Math.floor(time * 0.8 + k2 * 0.37)) % (nodes.length - 1)), pp = nodes[Math.max(0, Math.floor((j - 1) / 3))], q = (time * 0.8 + k2 * 0.37) % 1; rect(X(pp[0] + (nodes[j][0] - pp[0]) * q) - 1, pp[1] + (nodes[j][1] - pp[1]) * q - 1, 2, 2, '#ffffff'); }
     } else if (k === 6) { // chemistry shelf
       rect(X(40), GROUND - 22, 140, 3, '#5b4a3a'); rect(X(44), GROUND - 19, 3, 19, '#3e3226'); rect(X(172), GROUND - 19, 3, 19, '#3e3226');
-      for (const [fx, lab, c] of [[56, 'SERINE', '#d3ece8'], [116, 'ETHANOL', '#cfe0ff']]) { rect(X(fx + 8), GROUND - 52, 8, 10, '#9aa3c7'); rect(X(fx), GROUND - 42, 24, 20, '#9aa3c7'); rect(X(fx + 2), GROUND - 36, 20, 14, c);
+      for (const [fx, lab0, c] of [[56, 'SERINE', '#d3ece8'], [116, 'ETHANOL', '#cfe0ff']]) { const lab = SKELS[6].caught ? lab0 : '?'; rect(X(fx + 8), GROUND - 52, 8, 10, '#9aa3c7'); rect(X(fx), GROUND - 42, 24, 20, '#9aa3c7'); rect(X(fx + 2), GROUND - 36, 20, 14, c);
         rect(X(fx - 6), GROUND - 64, textW(lab) + 6, 9, '#f1ece0'); text(lab, X(fx - 3), GROUND - 62, '#1c2447');
         if (!reduceMotion) rect(X(fx + 6 + (Math.floor(time * 3 + fx) % 10)), GROUND - 34 - (Math.floor(time * 6 + fx) % 8), 2, 2, '#ffffff'); }
     } else if (k === 7) { // training room
@@ -554,7 +787,7 @@ function drawTape(x, y, w, slope) {
 }
 
 /* ---------- state ---------- */
-const team = STYLE.map(() => ({ x: 0, dir: 1, walk: 0, moving: false }));
+const team = STYLE.map(() => ({ x: 0, dir: 1, walk: 0, moving: false, jy: 0, vy: 0, jt: null, dustT: 0 }));
 const lead = team[0];
 const SKX = (k) => SCENE * (k + 2) + 222;
 const HALL_X = SCENE * 11 + 60;
@@ -564,12 +797,16 @@ let typing = null, walkTarget = null, mini = null, cardMode = null;
 const keys = { left: false, right: false };
 let inputMode = 'key';
 const SPEED = 128;
+function jump() {
+  if (lead.jy > 0 || lead.jt !== null || !(state === 'walk0' || state === 'explore')) return;
+  team.forEach((m, i) => { m.jt = i * 0.09; }); sfx.jump();
+}
 function placeTeam(x) { team.forEach((m, i) => { m.x = x - i * 13; m.dir = 1; }); }
 placeTeam(150);
 
 const objective = $('#objective'), caseBtn = $('#caseBtn');
 function setObjective(htmlStr) { objective.hidden = !htmlStr; objective.innerHTML = htmlStr ? `<b>Goal</b>${htmlStr}` : ''; }
-function updateCase() { const n = SKELS.filter(s => s.caught).length; $('#caseN').textContent = `${n}/${N}`; caseBtn.hidden = !['explore', 'card', 'capture'].includes(state); }
+function updateCase() { const n = SKELS.filter(s => s.caught).length; $('#caseN').textContent = `${n}/${N}`; $('#hudRight').hidden = !['explore', 'card', 'capture'].includes(state); }
 const ACT = () => inputMode === 'touch' ? 'A' : 'Space';
 
 /* ---------- story ---------- */
@@ -588,7 +825,7 @@ function storyCard(kind, st) {
 }
 function startStory() {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-  $('#title').hidden = true; state = 'story'; storyIdx = -1; sfx.start(); placeTeam(150); camX = 0; nextStory();
+  $('#title').hidden = true; state = 'story'; storyIdx = -1; sfx.start(); startIntro(); placeTeam(150); camX = 0; nextStory();
 }
 function nextStory() {
   storyIdx++;
@@ -597,12 +834,15 @@ function nextStory() {
   $('#dlg').hidden = false; $('#dlgWho').textContent = st.who;
   const sc = $('#scard'); if (st.card) { storyCard(st.card, st); sc.hidden = false; } else { sc.hidden = true; pipe = null; }
   if (st.scene === 'walk') walkTarget = CLOSET_X - 30; else if (st.scene === 'archive' && lead.x < CLOSET_X - 40) { placeTeam(CLOSET_X - 30); }
-  if (st.rattle) { closet.rattle = 0.8; closet.eyes = 1.4; sfx.rattle(); }
-  typing = { full: st.text, shown: 0 }; $('#dlgNext').textContent = ''; $('#dlgNext').classList.remove('blink');
+  if (st.rattle) { closet.rattle = 0.8; closet.eyes = 1.4; sfx.rattle(); interruptIntro(); }
+  typing = { full: st.text, shown: 0, doneAt: null }; renderTyping(0); $('#dlgNext').textContent = ''; $('#dlgNext').classList.remove('blink');
   placeStoryCard();
 }
 function storyAction() {
-  if (typing && typing.shown < typing.full.length) { typing.shown = typing.full.length; return; }
+  // first press while the text is appearing: show the whole line; only a later press moves on
+  if (typing && typing.shown < typing.full.length) { typing.shown = typing.full.length; typing.doneAt = clock(); renderTyping(typing.full.length); return; }
+  // a press that lands right after the line finished on its own is treated as late, not as "next"
+  if (typing && typing.doneAt !== null && clock() - typing.doneAt < 0.4) return;
   sfx.blip(); nextStory();
 }
 function endStory() {
@@ -611,6 +851,9 @@ function endStory() {
   state = 'walk0'; setObjective(`Open the closet: walk to it and press ${ACT()}.`); updateCase();
 }
 
+/* the not-yet-typed text is present but invisible, so the box has its final height from the first letter */
+const escText = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function renderTyping(n) { $('#dlgText').innerHTML = escText(typing.full.slice(0, n)) + `<span class="ghost">${escText(typing.full.slice(n))}</span>`; }
 function placeStoryCard() {
   const d = $('#dlg'), sc = $('#scard'); if (d.hidden || sc.hidden) return;
   const top = d.offsetTop + d.offsetHeight + Math.round(stage.clientHeight * 0.025), maxH = Math.round(stage.clientHeight * 0.86) - top;
@@ -619,7 +862,11 @@ function placeStoryCard() {
 /* ---------- closet ---------- */
 const nearCloset = () => Math.abs(lead.x - (CLOSET_X - 18)) < 30;
 function openCloset() {
-  state = 'opening'; stateT = 0; closet.open = 1; sfx.open(); shake = 0.35; setObjective('Nine skeletons escaped to the right.');
+  state = 'opening'; stateT = 0; closet.open = 1; sfx.open(); sfx.boom(); shake = 0.55; flash = 1; setObjective('Nine skeletons escaped to the right.');
+  emit(30, { x: CLOSET_X + 30, y: GROUND - 50, jx: 40, jy: 60, speed: 110, g: 260, life: 1.1, size: 2, color: ['#6b4a2c', '#4f341d', '#7d5a37'] });
+  emit(34, { x: CLOSET_X + 30, y: GROUND - 6, jx: 70, angle: -Math.PI / 2, spread: 2.6, speed: 30, g: -10, life: 1.4, size: 2, color: ['#5a6390', '#6c75a6', '#8f96c2'], back: true });
+  floatText('BOO!', CLOSET_X + 30, GROUND - 104, '#f1ece0', 2, 1.2);
+  stopIntro(0.3); setTimeout(startMusic, 700); // after the silence, the hunt begins
   flyers = SKELS.map((s, i) => ({ s, x: CLOSET_X + 22, y: GROUND - 40, vy: -90 - Math.random() * 50, delay: 0.2 + i * 0.13, vx: 170 + Math.random() * 60, out: false }));
   setTimeout(sfx.escape, 250);
 }
@@ -629,7 +876,8 @@ const card = $('#card');
 const nearSkeleton = () => current < N && Math.abs(lead.x - (SKELS[current].x - 26)) < 32;
 let lockUntil = 0;
 const clock = () => performance.now() / 1000;
-function showCard(htmlStr, mode) { lockUntil = clock() + 0.45; card.innerHTML = htmlStr; card.hidden = false; card.scrollTop = 0; cardMode = mode; state = 'card'; keys.left = keys.right = false; updateCase(); }
+function bump(kind) { card.classList.remove('pop', 'shake'); void card.offsetWidth; card.classList.add(kind); }
+function showCard(htmlStr, mode) { sfx.card(); lockUntil = clock() + 0.45; card.innerHTML = htmlStr; card.hidden = false; card.scrollTop = 0; cardMode = mode; state = 'card'; keys.left = keys.right = false; updateCase(); }
 function hideCard() { card.hidden = true; mini = null; cardMode = null; }
 const foot = (label, hint = true) => `<div class="foot"><button class="btn primary" id="cardGo">${label}</button>${hint ? `<span class="hint">${inputMode === 'touch' ? 'or press A' : 'or press Space'}</span>` : ''}</div>`;
 
@@ -650,8 +898,9 @@ function openChallenge() {
       if (mini.done) return; mini.done = true; mark();
       choices[s.quiz.answer].classList.add('right');
       const fb = $('#fb');
-      if (i === s.quiz.answer) { fb.textContent = 'Right.'; sfx.right(); }
-      else { choices[i].classList.add('wrong'); fb.classList.add('bad'); fb.textContent = `Not quite: the answer is ${s.quiz.options[s.quiz.answer]}.`; sfx.wrong(); }
+      const ok = i === s.quiz.answer, pts = award(ok);
+      if (ok) { fb.innerHTML = `Right.<span class="pts">+${pts}${streak > 1 ? ` streak x${streak}` : ''}</span>`; sfx.right(); bump('pop'); }
+      else { choices[i].classList.add('wrong'); fb.classList.add('bad'); fb.innerHTML = `Not quite: the answer is ${s.quiz.options[s.quiz.answer]}.<span class="pts">+${pts}</span>`; sfx.wrong(); bump('shake'); shake = 0.25; }
       $('#after').innerHTML = foot('See the finding'); $('#cardGo').addEventListener('click', () => cardAction()); if (inputMode !== 'touch') $('#cardGo').focus({ preventScroll: true });
     };
     mini.act = () => { if (!mini.done) mini.pick(mini.sel); else openResult(); };
@@ -661,15 +910,15 @@ function openChallenge() {
     const toks = [['A', 'none'], ['patient', 'generic'], ['with', 'none'], ['rheumatoid arthritis', 'key', 'C0003873'], ['(RA)', 'key', 'C0003873'], ['requires', 'none'], ['selective', 'none'], ['inhibition', 'generic'], ['of', 'none'], ['COX-2.', 'key', 'C0387583'], ['Which', 'none'], ['drug', 'generic'], ['is', 'none'], ['most', 'none'], ['appropriate?', 'none']];
     showCard(`<p class="kicker">Catch it: be the entity linker</p><h2 id="cardTitle">${s.game.prompt}</h2><div class="tokens">${toks.map((t, i) => `<button class="tok" data-i="${i}">${t[0]}</button>`).join('')}</div><p class="feedback" id="fb" aria-live="assertive">Use the arrow keys and ${ACT()}, or tap the words.</p><div id="after"></div>`, 'link');
     const els = [...card.querySelectorAll('.tok')];
-    mini = { type: 'link', sel: 3, done: false, found: new Set() };
+    mini = { type: 'link', sel: 3, done: false, found: new Set(), misses: 0 };
     const mark = () => els.forEach((e, i) => e.classList.toggle('sel', i === mini.sel && !mini.done));
     mini.move = (d) => { if (mini.done) return; mini.sel = (mini.sel + d + els.length) % els.length; mark(); };
     mini.pick = (i) => {
       if (mini.done) return; const [w, kind, cui] = toks[i], fb = $('#fb'); els[i].classList.add('t-' + kind); fb.classList.toggle('bad', kind === 'none');
-      if (kind === 'key') { mini.found.add(cui); fb.textContent = `Linked: "${w.replace(/[().]/g, '')}" is UMLS concept ${cui}.`; sfx.ok(); }
-      else if (kind === 'generic') { fb.textContent = `"${w}" is a real UMLS concept, but too generic to help answer this question.`; sfx.blip(); }
-      else { fb.textContent = `"${w}" is not a medical concept.`; sfx.miss(); }
-      if (mini.found.size >= 2) { mini.done = true; mark(); sfx.right(); fb.classList.remove('bad'); fb.textContent = 'Both key concepts linked: rheumatoid arthritis and COX-2. Real linkers face the same choice on every word.';
+      if (kind === 'key') { mini.found.add(cui); fb.textContent = `Linked: “${w.replace(/[().]/g, '')}” is UMLS concept ${cui}.`; sfx.ok(); }
+      else if (kind === 'generic') { fb.textContent = `“${w}” is a real UMLS concept, but too generic to help answer this question.`; sfx.blip(); }
+      else { fb.textContent = `“${w}” is not a medical concept.`; sfx.miss(); mini.misses++; bump('shake'); }
+      if (mini.found.size >= 2) { mini.done = true; mark(); sfx.right(); bump('pop'); const pts = award(mini.misses <= 1); fb.classList.remove('bad'); fb.innerHTML = `Both key concepts linked: rheumatoid arthritis and COX-2. Real linkers face the same choice on every word.<span class="pts">+${pts}</span>`;
         $('#after').innerHTML = foot('See what real linkers do'); $('#cardGo').addEventListener('click', () => cardAction()); if (inputMode !== 'touch') $('#cardGo').focus({ preventScroll: true }); }
     };
     mini.act = () => { if (!mini.done) mini.pick(mini.sel); else openResult(); };
@@ -688,8 +937,9 @@ function openChallenge() {
       els.forEach((e, i) => { const used = T[i].use >= 50; e.classList.remove('on'); e.classList.add(used ? 'right' : (mini.picked.has(i) ? 'wrong' : 'x')); e.insertAdjacentHTML('beforeend', `<span class="use">${T[i].use}% of papers</span>`); });
       const exact = T.every((tb, i) => (tb.use >= 50) === mini.picked.has(i));
       const fb = $('#fb'); fb.classList.toggle('bad', !exact);
-      fb.textContent = exact ? 'Exactly: most papers use only names and relations.' : 'Most papers use only two tables: names and relations. The other four rarely or never reach the model.';
-      (exact ? sfx.right : sfx.wrong)();
+      const pts = award(exact);
+      fb.innerHTML = (exact ? 'Exactly: most papers use only names and relations.' : 'Most papers use only two tables: names and relations. The other four rarely or never reach the model.') + `<span class="pts">+${pts}</span>`;
+      (exact ? sfx.right : sfx.wrong)(); bump(exact ? 'pop' : 'shake');
       $('#checkBtn').textContent = 'See the finding'; lockUntil = clock() + 0.6;
     };
     mini.act = () => { if (!mini.done) mini.pick(mini.sel); else openResult(); };
@@ -711,7 +961,7 @@ function cardAction() {
   else if (cardMode === 'result') { hideCard(); startCapture(); }
   else if (mini) { if (mini.done) { if (mini.type !== 'tables' || clock() >= lockUntil) openResult(); } else mini.act(); }
 }
-function startCapture() { state = 'capture'; stateT = 0; capture = { s: SKELS[current], t: 0 }; sfx.capture(); }
+function startCapture() { state = 'capture'; stateT = 0; capture = { s: SKELS[current], t: 0, pts: pending, burst: false }; pending = 0; sfx.capture(); }
 
 /* ---------- action dispatch ---------- */
 function action() {
@@ -721,6 +971,7 @@ function action() {
   if (state === 'walk0' && nearCloset()) { openCloset(); return; }
   if (state === 'explore' && nearSkeleton()) { openBrief(); return; }
   if (state === 'card') { cardAction(); return; }
+  if (state === 'walk0' || state === 'explore') jump();
 }
 
 /* ---------- loop ---------- */
@@ -729,22 +980,46 @@ function loop(now) {
   dt = Math.min(0.05, (now - last) / 1000); last = now;
   const paused = dialogOpen() || !$('#rotate').hidden || document.hidden;
   if (!paused) { time += dt; update(dt); }
-  stage.classList.toggle('nowalk', !(state === 'walk0' || state === 'explore')); render(); requestAnimationFrame(loop);
+  stage.classList.toggle('nowalk', !(state === 'walk0' || state === 'explore')); duckMusic(state === 'card' || dialogOpen()); render(); requestAnimationFrame(loop);
 }
 function update(d) {
   if (closet.open === 0) { closet.nextRattle -= d; if (closet.rattle > 0) closet.rattle -= d; if (closet.eyes > 0) closet.eyes -= d;
-    if (closet.nextRattle <= 0) { closet.rattle = 0.5; closet.eyes = 1.1; closet.nextRattle = 2.6 + Math.random() * 2.6; if (state === 'walk0') sfx.rattle(); } }
+    if (closet.nextRattle <= 0) { closet.rattle = 0.5; closet.eyes = 1.1; closet.nextRattle = 2.6 + Math.random() * 2.6; if (state === 'walk0') { sfx.rattle(); interruptIntro(); } } }
   if (shake > 0) shake -= d;
   // typewriter
   if (state === 'story' && typing) {
     const before = typing.shown; typing.shown = Math.min(typing.full.length, typing.shown + d * 95);
-    if (Math.floor(typing.shown) !== Math.floor(before)) $('#dlgText').textContent = typing.full.slice(0, Math.floor(typing.shown));
-    if (typing.shown >= typing.full.length) { $('#dlgText').textContent = typing.full; const nx = $('#dlgNext'); if (!nx.textContent) { nx.textContent = storyIdx + 1 < STORY.length ? `${ACT()} to continue` : `${ACT()} to begin`; nx.classList.toggle('blink', !reduceMotion); } }
+    if (Math.floor(typing.shown) !== Math.floor(before)) { const n = Math.floor(typing.shown); renderTyping(n); if (n % 3 === 0 && typing.full[n - 1] !== ' ') sfx.type(); }
+    if (typing.shown >= typing.full.length) { if (typing.doneAt === null) typing.doneAt = clock(); const nx = $('#dlgNext'); if (!nx.textContent) { nx.textContent = storyIdx + 1 < STORY.length ? `${ACT()} to continue` : `${ACT()} to begin`; nx.classList.toggle('blink', !reduceMotion); } }
   }
   if (state === 'opening') { stateT += d; let done = true;
     for (const f of flyers) { if (f.out) continue; done = false; if (stateT < f.delay) continue; f.vy += 380 * d; f.y = Math.min(GROUND - 15, f.y + f.vy * d); f.x += f.vx * d; if (f.x > camX + W + 20) { f.out = true; f.s.placed = true; } }
     if (done && stateT > 0.8) { state = 'explore'; current = 0; gate = SKELS[0].x - 26; flyers = []; announce(); updateCase(); } }
-  if (state === 'capture') { capture.t += d; if (capture.t > 0.75) { capture.s.caught = true; capture = null; current++; gate = current < N ? SKELS[current].x - 26 : HALL_X + 60; state = 'explore'; announce(); updateCase(); } }
+  if (state === 'capture') {
+    capture.t += d; const s = capture.s;
+    if (!capture.burst && capture.t > 0.4) { capture.burst = true; flash = 0.8; shake = 0.2; confetti(s.x + 5, GROUND - 30, 46); floatText('CAUGHT!', s.x + 5, GROUND - 58, '#f5cf1d', 2, 1.3); floatText(`+${capture.pts}`, s.x + 5, GROUND - 40, '#4fd1c5', 1, 1.3);
+      if (milestone) { const [txt, col] = milestone; milestone = null; setTimeout(() => { floatText(txt, camX + W / 2, 92, col, 3, 1.6); confetti(camX + W / 2, 70, 60); sfx.fanfareShort(); }, 450); } }
+    if (capture.t > 1.05) { addScore(capture.pts); s.caught = true; capture = null; current++; gate = current < N ? SKELS[current].x - 26 : HALL_X + 60; state = 'explore'; announce(); updateCase(); const cb = $('#caseBtn'); cb.classList.remove('pulse'); void cb.offsetWidth; cb.classList.add('pulse'); }
+  }
+  updateFX(d);
+  // the score counts up; the streak shows from two right answers in a row
+  if (Math.round(scoreShown) !== score) { scoreShown += (score - scoreShown) * Math.min(1, d * 6); if (Math.abs(score - scoreShown) < 0.5) scoreShown = score; $('#scoreN').textContent = Math.round(scoreShown); }
+  const stTxt = streak > 1 ? `x${streak}` : ''; if (stTxt !== lastStreakTxt) { lastStreakTxt = stTxt; $('#streakN').textContent = stTxt; }
+  // jumping, landing dust, walking dust
+  team.forEach((m, i) => {
+    if (m.jt !== null) { m.jt -= d; if (m.jt < 0) { m.jt = null; m.vy = 180; } }
+    if (m.jy > 0 || m.vy > 0) { m.vy -= 520 * d; m.jy = Math.max(0, m.jy + m.vy * d); if (m.jy === 0) { m.vy = 0; dust(m.x + 5, GROUND - 1, 3); } }
+  });
+  if (lead.moving && lead.jy === 0) { lead.dustT -= d; if (lead.dustT <= 0) { dust(lead.x + 5 - lead.dir * 3, GROUND - 1, 1); lead.dustT = 0.14; } }
+  // CUI tokens
+  if (state === 'walk0' || state === 'explore') for (const c of COINS) {
+    if (c.taken || Math.abs(c.x - (lead.x + 5)) > 7) continue;
+    const top = GROUND - 16 - lead.jy; if (c.y > top - 6 && c.y < GROUND - lead.jy + 2) { c.taken = true; coinsGot++; addScore(10); sparkle(c.x, c.y); floatText('+10', c.x, c.y - 6, '#f5cf1d', 1, 0.8); sfx.coin(); }
+  }
+  // finale: fireworks over the hall, then the ending card; the fireworks continue above it
+  if (state === 'finale') { finaleT += d; if (finaleT > 2.6) { state = 'ending'; $('#ending').hidden = false; } }
+  if (state === 'finale' || state === 'ending') { rocketT -= d; if (rocketT <= 0) { launchRocket(); rocketT = reduceMotion ? 1.4 : 0.32 + Math.random() * 0.35; } }
+  updateRockets(d);
   if (mini && mini.update && state === 'card') mini.update(d);
 
   // movement
@@ -752,7 +1027,7 @@ function update(d) {
   else if (state === 'walk0' || state === 'explore') {
     let mv = 0; if (keys.left) mv -= 1; if (keys.right) mv += 1; if (mv) lead.dir = mv;
     const nx = Math.max(SCENE + 30, Math.min(gate, lead.x + mv * SPEED * d)); lead.moving = Math.abs(nx - lead.x) > 0.01; lead.x = nx;
-    if (state === 'explore' && current >= N && lead.x >= HALL_X + 40) { state = 'ending'; $('#ending').hidden = false; setObjective(''); sfx.fanfare(); updateCase(); }
+    if (state === 'explore' && current >= N && lead.x >= HALL_X + 40) { state = 'finale'; stateT = 0; finaleT = 0; $('#scoreline').innerHTML = `<div><b>Score</b><span>${score}</span></div><div><b>Rank</b><span>${rankOf(score)}</span></div><div><b>Right answers</b><span>${rightCount} of ${N}</span></div><div><b>CUI tokens</b><span>${coinsGot} of ${COINS.length}</span></div>`; confetti(lead.x + 5, GROUND - 40, 70); setObjective(''); stopMusic(0.8); setTimeout(sfx.fanfare, 500); updateCase(); }
   } else lead.moving = false;
   for (let i = 1; i < team.length; i++) { const m = team[i], target = team[i - 1].x - lead.dir * 13, nx = m.x + (target - m.x) * Math.min(1, d * 8); m.moving = Math.abs(nx - m.x) > 0.05; if (m.moving) m.dir = nx > m.x ? 1 : -1; m.x = nx; }
   team.forEach(m => { if (m.moving) m.walk += d * 9; });
@@ -762,7 +1037,7 @@ function update(d) {
   target = Math.max(0, Math.min(SCENE * 12 - W, target)); camX += (target - camX) * Math.min(1, d * 5);
 }
 function announce() {
-  if (current < N) setObjective(`Catch skeleton ${current + 1} of ${N}, ${SKELS[current].name}. Walk right and press ${ACT()} next to it.`);
+  if (current < N) setObjective(`Catch skeleton ${current + 1} of ${N}, ${SKELS[current].name}. Walk right and press ${ACT()} next to it.${current === 0 ? ` Grab the CUI tokens on the way: ${inputMode === 'touch' ? 'A' : '\u2191'} jumps.` : ''}`);
   else setObjective('All nine caught. Walk right to the conference hall.');
 }
 
@@ -770,22 +1045,48 @@ function render() {
   const sh = shake > 0 && !reduceMotion ? (Math.floor(time * 40) % 2 ? 2 : -2) : 0;
   ctx.save(); ctx.translate(sh, 0);
   drawRooms();
+  drawCoins();
+  drawParts(true);
   SKELS.forEach((s, k) => { if (!s.placed || s.caught || (capture && capture.s === s)) return; drawSkeleton(s, s.x, GROUND - 15, k === current); });
-  if (capture) { const s = capture.s, p = Math.min(1, capture.t / 0.7), bx = lead.x + 9, by = GROUND - 9; ctx.strokeStyle = '#4fd1c5'; ctx.beginPath(); ctx.moveTo(wx(bx), by);
-    for (let j = 1; j <= 8; j++) { const q = j / 8; ctx.lineTo(wx(bx + (s.x + 4 - bx) * q), by + (j < 8 ? Math.random() * 6 - 3 : 1)); } ctx.stroke();
-    const sc = 1 - p; if (sc > 0.05) { blit(skA[2], s.x, GROUND - 15 * sc - (1 - sc) * 10, false, sc); if (s.twins) blit(skB[2], s.x + 12, GROUND - 15 * sc - (1 - sc) * 10, false, sc); } }
+  if (capture) {
+    const s = capture.s, t = capture.t, bx = lead.x + 9, by = GROUND - 9 - lead.jy;
+    if (t < 0.45) { // the beam lifts the skeleton, which wriggles
+      const lift = Math.min(1, t / 0.4) * 14, wob = reduceMotion ? 0 : Math.sin(t * 60) * 2;
+      ctx.strokeStyle = '#4fd1c5'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wx(bx), by);
+      for (let j = 1; j <= 8; j++) { const q = j / 8; ctx.lineTo(wx(bx + (s.x + 4 - bx) * q), by + (GROUND - 22 - lift - by) * q + (j < 8 ? Math.random() * 6 - 3 : 0)); } ctx.stroke();
+      ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ffffff'; ctx.stroke(); ctx.globalAlpha = 1;
+      blit(skA[2], s.x + wob, GROUND - 15 - lift); if (s.twins) blit(skB[2], s.x + 12 - wob, GROUND - 15 - lift);
+      if (Math.random() < 0.5) emit(1, { x: s.x + 4 + Math.random() * 8, y: GROUND - 10 - lift, speed: 20, g: -30, life: 0.4, color: '#4fd1c5' });
+    } else { // it spins and flies into the case file, top right
+      const q = Math.min(1, (t - 0.45) / 0.6), e = q * q, tx = camX + W - 26, ty = 10;
+      const x = s.x + (tx - s.x) * e, y = (GROUND - 29) + (ty - (GROUND - 29)) * e - Math.sin(q * Math.PI) * 30, sc = 1 - 0.75 * q;
+      ctx.save(); ctx.translate(Math.round(x - camX + 4), Math.round(y + 7)); ctx.rotate(reduceMotion ? 0 : q * Math.PI * 4); ctx.scale(sc, sc); ctx.drawImage(skA[2], -4, -7); if (s.twins) ctx.drawImage(skB[2], 6, -7); ctx.restore();
+      if (Math.random() < 0.7) emit(1, { x, y: y + 6, speed: 8, g: 0, life: 0.35, color: ['#f5cf1d', '#4fd1c5'] });
+    }
+  }
   for (const f of flyers) { if (f.out || stateT < f.delay) continue; ctx.drawImage(skA[Math.floor(time * 12) % 2], Math.round(f.x - camX), Math.round(f.y)); }
-  team.forEach((m, i) => { const ai = team.length - 1 - i, img = authorSprites[ai][m.moving ? (Math.floor(m.walk) % 2) : 0]; blit(img, m.x, GROUND - 16, m.dir < 0); text(PAPER.authors[ai].letter, wx(m.x) + (m.dir < 0 ? 3 : 4), GROUND - 10, '#f5efdf'); });
+  team.forEach((m, i) => { const ai = team.length - 1 - i, img = authorSprites[ai][m.jy > 0 ? 1 : (m.moving ? (Math.floor(m.walk) % 2) : 0)]; if (m.jy > 1) rect(wx(m.x) + 2, GROUND - 1, 6, 1, 'rgba(0,0,0,.35)'); blit(img, m.x, GROUND - 16 - m.jy, m.dir < 0); text(PAPER.authors[ai].letter, wx(m.x) + (m.dir < 0 ? 3 : 4), GROUND - 10 - Math.round(m.jy), '#f5efdf'); });
+  drawParts(false);
+  drawFloats();
   const cx = team.reduce((a, m) => a + m.x, 0) / team.length + 5; text('THE AUTHORS', Math.round(cx - camX - textW('THE AUTHORS') / 2), GROUND + 8, '#a7adc8');
   const act = inputMode === 'touch' ? 'A' : 'SPACE';
   if (state === 'walk0' && nearCloset()) bubble(`${act}: OPEN`, lead.x + 5, GROUND - 32);
+  if (state === 'explore' && current < N && !nearSkeleton()) { const s = SKELS[current], dx = s.x - lead.x; if (dx > 40 && dx < 240 && (time % 4.5) < 2.4) bubble(TAUNTS[current], s.x + (s.twins ? 10 : 4), GROUND - (s.twins ? 48 : 36)); }
   if (state === 'explore' && nearSkeleton()) bubble(`${act}: CATCH`, SKELS[current].x + (SKELS[current].twins ? 10 : 4), GROUND - (SKELS[current].twins ? 48 : 36));
   if (state === 'explore' && ((current < N && !nearSkeleton() && SKELS[current].x - camX > W) || (current >= N && HALL_X - camX > W - 40)) && Math.floor(time * 2.5) % 2) text('>>', W - 16, 140, '#f5cf1d', 2);
   ctx.restore();
+  if (state === 'finale') { // a banner across the top of the hall
+    const msg = 'CASE CLOSED!', tw = textW(msg, 3), x = Math.round((W - tw) / 2), drop = Math.min(1, finaleT / 0.25), y = Math.round(-30 + 50 * drop);
+    ctx.globalAlpha = 0.85; rect(0, y - 5, W, 25, '#070914'); ctx.globalAlpha = 1; rect(0, y - 5, W, 1, '#f5cf1d'); rect(0, y + 19, W, 1, '#f5cf1d');
+    text(msg, x + 2, y + 2, '#8f7410', 3); text(msg, x, y, '#f5cf1d', 3);
+  }
+  drawTop();
+  if (flash > 0) { ctx.globalAlpha = flash * 0.55; ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
 }
 function drawSkeleton(s, x, y, active) {
   const taunt = Math.floor(time * 1.5 + x) % 3 === 0, fr = taunt ? 2 : (Math.floor(time * 4) % 2), hop = active && !reduceMotion ? Math.abs(Math.sin(time * 4)) * 3 : 0;
-  blit(skA[fr], x, y - hop, true);
+  const rattle = !reduceMotion && Math.floor(time * 0.7 + x) % 5 === 0 ? (Math.floor(time * 30) % 2 ? 1 : -1) : 0;
+  blit(skA[fr], x + rattle, y - hop, true);
   if (s.twins) { blit(skB[(fr + 1) % 3], x + 12, y - (active && !reduceMotion ? Math.abs(Math.cos(time * 4)) * 3 : 0), true); }
 }
 
@@ -800,6 +1101,8 @@ addEventListener('keydown', (e) => {
     if (k === 'ArrowRight' || k === 'ArrowDown') { mini.move(1); e.preventDefault(); return; }
     if (mini.type === 'quiz' && /^(Digit|Numpad)[123]$/.test(k)) { mini.pick(+k.slice(-1) - 1); e.preventDefault(); return; }
   }
+  if ((k === 'ArrowUp' || k === 'KeyW') && (state === 'walk0' || state === 'explore')) { if (!e.repeat) jump(); e.preventDefault(); return; }
+  if (k === 'KeyM' && !e.repeat) { soundBtn.click(); return; }
   if (k === 'ArrowLeft' || k === 'KeyA') { keys.left = true; inputMode = 'key'; e.preventDefault(); }
   else if (k === 'ArrowRight' || k === 'KeyD') { keys.right = true; inputMode = 'key'; e.preventDefault(); }
   else if (k === 'Space' || k === 'Enter') {
@@ -826,6 +1129,8 @@ addEventListener('touchstart', () => { if (!html.classList.contains('touch')) { 
 if (matchMedia('(pointer: coarse)').matches) { html.classList.add('touch'); inputMode = 'touch'; }
 $('#startBtn').addEventListener('click', () => { if (html.classList.contains('touch')) goFullscreen(); startStory(); });
 $('#replayBtn').addEventListener('click', () => {
+  rockets = []; parts = parts.filter(p => !p.top);
+  stopMusic(0.3); score = 0; scoreShown = 0; streak = 0; rightCount = 0; milestone = null; coinsGot = 0; pending = 0; parts = []; floats = []; COINS.forEach(c => { c.taken = false; }); $('#scoreN').textContent = '0';
   SKELS.forEach(s => { s.caught = false; s.placed = false; }); closet = { open: 0, rattle: 0, nextRattle: 2.5, eyes: 0 };
   $('#ending').hidden = true; current = 0; gate = CLOSET_X - 18; placeTeam(CLOSET_X - 30); state = 'walk0'; setObjective(`Open the closet: walk to it and press ${ACT()}.`); updateCase();
 });
@@ -841,8 +1146,8 @@ function layout() {
 }
 addEventListener('resize', () => { layout(); placeStoryCard(); }); addEventListener('orientationchange', () => setTimeout(layout, 200));
 layout(); updateCase(); requestAnimationFrame(loop);
-if (/[?&]debug/.test(location.search)) window.__game = { get state() { return state; }, get current() { return current; }, lead, SKELS, action, get storyIdx() { return storyIdx; },
-  jump(n) { $('#title').hidden = true; endStory(); closet.open = 1; SKELS.forEach((s, k) => { s.placed = true; s.caught = k < n; }); current = n; gate = n < N ? SKELS[n].x - 26 : HALL_X + 60; placeTeam(n < N ? SKELS[n].x - 60 : HALL_X - 40); state = 'explore'; announce(); updateCase(); } };
+if (/[?&]debug/.test(location.search)) window.__game = { get state() { return state; }, get current() { return current; }, lead, SKELS, action, get storyIdx() { return storyIdx; }, get audioState() { return { intro: intro.on, theme: music.on }; },
+  jump(n) { $('#title').hidden = true; endStory(); closet.open = 1; stopIntro(0.2); startMusic(); SKELS.forEach((s, k) => { s.placed = true; s.caught = k < n; }); current = n; gate = n < N ? SKELS[n].x - 26 : HALL_X + 60; placeTeam(n < N ? SKELS[n].x - 60 : HALL_X - 40); state = 'explore'; announce(); updateCase(); } };
 })();
 </script>
 </body>

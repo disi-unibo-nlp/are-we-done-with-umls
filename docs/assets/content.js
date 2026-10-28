@@ -50,7 +50,7 @@ const STORY = [
   { scene: 'lab', who: 'Narrator', text: 'Bologna, late at night. Four researchers in a lab for medical natural language processing are teaching AI language models to answer medical questions.' },
   { scene: 'lab', who: 'Narrator', card: 'exam', text: 'Their test bench: questions written like medical licensing exams, with a short patient case and four or five options. The model must pick the right one.' },
   { scene: 'lab', who: 'Narrator', text: 'A language model answers from what it absorbed during training. That knowledge is hidden in its parameters: hard to inspect and costly to update. In medicine, a wrong answer can hurt someone.' },
-  { scene: 'lab', who: 'Narrator', card: 'umls-db', text: 'So many teams connect the model to UMLS, the Unified Medical Language System of the US National Library of Medicine. UMLS is not a chatbot or a website: it is a large database of medical terminology.' },
+  { scene: 'lab', who: 'Narrator', card: 'umls-db', text: 'So many teams connect the model to UMLS, the Unified Medical Language System of the US National Library of Medicine: a large database of medical terminology, built by joining the main medical vocabularies.' },
   { scene: 'lab', who: 'Narrator', card: 'umls-rows', text: 'Its core, the Metathesaurus, is a set of relational tables. Every medical concept has an ID, and its names, relations, type and definition are rows spread over different tables.' },
   { scene: 'lab', who: 'Narrator', card: 'umls-graph', text: 'Most systems turn the relation table into a knowledge graph: every row becomes an arrow between two concepts.' },
   { scene: 'lab', who: 'Narrator', card: 'pipeline', step: 0, text: 'Here is how a system uses that graph to answer an exam question. It starts from the question and its four options.' },
@@ -120,7 +120,7 @@ const SKELS = [
     text: 'The collected evidence grows from 3,755 concepts at two hops to 1,336,309 at five. So most systems stop at two hops and then trim the graph to 200 concepts. In QA-GNN, GreaseLM and DRAGON the trim applies to 70 to 73% of the examples, and only about 1.5 concepts from each answer option survive it.',
     why: 'The answer side, already the weakest after linking, is cut a second time before the model sees it.' },
 
-  { id: 'placeholders', name: 'Serine and Ethanol', twins: true, room: 'CHEMISTRY SHELF', anchor: 'fallback', ref: 'Section 5.2',
+  { id: 'placeholders', name: 'The Stand-in Twins', twins: true, room: 'CHEMISTRY SHELF', anchor: 'fallback', ref: 'Section 5.2',
     brief: 'Sometimes linking finds nothing at all in a question or in an answer option. The model still expects a graph, so the code has to put something there. None of the reviewed papers says what. We read the released code.',
     quiz: { q: 'What do QA-GNN and GreaseLM put in the graph when a question links no concept?', options: ['Nothing', 'Serine, an amino acid', 'A random concept'], answer: 1 },
     game: { type: 'quiz' },

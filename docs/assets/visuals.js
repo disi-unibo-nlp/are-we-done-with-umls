@@ -43,12 +43,12 @@ function pipelineHTML() {
         <text class="lg lg-q" x="20" y="16">question concepts</text><text class="lg lg-a" x="300" y="80">answer option B</text><text class="lg lg-x" x="440" y="12">other options</text>
       </svg>
       <div class="uvp-prompt" aria-label="Prompt given to the model">
-        <p class="pl"><span class="sys">You are a medical expert tasked with answering multiple-choice questions. Use the question stem and, when present, the provided UMLS subgraph as evidence. Select the single best answer and output the answer option letter inside \\boxed{}.</span></p>
+        <p class="pl"><span class="sys">You are a medical expert tasked with answering multiple-choice questions. Use the question stem and, when present, the provided UMLS subgraph as evidence. Select the single best answer.</span></p>
         <p class="pl ev"><b>UMLS evidence:</b> Celecoxib inhibits COX-2. Celecoxib may treat rheumatoid arthritis.</p>
         <p class="pl"><b>Question:</b> A patient with rheumatoid arthritis (RA) requires selective inhibition of COX-2. Which drug is most appropriate?</p>
         <p class="pl"><b>Options:</b> A) Acetaminophen B) Celecoxib C) Ketorolac D) Aspirin</p>
       </div>
-      <div class="uvp-answer"><div class="llm"><span>Language model</span></div><div class="arrow"></div><div class="out"><code>\\boxed{B}</code><strong>B) Celecoxib</strong></div></div>
+      <div class="uvp-answer"><div class="llm"><span>Language model</span></div><div class="arrow"></div><div class="out"><span class="lab">Answer</span><strong>B) Celecoxib</strong></div></div>
     </div>
     <div class="uvp-side">
       <h4 class="uvp-title"></h4>
